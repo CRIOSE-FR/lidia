@@ -6,7 +6,7 @@
 const fs=require('fs');
 let js=fs.readFileSync(__dirname+'/../lidia-cotation.html','utf8').split('<script>')[1].split('</script>')[0];
 js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
-  +'globalThis.__x5={extraireLocal,validerExtraction,DICTEE_SYS,CST_KEYS,OBS_KEYS};';
+  +'globalThis.__x5={extraireLocal,validerExtraction,DICTEE_SYS,CST_KEYS,OBS_KEYS,ICOPE_DOMS};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -23,7 +23,7 @@ async function extraire(texte){
 const normv=v=>String(v??"").trim().toLowerCase().replace(".",",");
 
 (async()=>{
-  const stats={mot:{ok:0,tot:0},cst:{ok:0,tot:0},obs:{ok:0,tot:0},postit:{ok:0,tot:0}};
+  const stats={mot:{ok:0,tot:0},cst:{ok:0,tot:0},obs:{ok:0,tot:0},icope:{ok:0,tot:0},postit:{ok:0,tot:0}};
   let inventions=0;const detailsInv=[],detailsMiss=[];
   for(const d of JEU){
     const brut=await extraire(d.texte);
@@ -44,6 +44,12 @@ const normv=v=>String(v??"").trim().toLowerCase().replace(".",",");
       if(a){stats.obs.tot++;if(normv(g)===normv(a))stats.obs.ok++;else detailsMiss.push(`#${d.id} obs.${k} : attendu "${a}", obtenu "${g}"`);}
       else if(g){inventions++;detailsInv.push(`#${d.id} obs.${k} inventé : "${g}"`);}
     }
+    // icope (le texte reformulé n'est pas scoré : c'est une réécriture, pas une extraction)
+    for(const k of X.ICOPE_DOMS){
+      const a=(att.icope&&att.icope[k])||"",g=(got.icope&&got.icope[k])||"";
+      if(a){stats.icope.tot++;if(g===a)stats.icope.ok++;else detailsMiss.push(`#${d.id} icope.${k} : attendu "${a}", obtenu "${g}"`);}
+      else if(g){inventions++;detailsInv.push(`#${d.id} icope.${k} inventé : "${g}"`);}
+    }
     // post-it (type)
     if(att.postit){stats.postit.tot++;if(got.postit&&got.postit.type===att.postit.type)stats.postit.ok++;else detailsMiss.push(`#${d.id} postit : attendu ${att.postit.type}, obtenu ${got.postit?got.postit.type:"aucun"}`);}
     else if(got.postit){inventions++;detailsInv.push(`#${d.id} postit inventé : ${got.postit.type}`);}
@@ -53,6 +59,7 @@ const normv=v=>String(v??"").trim().toLowerCase().replace(".",",");
   console.log(`  mot-clé     ${stats.mot.ok}/${stats.mot.tot}  (${pct(stats.mot)} %)`);
   console.log(`  constantes  ${stats.cst.ok}/${stats.cst.tot}  (${pct(stats.cst)} %)`);
   console.log(`  observations ${stats.obs.ok}/${stats.obs.tot}  (${pct(stats.obs)} %)`);
+  console.log(`  icope       ${stats.icope.ok}/${stats.icope.tot}  (${pct(stats.icope)} %)`);
   console.log(`  post-its    ${stats.postit.ok}/${stats.postit.tot}  (${pct(stats.postit)} %)`);
   console.log(`  inventions  ${inventions}`);
   detailsInv.forEach(x=>console.log('  ⚠ INVENTION',x));

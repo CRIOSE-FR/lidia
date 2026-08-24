@@ -253,6 +253,7 @@ ol{padding-left:18px;font-size:14px}
   <div class="card">
     <h2 id="pFormTitle">Ajouter un patient / un passage</h2>
     <p class="muted">Données stockées uniquement sur cet appareil. Utilisez des initiales. Un patient vu matin et soir = deux passages (bouton « Dupliquer »).</p>
+    <div id="pPostits"></div>
     <div class="row"><div><label class="f" for="pName">Patient (initiales)</label><input type="text" id="pName" placeholder="M. D."></div></div>
     <label class="f">Soins de ce passage (cumul calculé par le moteur NGAP)</label>
     <div style="display:flex;gap:8px"><select id="pSoin" style="flex:1"></select><button class="btn sec" type="button" id="pAddSoin">+</button></div>
@@ -274,7 +275,6 @@ ol{padding-left:18px;font-size:14px}
       <div class="row" style="margin-top:8px"><button class="btn sec sm" type="button" id="pSocleVal">✓ Valider le socle (aujourd'hui)</button></div>
       <p class="muted" id="pSocleInfo"></p>
     </details>
-    <div id="pPostits"></div>
     <div class="row" style="margin-top:10px"><button class="btn" id="pSave">Enregistrer</button><button class="btn sec" id="pCancel" hidden>Annuler</button></div>
     <p class="muted" id="pStatus"></p>
   </div>
@@ -393,10 +393,11 @@ ol{padding-left:18px;font-size:14px}
     <p>Mode données : <b id="confMode"></b></p>
     <p class="muted">Recueil adossé à la méthodologie de référence <b>MR-004</b> (CNIL) : information des patients, registre des traitements, pas de donnée directement identifiante dans l'export. En mode test, uniquement des patients fictifs tant que l'hébergement n'est pas certifié HDS.</p>
     <ol style="font-size:13.5px">
-      <li>📄 <b>Registre des traitements</b> — à tenir au cabinet (document RGPD n° 1).</li>
-      <li>📄 <b>Affiche d'information patients</b> — salle d'attente / classeur de soins (document n° 2).</li>
-      <li>📄 <b>Note d'information individuelle</b> — remise au patient à l'inclusion (document n° 3).</li>
+      <li>📄 <a href="docs/rgpd/registre-traitements.md" target="_blank" rel="noopener"><b>Registre des traitements</b></a> — à tenir au cabinet (document RGPD n° 1).</li>
+      <li>📄 <a href="docs/rgpd/affiche-information.md" target="_blank" rel="noopener"><b>Affiche d'information patients</b></a> — salle d'attente / classeur de soins (document n° 2).</li>
+      <li>📄 <a href="docs/rgpd/note-information-patient.md" target="_blank" rel="noopener"><b>Note d'information individuelle</b></a> — remise au patient à l'inclusion (document n° 3).</li>
     </ol>
+    <p class="muted">Les trois modèles sont livrés avec l'application (dossier <b>docs/rgpd/</b> du déploiement) — à compléter avec les coordonnées du cabinet.</p>
   </div>
   <div class="card">
     <h2>Export pseudonymisé</h2>
@@ -555,6 +556,8 @@ const AUTONOMIE_LIST=["Autonome","Aide partielle","Dépendant"];
 const ADRESSE_PAR_LIST=["Sortie hospitalisation","Médecin traitant","Confrère IDEL","Demande directe","Autre"];
 const MOTS_EVT=["HOSPIT","URGENCES","CHUTE","DÉCÈS","EHPAD"];
 const OBS_KEYS=["douleur","chute","confusion","peau","surcharge","observance"];
+/* valeurs fermées par observation — l'extraction comme l'UI n'acceptent rien d'autre */
+const OBS_OPTS={douleur:["","0","1","2","3","4","5","6","7","8","9","10","oui"],chute:["","oui","non"],confusion:["","oui","non"],peau:["","RAS","rougeur","plaie","escarre"],surcharge:["","oui","non"],observance:["","bonne","partielle","mauvaise"]};
 const CST_KEYS=["ta","fc","spo2","temp","gly","poids"];
 const ICOPE_DOMS=["mobilite","cognition","nutrition","humeur","vision","audition"];
 const TRANS_TYPES=["LIBRE","EVENEMENT","CONSTANTES","OBS","ICOPE","PHOTO"];
@@ -564,6 +567,7 @@ const PLAIE_ACTS=["pans1","pans4","ulc","pico","pico2","pans_diab","topique","to
 let settings={auteur:"",geoloc:false,rattrapage:true,iaProvider:"n8n",...loadJSON("lidia.cot.settings",{})};
 let passages5=loadJSON("lidia.cot.passages",[]);
 let drafts=loadJSON("lidia.cot.drafts",{});
+let exportCodes=loadJSON("lidia.cot.codes",{});
 function saveSettings(){try{localStorage.setItem("lidia.cot.settings",JSON.stringify(settings))}catch(e){}}
 function uid(p){return (p||"id")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function todayISO(){return new Date().toISOString().slice(0,10)}
@@ -670,7 +674,9 @@ function validerExtraction(j){
   if(j.cst!=null){if(typeof j.cst==="object"){out.cst={};CST_KEYS.forEach(k=>out.cst[k]=typeof j.cst[k]==="string"?j.cst[k].trim():(j.cst[k]==null?"":String(j.cst[k])));
       Object.keys(j.cst).forEach(k=>{if(!CST_KEYS.includes(k))err.push("constante hors schéma : "+k)});
       if(!CST_KEYS.some(k=>out.cst[k]))out.cst=null;}else err.push("cst invalide");}
-  if(j.obs!=null){if(typeof j.obs==="object"){out.obs={};OBS_KEYS.forEach(k=>out.obs[k]=typeof j.obs[k]==="string"?j.obs[k].trim():"");
+  if(j.obs!=null){if(typeof j.obs==="object"){out.obs={};
+      OBS_KEYS.forEach(k=>{const v=typeof j.obs[k]==="string"?j.obs[k].trim():"";
+        if(!v)out.obs[k]="";else if(OBS_OPTS[k].includes(v))out.obs[k]=v;else{out.obs[k]="";err.push("obs."+k+" hors valeurs fermées : "+v)}});
       Object.keys(j.obs).forEach(k=>{if(!OBS_KEYS.includes(k))err.push("observation hors schéma : "+k)});
       if(!OBS_KEYS.some(k=>out.obs[k]))out.obs=null;}else err.push("obs invalide");}
   if(j.icope!=null){if(typeof j.icope==="object"){out.icope={};let any=false;
@@ -734,7 +740,9 @@ const EXTRACTEURS={
     try{return JSON.parse(raw)}catch(e){throw new Error("réponse non JSON")}}},
   anthropic:{l:"API Anthropic directe (déconseillé)",async extraire(txt){
     if(!ai.key)throw new Error("clé API absente");
-    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":ai.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:700,system:DICTEE_SYS,messages:[{role:"user",content:txt}]})});
+    const ctl=new AbortController();const tmo=setTimeout(()=>ctl.abort(),30000);
+    let r;try{r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":ai.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:700,system:DICTEE_SYS,messages:[{role:"user",content:txt}]}),signal:ctl.signal});}
+    catch(e){throw new Error(e.name==="AbortError"?"délai dépassé (30 s)":e.message)}finally{clearTimeout(tmo)}
     if(!r.ok)throw new Error("API "+r.status);const d=await r.json();
     return JSON.parse((d.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim())}},
   local:{l:"Hors-ligne (règles, sans IA)",async extraire(txt){return extraireLocal(txt)}},
@@ -745,9 +753,14 @@ const ExtracteurIA={
 };
 
 /* ---- Module 6 : export pseudonymisé (P001…) — table code↔patient affichée, jamais exportée ---- */
-function codePat(i){return "P"+String(i+1).padStart(3,"0")}
-function buildExport(pats,passList,today){
-  today=today||todayISO();
+/* codeMap {patientId → "Pnnn"} : persisté (lidia.cot.codes) pour des pseudonymes STABLES entre exports,
+   quelles que soient les suppressions/insertions dans la liste. Une seule ligne par dossier (id unique). */
+function buildExport(pats,passList,today,codeMap){
+  today=today||todayISO();codeMap=codeMap||{};
+  let next=Object.values(codeMap).reduce((m,c)=>{const n=parseInt(String(c).slice(1),10);return isNaN(n)?m:Math.max(m,n)},0);
+  const dejaVu=new Set();
+  pats=pats.filter(p=>{const k=p.id||JSON.stringify(p);if(dejaVu.has(k))return false;dejaVu.add(k);return true});
+  pats.forEach(p=>{if(p.id&&!codeMap[p.id]){next++;codeMap[p.id]="P"+String(next).padStart(3,"0")}});
   const head=["code","annee","sexe","commune","vitSeul","aidant","institution","pathos","nbMed","autonomie","bsi","adresse_par","plaie","socleDate",
     "nbPassages","nbTransmissions","nbLibre","nbEvenements","nbConstantes","nbObs","nbIcope","nbPhotos",
     "der_ta","der_fc","der_spo2","der_temp","der_gly","der_poids","der_cst_date",
@@ -755,7 +768,7 @@ function buildExport(pats,passList,today){
     "postits_releve","postits_alerte","alertes_traitees","refus_propositions"];
   const rows=[],events=[],mapping=[];
   pats.forEach((p,i)=>{
-    const code=codePat(i);mapping.push({code,nom:p.name});
+    const code=p.id&&codeMap[p.id]?codeMap[p.id]:"P"+String(++next).padStart(3,"0");mapping.push({code,nom:p.name});
     const tr=(p.transmissions||[]);
     const of=ty=>tr.filter(t=>t.type===ty);
     const lastC=of("CONSTANTES").slice().sort((a,b)=>a.date<b.date?-1:1).pop();
@@ -772,10 +785,11 @@ function buildExport(pats,passList,today){
       postits_releve:pi.filter(x=>x.type==="RELEVE").length,postits_alerte:pi.filter(x=>x.type==="ALERTE").length,alertes_traitees:pi.filter(x=>x.type==="ALERTE"&&x.traite).length,
       refus_propositions:refus});
   });
-  return {head,rows,events,mapping};
+  return {head,rows,events,mapping,codeMap};
 }
 function toCSV(head,rows){
-  const q=v=>{v=String(v??"");return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const q=v=>{v=String(v??"");if(/^[=+\-@\t\r]/.test(v))v="'"+v; /* neutralise l'injection de formule tableur */
+    return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   return head.join(";")+"\n"+rows.map(r=>head.map(h=>q(r[h])).join(";")).join("\n");
 }
 
@@ -893,7 +907,7 @@ function render(){
   const D=computeDay(),p=day.passages[cur],o=D.res[cur];
   $("#date").value=day.date;$("#km").value=day.km;
   document.querySelectorAll("#ctx .chip").forEach(b=>b.setAttribute("aria-pressed",!!day.ctx[b.dataset.ctx]));
-  $("#ptabs").innerHTML=day.passages.map((q,i)=>`<button class="ptab" aria-selected="${i===cur}" data-p="${i}"><span>${q.label||"Passage "+(i+1)}</span><b>${q.heure||"--:--"} · ${eur(D.res[i].total)}</b></button>`).join("")+`<button class="ptab add" data-p="new">+ Passage</button>`;
+  $("#ptabs").innerHTML=day.passages.map((q,i)=>`<button class="ptab" aria-selected="${i===cur}" data-p="${i}"><span>${esc(q.label)||"Passage "+(i+1)}</span><b>${esc(q.heure)||"--:--"} · ${eur(D.res[i].total)}</b></button>`).join("")+`<button class="ptab add" data-p="new">+ Passage</button>`;
   $("#pheure").value=p?.heure||"";$("#plabel").value=p?.label||"";$("#tname").textContent=p?.label||"Passage";$("#stamp").textContent=`${day.date} ${p?.heure||""}`;
   const L=$("#lines");L.innerHTML="";
   if(!p||!p.acts.length)L.innerHTML=`<div class="empty">Aucun acte dans ce passage.</div>`;
@@ -960,7 +974,8 @@ function migratePatients(){let ch=false;patients.forEach(p=>{
   if(!p.dur){p.dur=actsMinutes(p.actIds);ch=true;}
   /* migration v5 : socle recherche + transmissions + post-its (spec v5.0) */
   if(!p.id){p.id=uid("pat");ch=true;}
-  if(p.annee===undefined){p.annee=null;p.sexe="";p.commune=(p.addr||"").split(",").pop()?.trim()||"";p.vitSeul=false;p.aidant=false;p.institution=false;p.pathos=[];p.nbMed=null;p.autonomie="";p.adresse_par="";ch=true;}
+  /* commune : saisie explicite dans le socle uniquement — jamais dérivée de l'adresse (risque de fuite dans l'export) */
+  if(p.annee===undefined){p.annee=null;p.sexe="";p.commune="";p.vitSeul=false;p.aidant=false;p.institution=false;p.pathos=[];p.nbMed=null;p.autonomie="";p.adresse_par="";ch=true;}
   if(p.bsi===undefined){p.bsi=(p.actIds||[]).some(id=>["bsa","bsb","bsc","bsi_init","bsi_ren"].includes(id));ch=true;}
   if(p.plaie===undefined){p.plaie=(p.actIds||[]).some(id=>PLAIE_ACTS.includes(id));ch=true;}
   if(p.socleDate===undefined){p.socleDate=null;ch=true;}
@@ -1087,7 +1102,7 @@ async function planRoute(){
     stats[date][key]={ca:tot+ik,km:best.km,min:dur};
     html+=`<div class="ticket" style="margin-top:14px">
       <div class="th"><h2>${slot.lbl}</h2><small>départ ${fmt(start)} · retour ${fmt(best.end)}</small></div>
-      ${route.map((r,i)=>{const fr5=freshness(r.c,date),pis5=(r.c.postits||[]).filter(x=>!x.archive);return `<div class="stop${isDone(date,key,r.c)?" doneS":""}"><div class="eta">${fmt(r.st)}<small>${r.d.toFixed(1)} km · ${Math.round(r.tr)}′</small></div>
+      ${route.map((r,i)=>{const dos5=dossier(r.c),fr5=freshness(dos5,date),pis5=(dos5.postits||[]).filter(x=>!x.archive);return `<div class="stop${isDone(date,key,r.c)?" doneS":""}"><div class="eta">${fmt(r.st)}<small>${r.d.toFixed(1)} km · ${Math.round(r.tr)}′</small></div>
         <div class="who"><span class="pname" data-openp="${key}:${i}">${esc(r.c.name)}</span> ${r.c.prio===1?'<span class="imp">IMPÉRATIF</span>':''}
           <span class="soin">${(r.c.actIds||[]).map(id=>byId(id)?byId(id).k+" "+byId(id).c:"").join(" + ")} · <button class="durbtn" data-dur="${key}:${i}">${r.c.dur}′ ▾</button>${r.majCodes?" · "+r.majCodes:""}${r.c.note?" · "+esc(r.c.note):""}</span>
           <span class="soin">${pastillesHtml(fr5)}${settings.rattrapage!==false&&nbRetards(fr5)>0?'<span class="tag" style="color:var(--amber)">🔄 rattrapage</span>':''}${pis5.some(x=>x.type==="RELEVE"&&x.auteur!==(settings.auteur||"??")&&!(x.luPar||[]).includes(settings.auteur||"??"))?' <span class="tag" style="color:var(--teal)">📌 relève</span>':''}${pis5.some(x=>x.type==="ALERTE"&&!x.traite)?' <span class="tag" style="color:var(--red)">⚠ alerte</span>':''}</span>
@@ -1297,16 +1312,27 @@ let epIdx=null,epDraft=null,epGeo=null,epDate=null,epPanelOpen={postit:false,soc
 function saveDraft(){if(epIdx==null||!epDraft)return;const p=patients[epIdx];if(!p)return;
   epDraft.panelOpen=epPanelOpen;epDraft.postitDraft=epPostitDraft;drafts[p.id]=epDraft;
   try{localStorage.setItem("lidia.cot.drafts",JSON.stringify(drafts))}catch(e){}}
+/* dossier(p) : ligne patient porteuse des données v5 (transmissions/post-its/socle). Les lignes
+   dupliquées « Passage soir » partagent l'id : la première ligne avec cet id est le dossier unique. */
+function dossier(p){if(!p||!p.id)return p;return patients.find(x=>x.id===p.id)||p}
+function draftContenu(d){if(!d)return false;const t=d.trans||{};
+  return (d.acts||[]).length>0||!!(t.evt||t.cst||t.obs||t.icope||t.photo)||!!((t.libre||"").trim())||!!((d.dictee||"").trim())||!!d.socle}
+function epMicStop(){if(epRec){try{epRec.stop()}catch(e){}epRec=null;}const b=$("#epMic");if(b)b.textContent="🎤 Dicter";}
 function openPassage(i){
-  const p=patients[i];if(!p)return;epIdx=i;
+  const p=patients[i];if(!p)return;epMicStop();epIdx=i;
   epDate=($("#tDate")?.value)||todayISO();
   const d=drafts[p.id];
   if(d&&d.date===epDate){epDraft=d;epPanelOpen=d.panelOpen||{postit:false,socle:false};epPostitDraft=d.postitDraft||null;}
   else{
+    if(d&&draftContenu(d)&&confirm("Brouillon non validé du "+d.date+" pour "+p.name+" : le reprendre pour aujourd'hui ("+epDate+") ?")){
+      d.date=epDate;epDraft=d;epPanelOpen=d.panelOpen||{postit:false,socle:false};epPostitDraft=d.postitDraft||null;
+    }else{
+    if(d&&draftContenu(d))drafts["archive_"+p.id+"_"+d.date]=d; /* jamais de destruction silencieuse d'une saisie */
     const billed=new Set();passages5.filter(x=>x.patientId===p.id&&String(x.date).slice(0,10)===epDate).forEach(x=>(x.actes||[]).forEach(a=>{const c=byId(a.id);if(c&&c.tags&&(c.tags.bsi||c.tags.once))billed.add(a.id)}));
     const acts=(p.actIds||[]).map(id=>byId(id)).filter(Boolean).filter(a=>!billed.has(a.id)).map(a=>JSON.parse(JSON.stringify(a)));
     epDraft={date:epDate,heure:nowHM(),acts,trans:{libre:"",evt:null,cst:null,obs:null,icope:null,photo:null},props:[],socle:null,socleData:null,dictee:""};
     epPanelOpen={postit:false,socle:false};epPostitDraft=null;
+    }
   }
   epGeo=null;
   if(settings.geoloc&&navigator.geolocation)navigator.geolocation.getCurrentPosition(pos=>{epGeo={lat:pos.coords.latitude,lon:pos.coords.longitude}},()=>{},{timeout:8000,enableHighAccuracy:true});
@@ -1335,7 +1361,6 @@ function renderEpTicket(){
   $("#epAlerts").innerHTML=[...res.alerts.map(a=>a.plan!=null||a.unplan!=null?{t:"warn",m:a.m+" — gérer le retrait dans l'onglet Journée (Plus → Cotation manuelle)"}:a),...o.D.alerts].map(epAl).join("");
 }
 /* ---- panneaux de transmission ---- */
-const OBS_OPTS={douleur:["","0","1","2","3","4","5","6","7","8","9","10","oui"],chute:["","oui","non"],confusion:["","oui","non"],peau:["","RAS","rougeur","plaie","escarre"],surcharge:["","oui","non"],observance:["","bonne","partielle","mauvaise"]};
 const OBS_LBL={douleur:"Douleur (EVA)",chute:"Chute",confusion:"Confusion",peau:"Peau",surcharge:"Surcharge",observance:"Observance"};
 const CST_LBL={ta:"TA",fc:"FC",spo2:"SpO₂",temp:"T°",gly:"Glycémie",poids:"Poids"};
 const ICOPE_LBL={mobilite:"Mobilité",cognition:"Cognition",nutrition:"Nutrition",humeur:"Humeur",vision:"Vision",audition:"Audition"};
@@ -1348,7 +1373,7 @@ function renderEpPanels(){
   if(t.photo)H.push(`<div class="panel"><h3>📷 Photo faite <button class="x" data-close="photo">×</button></h3><p class="muted" style="margin:0 0 6px">La photo reste sur le téléphone — l'app trace seulement qu'elle a été faite.</p><label class="f">Surface (cm², facultatif)</label><input type="text" inputmode="decimal" data-photosurf="1" value="${esc(t.photo.surface||"")}" style="max-width:120px"></div>`);
   if(epPanelOpen.postit){const d=epPostitDraft||{type:"RELEVE",texte:""};
     H.push(`<div class="panel"><h3>📌 Post-it <button class="x" data-close="postit">×</button></h3><div class="chips">${POSTIT_TYPES.map(ty=>`<button type="button" class="chip" data-pitype="${ty}" aria-pressed="${d.type===ty}">${ty==="RELEVE"?"📌 Relève":ty==="ALERTE"?"⚠ Alerte":"📝 Perso"}</button>`).join("")}</div><textarea data-pitexte="1" style="min-height:56px;margin-top:6px" placeholder="L'info à retenir, en 5 secondes…">${esc(d.texte||"")}</textarea><div class="row" style="margin-top:6px"><button type="button" class="btn sm" data-pisave="1">Épingler</button></div><p class="muted" style="margin:6px 0 0">RELEVE : pour la collègue (bandeau tournée) · ALERTE : reste en tête jusqu'à « Traité » · PERSO : jamais exporté ni transmis.</p></div>`);}
-  if(epPanelOpen.socle)H.push(`<div class="panel"><h3>🗂 Revalidation du socle <button class="x" data-close="socle">×</button></h3>${socleFieldsHtml(p,"epSoc")}<div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-socinch="1">✓ Inchangé</button><button type="button" class="btn sm sec" data-socedit="1">Enregistrer les modifications</button></div>${epDraft.socle?`<p class="muted">Socle ${epDraft.socle==="inchange"?"marqué inchangé":"modifié"} — daté à la validation du passage.</p>`:""}</div>`);
+  if(epPanelOpen.socle)H.push(`<div class="panel"><h3>🗂 Revalidation du socle <button class="x" data-close="socle">×</button></h3>${socleFieldsHtml(epDraft.socleData||p,"epSoc")}<div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-socinch="1">✓ Inchangé</button><button type="button" class="btn sm sec" data-socedit="1">Enregistrer les modifications</button></div>${epDraft.socle?`<p class="muted">Socle ${epDraft.socle==="inchange"?"marqué inchangé":"modifié"} — daté à la validation du passage.</p>`:""}</div>`);
   $("#epPanels").innerHTML=H.join("");
   [["epBtnEvt",!!t.evt],["epBtnObs",!!t.obs],["epBtnCst",!!t.cst],["epBtnIcope",!!t.icope],["epBtnPhoto",!!t.photo],["epBtnPostit",epPanelOpen.postit]].forEach(([id,on])=>{const b=document.getElementById(id);if(b)b.classList.toggle("on",on)});
 }
@@ -1358,12 +1383,17 @@ function epPanelInput(e){if(!epDraft)return;const t=epDraft.trans,el=e.target;
   else if(el.dataset.evttexte){t.evt=t.evt||{mot:null,texte:""};t.evt.texte=el.value;}
   else if(el.dataset.photosurf){t.photo=t.photo||{};t.photo.surface=el.value;}
   else if(el.dataset.pitexte){epPostitDraft=epPostitDraft||{type:"RELEVE"};epPostitDraft.texte=el.value;}
+  else if((el.id||"").indexOf("epSoc")===0){epDraft.socleData=readSocleFields("epSoc");}
   saveDraft();}
 function epPanelClick(e){if(!epDraft)return;const t=epDraft.trans;
+  const tg=e.target.closest("[data-tgl]");
+  if(tg){e.stopPropagation();tg.setAttribute("aria-pressed",tg.getAttribute("aria-pressed")!=="true");
+    epDraft.socleData=readSocleFields("epSoc");saveDraft();return}
   const cl=e.target.closest("[data-close]");if(cl){const k=cl.dataset.close;
+    const PROP={photo:"photo",icope:"icope",cst:"constantes"};
     if(k==="postit"){epPanelOpen.postit=false;epPostitDraft=null}
-    else if(k==="socle"){epPanelOpen.socle=false}
-    else t[k]=null;
+    else if(k==="socle"){epPanelOpen.socle=false;if(!epDraft.socle)epDraft.props=(epDraft.props||[]).filter(x=>!(x.type==="socle"&&!x.declined));}
+    else{t[k]=null;if(PROP[k])epDraft.props=(epDraft.props||[]).filter(x=>!(x.type===PROP[k]&&!x.declined));}
     saveDraft();renderPassage();return}
   const em=e.target.closest("[data-evtmot]");if(em){t.evt=t.evt||{texte:""};t.evt.mot=t.evt.mot===em.dataset.evtmot?null:em.dataset.evtmot;saveDraft();renderPassage();return}
   const ic=e.target.closest("[data-icope]");if(ic){t.icope=t.icope||{};t.icope[ic.dataset.icope]=ic.dataset.val;saveDraft();renderPassage();return}
@@ -1372,7 +1402,7 @@ function epPanelClick(e){if(!epDraft)return;const t=epDraft.trans;
   if(e.target.closest("[data-socinch]")){epDraft.socle="inchange";epDraft.socleData=null;saveDraft();renderPassage();toast("Socle marqué inchangé");return}
   if(e.target.closest("[data-socedit]")){epDraft.socle="edite";epDraft.socleData=readSocleFields("epSoc");saveDraft();renderPassage();toast("Socle modifié — appliqué à la validation");return}
 }
-function epSavePostit(){const p=patients[epIdx];if(!p)return;const d=epPostitDraft||{};
+function epSavePostit(){const p=epIdx!=null?dossier(patients[epIdx]):null;if(!p)return;const d=epPostitDraft||{};
   const txt=(($("#epPanels").querySelector("[data-pitexte]")||{}).value||d.texte||"").trim();
   if(!txt){toast("Texte du post-it requis");return}
   const pi=makePostit(d.type||"RELEVE",txt,settings.auteur||"??");if(!pi)return;
@@ -1413,13 +1443,14 @@ function epApplyExtraction(d){const t=epDraft.trans;
   if(d.cst)t.cst=Object.assign({ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""},t.cst||{},objNonVides(d.cst));
   if(d.obs)t.obs=Object.assign({douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""},t.obs||{},objNonVides(d.obs));
   if(d.icope)t.icope=Object.assign({},t.icope||{},objNonVides(d.icope));
-  if(d.texte&&!d.mot&&!d.postit)t.libre=d.texte;
+  if(d.texte&&!d.mot&&!d.postit&&!((t.libre||"").trim()))t.libre=d.texte;
   if(d.postit){epPostitDraft={type:d.postit.type,texte:d.postit.texte};epPanelOpen.postit=true;}
   saveDraft();}
 async function epAnalyser(){
   if(!epDraft)return;
   const txt=$("#epDictee").value.trim();if(!txt){toast("Rien à analyser");return}
-  epDraft.dictee=txt;$("#epIaStatus").textContent="Analyse en cours…";$("#epAnalyse").disabled=true;
+  const draftRef=epDraft,idxRef=epIdx; /* garde anti-course : le brouillon peut changer pendant le await */
+  epDraft.dictee=txt;$("#epIaStatus").textContent="Analyse en cours…";$("#epAnalyse").disabled=true;$("#epValider").disabled=true;
   let data;
   try{
     const raw=await ExtracteurIA.extraire(txt);
@@ -1429,13 +1460,14 @@ async function epAnalyser(){
     const v=validerExtraction(extraireLocal(txt));data=v.data;
     $("#epIaStatus").textContent="IA indisponible ("+e.message+") — analyse hors-ligne appliquée. La saisie manuelle reste complète.";
   }
-  $("#epAnalyse").disabled=false;
+  $("#epAnalyse").disabled=false;$("#epValider").disabled=false;
+  if(epDraft!==draftRef||epIdx!==idxRef){$("#epIaStatus").textContent="Analyse ignorée : le passage a changé pendant l'extraction.";return}
   epApplyExtraction(data);renderPassage();
 }
 /* ---- rendu écran de passage ---- */
 function renderPassage(){
   const p=patients[epIdx];if(!p||!epDraft){showTab("tour");return}
-  const f=freshness(p,epDate);
+  const f=freshness(dossier(p),epDate);
   $("#epHead").innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
     <div><h2 style="margin:0 0 2px">${esc(p.name)} ${pastillesHtml(f)}</h2>
     <span class="muted">${epDate} · auteur ${esc(settings.auteur||"??")}${settings.geoloc?" · 📍 géoloc":""} · brouillon auto-sauvé</span></div>
@@ -1445,7 +1477,7 @@ function renderPassage(){
   if($("#epLibre").value!==(epDraft.trans.libre||""))$("#epLibre").value=epDraft.trans.libre||"";
   renderEpTicket();renderEpPanels();renderEpTriggers();renderEpPostits();
 }
-function renderEpPostits(){const p=patients[epIdx];if(!p)return;
+function renderEpPostits(){const p=epIdx!=null?dossier(patients[epIdx]):null;if(!p)return;
   const vis=(p.postits||[]).filter(x=>!x.archive&&(x.type==="RELEVE"||(x.type==="ALERTE")||x.type==="PERSO"));
   const strong=vis.filter(x=>x.type==="RELEVE"||(x.type==="ALERTE"&&!x.traite));
   const perso=vis.filter(x=>x.type==="PERSO");
@@ -1453,24 +1485,30 @@ function renderEpPostits(){const p=patients[epIdx];if(!p)return;
 }
 /* ---- validation atomique du passage (module 1) ---- */
 function validerPassage(){
-  const p=patients[epIdx];if(!p||!epDraft)return;
+  const p=epIdx!=null?dossier(patients[epIdx]):null;if(!p||!epDraft)return;
   const iso=epDate+"T"+(epDraft.heure||nowHM())+":00";
   const rec=buildPassageRecord(p,epDraft,iso,settings.auteur||"??");
   if(rec.error){toast(rec.error);return}
   if(!rec.pass.actes.length&&!rec.transmissions.length&&!rec.socle){toast("Passage vide : ajoutez un acte ou une transmission");return}
   if(rec.pass.actes.length&&!rec.transmissions.length&&!confirm("Valider sans transmission ? (tracé « transmission : aucune »)"))return;
   if(settings.geoloc&&epGeo)rec.pass.geoloc={lat:epGeo.lat,lng:epGeo.lon};
-  const bakP=JSON.stringify(patients),bakS=JSON.stringify(passages5);
+  const bakP=JSON.stringify(patients),bakS=JSON.stringify(passages5),bakD=JSON.stringify(drafts);
   try{
     rec.transmissions.forEach(t=>p.transmissions.push(t));
     if(rec.setPlaie)p.plaie=true;
     if(rec.socle){if(rec.socle==="edite"&&epDraft.socleData)Object.assign(p,epDraft.socleData);p.socleDate=epDate;}
-    passages5.push(rec.pass);
-    localStorage.setItem("lidia.cot.passages",JSON.stringify(passages5));
+    passages5.push(rec.pass);delete drafts[p.id];
+    /* la clé la plus volumineuse d'abord ; en cas d'échec, le catch restaure AUSSI le stockage (tout-ou-rien) */
     localStorage.setItem("lidia.cot.patients",JSON.stringify(patients));
-    delete drafts[p.id];localStorage.setItem("lidia.cot.drafts",JSON.stringify(drafts));
-  }catch(e){patients=JSON.parse(bakP);passages5=JSON.parse(bakS);migratePatients();renderPatients();toast("Stockage plein — passage NON enregistré");return}
-  epDraft=null;epIdx=null;epGeo=null;
+    localStorage.setItem("lidia.cot.passages",JSON.stringify(passages5));
+    localStorage.setItem("lidia.cot.drafts",JSON.stringify(drafts));
+  }catch(e){
+    try{localStorage.setItem("lidia.cot.patients",bakP)}catch(e2){}
+    try{localStorage.setItem("lidia.cot.passages",bakS)}catch(e2){}
+    try{localStorage.setItem("lidia.cot.drafts",bakD)}catch(e2){}
+    patients=JSON.parse(bakP);passages5=JSON.parse(bakS);drafts=JSON.parse(bakD);
+    migratePatients();renderPatients();toast("Stockage plein — passage NON enregistré");return}
+  epMicStop();epDraft=null;epIdx=null;epGeo=null;
   toast("Passage validé — "+rec.transmissions.length+" transmission(s)");
   showTab("tour");if(Object.keys(lastRoutes).length)planRoute();renderReleves();
 }
@@ -1505,7 +1543,11 @@ function renderReleves(){
   el.innerHTML=R.length?`<div class="card" style="border-left:5px solid var(--teal)"><h2>📌 Relève — à lire avant la tournée (${R.length})</h2>${R.map(x=>postitHtml(x.p,x.pi)).join("")}</div>`:"";
 }
 function renderPPostits(p){const el=$("#pPostits");if(!el)return;
-  el.innerHTML=p&&p.postits&&p.postits.filter(x=>!x.archive).length?`<label class="f">Post-its épinglés</label>`+p.postits.filter(x=>!x.archive).map(pi=>postitHtml(p,pi)).join(""):"";}
+  const D=p&&p.id?dossier(p):p;
+  const list=D&&D.postits?D.postits.filter(x=>!x.archive):[];
+  /* création 📌 depuis la fiche patient (module 4) — patient enregistré uniquement */
+  const form=D&&D.id?`<div class="panel"><h3>📌 Nouveau post-it</h3><div class="chips">${POSTIT_TYPES.map(ty=>`<button type="button" class="chip" data-pftype="${ty}" aria-pressed="${ty==="RELEVE"}">${ty==="RELEVE"?"📌 Relève":ty==="ALERTE"?"⚠ Alerte":"📝 Perso"}</button>`).join("")}</div><div class="row" style="margin-top:6px"><input type="text" data-pftexte="1" placeholder="L'info à retenir, en 5 secondes…" style="flex:2"><button type="button" class="btn sm" data-pfsave="1">Épingler</button></div></div>`:"";
+  el.innerHTML=(list.length?list.map(pi=>postitHtml(D,pi)).join(""):"")+form;}
 /* ---- socle : champs partagés fiche/panneau ---- */
 function socleFieldsHtml(p,pre){
   const sel=(id,list,val,lbl)=>`<div><label class="f">${lbl}</label><select id="${pre}${id}">${["",...list].map(o=>`<option value="${esc(o)}"${o===val?" selected":""}>${o||"—"}</option>`).join("")}</select></div>`;
@@ -1539,8 +1581,9 @@ function renderSocleForm(p){const el=$("#pSocleFields");if(!el)return;
   const inf=$("#pSocleInfo");if(inf)inf.textContent=p&&p.socleDate?"Socle validé le "+p.socleDate:"Socle jamais validé";}
 /* ---- tableau de bord (module 2) ---- */
 function renderDash(){
-  const today=todayISO(),act=patients.filter(p=>p.active);
-  const fs=act.map(p=>({p,f:freshness(p,today)}));
+  const today=todayISO(),seen5=new Set();
+  const act=patients.filter(p=>{if(!p.active)return false;if(p.id){if(seen5.has(p.id))return false;seen5.add(p.id);}return true});
+  const fs=act.map(p=>({p,f:freshness(dossier(p),today)}));
   const ok=fs.filter(x=>nbRetards(x.f)===0).length;
   const tr7=patients.reduce((s,p)=>s+(p.transmissions||[]).filter(t=>(Date.parse(today)-Date.parse(String(t.date).slice(0,10)))<7*86400000).length,0);
   $("#dashKpi").innerHTML=`<div class="kpi">
@@ -1565,7 +1608,8 @@ function renderDash(){
 function downloadCSV(name,txt){const b=new Blob(["﻿"+txt],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);}
 function renderConf(){
   $("#confMode").textContent=DATA_MODE==="test"?"TEST — patients fictifs uniquement (hébergement non HDS)":"PRODUCTION";
-  const E=buildExport(patients,passages5);
+  const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;
+  try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
   $("#expMap").innerHTML=E.mapping.map(m=>`<div class="day"><span>${m.code}</span><b>${esc(m.nom)}</b></div>`).join("")||`<p class="muted">Aucun patient.</p>`;
 }
 function renderReglages(){
@@ -1641,7 +1685,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(body&&!b){const i=+body.dataset.pe;editIdx=i;fillForm(patients[i]);$("#pName").scrollIntoView({block:"start"});toast("Modification de "+patients[i].name);return}
     if(!b)return;const i=+(b.dataset.pe??b.dataset.pd??b.dataset.pt??b.dataset.px);
     if(b.dataset.pe!=null){editIdx=i;fillForm(patients[i]);$("#pName").scrollIntoView({block:"start"});}
-    else if(b.dataset.pd!=null){const c=JSON.parse(JSON.stringify(patients[i]));c.w1="17:00";c.w2="20:00";patients.splice(i+1,0,c);savePatients();renderPatients();editIdx=i+1;fillForm(c);$("#pName").scrollIntoView({block:"start"});toast("Passage du soir créé — adaptez les soins du soir puis Enregistrer");}
+    else if(b.dataset.pd!=null){const c=JSON.parse(JSON.stringify(patients[i]));c.w1="17:00";c.w2="20:00";c.transmissions=[];c.postits=[];patients.splice(i+1,0,c);savePatients();renderPatients();editIdx=i+1;fillForm(c);$("#pName").scrollIntoView({block:"start"});toast("Passage du soir créé — adaptez les soins du soir puis Enregistrer");}
     else if(b.dataset.pt!=null){patients[i].active=!patients[i].active;if(!patients[i].active)patients[i].to=patients[i].to||new Date().toISOString().slice(0,10);savePatients();renderPatients();}
     else if(b.dataset.px!=null){if(confirm("Supprimer "+patients[i].name+" ?")){patients.splice(i,1);savePatients();renderPatients();}}});
   $("#tGo").onclick=planRoute;$("#tMaps").onclick=openMaps;
@@ -1690,18 +1734,33 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#epTriggers").addEventListener("click",epTriggerClick);
   $("#epHead").addEventListener("click",e=>{if(e.target.closest("[data-epfiche]")&&epIdx!=null){editIdx=epIdx;fillForm(patients[epIdx]);showTab("pat");setTimeout(()=>$("#pName").scrollIntoView({block:"start"}),60);}});
   $("#epValider").onclick=validerPassage;
-  $("#epRetour").onclick=()=>showTab("tour");
+  $("#epRetour").onclick=()=>{epMicStop();showTab("tour")};
   $("#epPostitsList").addEventListener("click",postitListClick);
   $("#tReleves").addEventListener("click",postitListClick);
   $("#pPostits").addEventListener("click",postitListClick);
+  $("#pPostits").addEventListener("click",e=>{
+    const ty=e.target.closest("[data-pftype]");
+    if(ty){document.querySelectorAll("#pPostits [data-pftype]").forEach(b=>b.setAttribute("aria-pressed",b===ty));return}
+    if(e.target.closest("[data-pfsave]")){
+      if(editIdx==null){toast("Enregistrez d'abord le patient");return}
+      const p=dossier(patients[editIdx]);
+      const type=[...document.querySelectorAll("#pPostits [data-pftype]")].find(b=>b.getAttribute("aria-pressed")==="true")?.dataset.pftype||"RELEVE";
+      const inp=document.querySelector("#pPostits [data-pftexte]");const txt=(inp&&inp.value||"").trim();
+      if(!txt){toast("Texte du post-it requis");return}
+      const pi=makePostit(type,txt,settings.auteur||"??");p.postits=p.postits||[];p.postits.push(pi);
+      savePatients();renderPPostits(patients[editIdx]);renderReleves();toast("Post-it "+type+" épinglé");}
+  });
   $("#dashAlertes").addEventListener("click",postitListClick);
   $("#dashLate").addEventListener("click",e=>{const b=e.target.closest("[data-dashp]");if(b)openPassage(+b.dataset.dashp)});
   $("#pSocleVal").onclick=()=>{if(editIdx==null){toast("Enregistrez d'abord le patient (le socle sera repris)");return}
     const p=patients[editIdx];Object.assign(p,readSocleFields("pSoc"));p.socleDate=todayISO();savePatients();renderSocleForm(p);toast("Socle validé aujourd'hui")};
-  $("#expPat").onclick=()=>{const E=buildExport(patients,passages5);downloadCSV("lidia_patients_"+todayISO()+".csv",toCSV(E.head,E.rows));$("#expStatus").textContent=E.rows.length+" patient(s) exporté(s), pseudonymisés (P001…)."};
-  $("#expEvt").onclick=()=>{const E=buildExport(patients,passages5);downloadCSV("lidia_evenements_"+todayISO()+".csv",toCSV(["code","date","mot"],E.events));$("#expStatus").textContent=E.events.length+" événement(s) exporté(s) (code, date, mot — sans texte libre)."};
+  $("#expPat").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
+    downloadCSV("lidia_patients_"+todayISO()+".csv",toCSV(E.head,E.rows));$("#expStatus").textContent=E.rows.length+" patient(s) exporté(s), pseudonymisés (codes stables P001…)."};
+  $("#expEvt").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
+    downloadCSV("lidia_evenements_"+todayISO()+".csv",toCSV(["code","date","mot"],E.events));$("#expStatus").textContent=E.events.length+" événement(s) exporté(s) (code, date, mot — sans texte libre)."};
   ["setGeo","setRattr"].forEach(id=>$("#"+id).onclick=()=>{const b=$("#"+id);b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true")});
-  $("#setSave").onclick=()=>{settings.auteur=$("#setAuteur").value.trim().toUpperCase();settings.geoloc=$("#setGeo").getAttribute("aria-pressed")==="true";settings.rattrapage=$("#setRattr").getAttribute("aria-pressed")==="true";settings.iaProvider=$("#setProv").value;saveSettings();renderReleves();toast("Réglages enregistrés")};
+  $("#setSave").onclick=()=>{const a=$("#setAuteur").value.trim().toUpperCase();if(!a){toast("Initiales requises");return}
+    settings.auteur=a;settings.geoloc=$("#setGeo").getAttribute("aria-pressed")==="true";settings.rattrapage=$("#setRattr").getAttribute("aria-pressed")==="true";settings.iaProvider=$("#setProv").value;saveSettings();renderReleves();toast("Réglages enregistrés")};
   renderReleves();
   render();
 });

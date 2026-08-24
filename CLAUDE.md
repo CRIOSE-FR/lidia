@@ -49,7 +49,9 @@ L'utilisateur valide.
 - Post-its typés : `RELEVE` (bandeau tournée + « Lu »), `ALERTE` (badge tant que non traité, rappel > 48 h), `PERSO` (`exclureExport` forcé, jamais transmis ni exporté). RELEVE/ALERTE s'archivent, seul PERSO se supprime.
 - Dictée IA : interface `ExtracteurIA` (providers `EXTRACTEURS` : n8n / API directe / hors-ligne). Prompt `DICTEE_SYS` : JSON strict, schéma fermé, zéro invention. `validerExtraction()` rejette tout champ hors liste fermée. Jamais d'enregistrement automatique. Jeu d'éval : `eval/dictees.json` + `node eval/score.js` (bloquant : 0 invention, ≥ 90 % constantes/mot-clé).
 - Export CSV pseudonymisé (P001…) : `buildExport()` — socle + agrégats + événements datés (code/date/mot, sans texte) + dernières constantes + dernier ICOPE + compteurs. Table code↔patient affichée dans l'app, jamais exportée.
-- Nouvelles clés localStorage : `lidia.cot.settings` (initiales, geoloc opt-in, rattrapage, provider IA), `lidia.cot.passages` (passages validés), `lidia.cot.drafts` (brouillons par patient, survie au kill de l'app).
+- Nouvelles clés localStorage : `lidia.cot.settings` (initiales, geoloc opt-in, rattrapage, provider IA), `lidia.cot.passages` (passages validés), `lidia.cot.drafts` (brouillons par patient — un brouillon d'une autre date n'est JAMAIS détruit : reprise proposée ou archivage `archive_*`), `lidia.cot.codes` (pseudonymes P001… stables par patientId).
+- Modèle « dossier » : les lignes patient dupliquées « Passage soir » partagent le même `id` ; `dossier(p)` (première ligne portant cet id) est l'unique porteuse des transmissions/post-its/socle — toute lecture/écriture v5 passe par elle, l'export et le tableau de bord dédupliquent par id.
+- Validation du passage : écritures localStorage tout-ou-rien (restauration des trois clés en cas d'échec) — ne pas réordonner sans conserver cette garantie.
 - Tests v5 : `tests/v5.test.js` (chargé comme `moteur.test.js` : tout le moteur v5 doit rester défini AVANT le `DOMContentLoaded`).
 
 ## Invariants techniques (pattern LIDIA)

@@ -177,6 +177,29 @@ T('export — échappement CSV (point-virgule, guillemets)',()=>{
   const p1=pat({id:'pa',name:'X',commune:'Foo;Bar "Z"'});
   const E=X.buildExport([p1],[],TODAY);
   eq(X.toCSV(E.head,E.rows).includes('"Foo;Bar ""Z"""'),true);});
+T('export — injection de formule tableur neutralisée',()=>{
+  const p1=pat({id:'pa',name:'X',commune:'=HYPERLINK("http://evil")'});
+  const E=X.buildExport([p1],[],TODAY);
+  const csv=X.toCSV(E.head,E.rows);
+  eq(csv.includes(";=HYPERLINK"),false,'formule non neutralisée');
+  eq(csv.includes("'=HYPERLINK"),true,'apostrophe absente');});
+T('export — codes pseudonymes stables malgré suppression/insertion',()=>{
+  const pa=pat({id:'pa',name:'A'}),pb=pat({id:'pb',name:'B'}),pc=pat({id:'pc',name:'C'});
+  const E1=X.buildExport([pa,pb,pc],[],TODAY,{});
+  eq(E1.rows.map(r=>r.code),['P001','P002','P003']);
+  const E2=X.buildExport([pb,pc],[],TODAY,E1.codeMap); // pa supprimé
+  eq(E2.rows.map(r=>r.code),['P002','P003'],'codes décalés après suppression');
+  const E3=X.buildExport([pb,pat({id:'pd',name:'D'}),pc],[],TODAY,E2.codeMap); // pd inséré au milieu
+  eq(E3.rows.find(r=>r.code==='P004')!==undefined,true,'nouveau patient sans nouveau code');
+  eq(E3.rows[2].code,'P003','code de pc changé');});
+T('export — lignes dupliquées (même id, « Passage soir ») exportées une seule fois',()=>{
+  const matin=pat({id:'px',name:'M. X',transmissions:[tr('CONSTANTES',dMoins(2))]});
+  const soir=pat({id:'px',name:'M. X',transmissions:[]});
+  const E=X.buildExport([matin,soir],[{id:'q1',patientId:'px',date:TODAY+'T08:00:00',auteur:'AL',actes:[],transmissionIds:[],propositions:[]}],TODAY,{});
+  eq(E.rows.length,1);eq(E.rows[0].nbPassages,1);eq(E.rows[0].nbConstantes,1);});
+T('extraction — valeur d observation hors liste fermée rejetée',()=>{
+  const v=X.validerExtraction({obs:{douleur:'insupportable',chute:'oui'}});
+  eq(v.ok,false);eq(v.data.obs.douleur,'');eq(v.data.obs.chute,'oui');});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');
