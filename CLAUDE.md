@@ -40,6 +40,18 @@ Le moteur métier décide.
 L'interface explique.
 L'utilisateur valide.
 
+## v5 — Transmissions & données (spec v5.0)
+
+- Un seul flux par passage : cotation + transmission + recueil, validés ensemble (`EcranPassage`, section `#tab-passage`). Zéro double saisie : la donnée est un sous-produit de l'acte.
+- `DATA_MODE = "test"` tant que l'hébergement n'est pas HDS : bandeau permanent, patients fictifs uniquement. Passer en `"production"` exige un hébergement HDS et un provider IA conforme santé.
+- Moteur de fraîcheur : `freshness(patient, today)` (pure) — `SOCLE_J=365`, `CONSTANTES_J=35`, `PHOTO_PLAIE_J=15`, `ICOPE_J=120` (≥ 60 ans). États `ok|late|missing|na`, pastilles dans la tournée, bandeaux d'action dans l'écran de passage, tableau de bord `#tab-dash`.
+- Déclencheurs cotation → recueil : `TRIGGERS_TABLE` + `computeTriggers()` (pure). Max 2 propositions par passage, priorité photo > ICOPE > constantes > socle, refus toujours possible et tracé (`declined:true`). Écarts volontaires vs la table de la spec : la revalidation socle sur BSI ne se propose que si le socle n'est pas `ok` (un forfait quotidien la proposerait chaque jour) ; « constantes si late » inclut `missing` (jamais mesurées).
+- Post-its typés : `RELEVE` (bandeau tournée + « Lu »), `ALERTE` (badge tant que non traité, rappel > 48 h), `PERSO` (`exclureExport` forcé, jamais transmis ni exporté). RELEVE/ALERTE s'archivent, seul PERSO se supprime.
+- Dictée IA : interface `ExtracteurIA` (providers `EXTRACTEURS` : n8n / API directe / hors-ligne). Prompt `DICTEE_SYS` : JSON strict, schéma fermé, zéro invention. `validerExtraction()` rejette tout champ hors liste fermée. Jamais d'enregistrement automatique. Jeu d'éval : `eval/dictees.json` + `node eval/score.js` (bloquant : 0 invention, ≥ 90 % constantes/mot-clé).
+- Export CSV pseudonymisé (P001…) : `buildExport()` — socle + agrégats + événements datés (code/date/mot, sans texte) + dernières constantes + dernier ICOPE + compteurs. Table code↔patient affichée dans l'app, jamais exportée.
+- Nouvelles clés localStorage : `lidia.cot.settings` (initiales, geoloc opt-in, rattrapage, provider IA), `lidia.cot.passages` (passages validés), `lidia.cot.drafts` (brouillons par patient, survie au kill de l'app).
+- Tests v5 : `tests/v5.test.js` (chargé comme `moteur.test.js` : tout le moteur v5 doit rester défini AVANT le `DOMContentLoaded`).
+
 ## Invariants techniques (pattern LIDIA)
 
 - Livrable unique : `lidia-cotation.html` (vanilla JS, aucun build). Déploiement Netlify par ZIP.

@@ -9,3 +9,5 @@ for id in $(grep -o '\$("#[A-Za-z0-9_]*")' lidia-cotation.html | sed 's/\$("#\(.
 done
 echo "✓ ids DOM"
 node tests/moteur.test.js
+node tests/v5.test.js
+node eval/score.js

@@ -7,7 +7,7 @@ echo "--- secrets"
 ! grep -nE "sk-ant-[A-Za-z0-9]" lidia-cotation.html || { echo "✗ clé API dans le bundle"; exit 1; }
 echo "✓ aucun secret"
 echo "--- stockage local"
-for k in lidia.cot.ref lidia.cot.day lidia.cot.ai lidia.cot.patients lidia.cot.cabinet lidia.cot.stats lidia.cot.rmin; do
+for k in lidia.cot.ref lidia.cot.day lidia.cot.ai lidia.cot.patients lidia.cot.cabinet lidia.cot.stats lidia.cot.rmin lidia.cot.settings lidia.cot.passages lidia.cot.drafts; do
   grep -q "$k" lidia-cotation.html || { echo "✗ clé $k disparue"; exit 1; }
 done
 echo "✓ clés localStorage présentes"

@@ -69,6 +69,30 @@ textarea{min-height:110px;resize:vertical}
 .tag{font-size:11px;background:var(--paper);border-radius:4px;padding:1px 5px;color:var(--ink2)}
 .ordo-acts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}.toast.on{opacity:1}
+/* ---- v5 : transmissions & données ---- */
+.testband{background:var(--amber-soft);color:var(--amber);font-size:12px;font-weight:600;text-align:center;padding:5px 10px;border-bottom:1px solid var(--line)}
+.pastilles{display:inline-flex;gap:3px;vertical-align:middle;margin-right:4px}
+.pastille{width:15px;height:15px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:700;color:#fff}
+.pastille.na{color:var(--ink2)}
+.bandeau{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:10px;margin-top:6px;font-size:13px;background:var(--amber-soft);color:#7A4A05}
+.bandeau.missing{background:var(--red-soft);color:#7C2620}
+.trigband{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 10px;border-radius:10px;margin-top:8px;font-size:13.5px;background:var(--teal-soft)}
+.trigband.done{opacity:.55}
+.trigband .btn{padding:6px 10px;font-size:12.5px}
+.postit{border-left:4px solid var(--ink2);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:13px;background:var(--paper);display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.postit.RELEVE{border-color:var(--teal);background:var(--teal-soft)}
+.postit.ALERTE{border-color:var(--red);background:var(--red-soft)}
+.postit small{display:block;color:var(--ink2);font-size:11px;width:100%}
+.postit .btn{margin-left:auto}
+.badge{display:inline-block;min-width:16px;height:16px;line-height:16px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;font-weight:700;text-align:center;padding:0 4px;vertical-align:middle}
+.epgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.epgrid .chip{text-align:center;padding:9px 6px}
+.epgrid .chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.panel{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px;background:#fff}
+.panel h3{font-size:13px;margin:0 0 6px;font-family:var(--disp);display:flex;justify-content:space-between;align-items:center}
+.panel h3 .x{margin:0;padding:0 4px}
+.overlay{position:fixed;inset:0;background:rgba(14,30,43,.55);display:flex;align-items:center;justify-content:center;z-index:20;padding:20px}
+.overlay .card{max-width:380px;width:100%;margin:0}
 ol{padding-left:18px;font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 #sheet{display:none;font:13px/1.5 var(--body);color:#000;padding:10mm}
@@ -82,14 +106,16 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v4.2.2</small></h1>
-  <p>Une journée, plusieurs passages, zéro perte</p>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.0.0</small></h1>
+  <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
-    <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui</button>
+    <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
     <button role="tab" aria-selected="false" data-tab="pat">Patients</button>
+    <button role="tab" aria-selected="false" data-tab="dash">Suivi</button>
     <button role="tab" aria-selected="false" data-tab="plus">Plus</button>
   </nav>
 </header>
+<div class="testband" id="testband" hidden>⚠ MODE TEST — patients fictifs uniquement (hébergement non HDS, MR-004 non applicable en réel)</div>
 
 <main>
 <!-- ============ JOURNÉE ============ -->
@@ -206,6 +232,7 @@ ol{padding-left:18px;font-size:14px}
     <div class="row" style="margin-top:10px"><button class="btn" id="tGo">Recalculer</button><button class="btn sec" id="goPat">+ Patient</button><button class="btn sec" id="tSheet">Feuille</button><button class="chip" id="tFerie" aria-pressed="false" style="align-self:center">Jour férié</button><button class="btn sec" id="tMaps" hidden>Maps</button></div>
     <p class="muted" id="tStatus"></p>
   </div>
+  <div id="tReleves"></div>
   <div id="tRoute"></div>
   <div class="card" style="padding:0;overflow:hidden">
     <div class="th" style="background:var(--ink);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
@@ -241,6 +268,13 @@ ol{padding-left:18px;font-size:14px}
     <div class="chips" id="pDays"><button class="chip" data-d="1" aria-pressed="true">L</button><button class="chip" data-d="2" aria-pressed="true">M</button><button class="chip" data-d="3" aria-pressed="true">Me</button><button class="chip" data-d="4" aria-pressed="true">J</button><button class="chip" data-d="5" aria-pressed="true">V</button><button class="chip" data-d="6" aria-pressed="true">S</button><button class="chip" data-d="0" aria-pressed="true">D</button></div>
     <div class="row"><div><label class="f" for="pFrom">Début</label><input type="date" id="pFrom"></div><div><label class="f" for="pTo">Fin (vide = sans fin)</label><input type="date" id="pTo"></div></div>
     <label class="f" for="pNote">Note</label><input type="text" id="pNote" placeholder="code portail, chien, clé sous le pot…">
+    <details style="margin-top:10px">
+      <summary style="font-size:13px;font-weight:600;cursor:pointer">🗂 Socle recherche (données patient)</summary>
+      <div id="pSocleFields"></div>
+      <div class="row" style="margin-top:8px"><button class="btn sec sm" type="button" id="pSocleVal">✓ Valider le socle (aujourd'hui)</button></div>
+      <p class="muted" id="pSocleInfo"></p>
+    </details>
+    <div id="pPostits"></div>
     <div class="row" style="margin-top:10px"><button class="btn" id="pSave">Enregistrer</button><button class="btn sec" id="pCancel" hidden>Annuler</button></div>
     <p class="muted" id="pStatus"></p>
   </div>
@@ -255,7 +289,9 @@ ol{padding-left:18px;font-size:14px}
     <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="renta"><span><b>📈</b> Rentabilité d'un nouveau patient</span><span class="plus">›</span></button>
     <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="ref"><span><b>📚</b> Référentiel NGAP<small>actes, lettres-clés, valeurs</small></span><span class="plus">›</span></button>
     <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="regles"><span><b>⚖️</b> Règles du moteur</span><span class="plus">›</span></button>
-    <button class="act" style="border:0;border-radius:0" data-go="param"><span><b>🤖</b> Connexion IA</span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="param"><span><b>🤖</b> Connexion IA</span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="conf"><span><b>🛡</b> Conformité &amp; export<small>RGPD, MR-004, export pseudonymisé</small></span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-radius:0" data-go="reglages"><span><b>⚙️</b> Réglages<small>initiales, géolocalisation, dictée IA</small></span><span class="plus">›</span></button>
   </div>
 </section>
 
@@ -294,7 +330,108 @@ ol{padding-left:18px;font-size:14px}
     <p class="muted">Importer <b>n8n_lidia_cotation.json</b> dans n8n → nœud « Appel Claude » → choisir la credential x-api-key existante → Activer → copier l'URL de production ici. Sans réglage, analyse hors-ligne par mots-clés.</p>
   </div>
 </section>
+<!-- ============ ÉCRAN DE PASSAGE UNIFIÉ (v5 — module 1) ============ -->
+<section id="tab-passage" hidden>
+  <div class="card" id="epHead"></div>
+  <div id="epPostitsList"></div>
+  <div class="card">
+    <h2>Cotation du passage</h2>
+    <div class="row">
+      <div style="max-width:130px"><label class="f" for="epHeure">Heure</label><input type="time" id="epHeure"></div>
+      <div><label class="f" for="epQ">Ajouter un acte</label><input type="text" id="epQ" placeholder="insuline, pansement, perfusion, BSI…" autocomplete="off"></div>
+    </div>
+    <div class="chips" id="epQuick" style="margin-top:6px">
+      <button class="chip" data-q="prelev">Prise de sang</button><button class="chip" data-q="insu">Insuline</button><button class="chip" data-q="dextro">Dextro</button><button class="chip" data-q="pans1">Pansement</button><button class="chip" data-q="pans4">Pans. lourd</button><button class="chip" data-q="inj">Injection</button><button class="chip" data-q="bsc">BSC</button><button class="chip" data-q="perf9">Perf ≤1h</button>
+    </div>
+    <div class="results" id="epResults"></div>
+    <div id="epLines" style="margin-top:8px"></div><div id="epMajs"></div>
+    <div class="total" style="border-radius:10px;margin-top:8px"><small>Total du passage</small><b id="epTotal">0,00 €</b></div>
+    <div id="epAlerts"></div>
+  </div>
+  <div class="card">
+    <h2>Transmission</h2>
+    <label class="f" for="epDictee">Dictée <span class="verif" id="epDicteeBand" hidden>Dictée IA — données de test uniquement</span></label>
+    <textarea id="epDictee" style="min-height:70px" placeholder="« TA 13/8, glycémie 1,2 au réveil, se plaint de douleur au talon droit… »"></textarea>
+    <div class="row" style="margin-top:6px">
+      <button class="btn sec" id="epMic" type="button">🎤 Dicter</button>
+      <button class="btn" id="epAnalyse" type="button">Analyser</button>
+      <button class="btn sec" id="epDicteeLibre" type="button" title="Enregistrer la dictée telle quelle en transmission libre">→ Libre</button>
+    </div>
+    <p class="muted" id="epIaStatus"></p>
+    <div class="epgrid">
+      <button class="chip" id="epBtnEvt" type="button">⚡ Événement</button>
+      <button class="chip" id="epBtnObs" type="button">👁 Observation</button>
+      <button class="chip" id="epBtnCst" type="button">🩺 Constantes</button>
+      <button class="chip" id="epBtnIcope" type="button">🧠 ICOPE</button>
+      <button class="chip" id="epBtnPhoto" type="button">📷 Photo faite</button>
+      <button class="chip" id="epBtnPostit" type="button">📌 Post-it</button>
+    </div>
+    <div id="epPanels"></div>
+    <label class="f" for="epLibre">Texte libre</label>
+    <textarea id="epLibre" style="min-height:56px" placeholder="Transmission libre (facultative)…"></textarea>
+  </div>
+  <div id="epTriggers"></div>
+  <div class="row" style="margin:12px 0 34px">
+    <button class="btn" id="epValider" style="flex:2">Valider le passage</button>
+    <button class="btn sec" id="epRetour" type="button">Retour</button>
+  </div>
+</section>
+
+<!-- ============ TABLEAU DE BORD (v5 — module 2) ============ -->
+<section id="tab-dash" hidden>
+  <div class="card"><h2>Suivi du recueil</h2><div id="dashKpi"></div></div>
+  <div class="card"><h2>À compléter en tournée</h2><div id="dashLate"></div></div>
+  <div class="card"><h2>Alertes à transmettre</h2><div id="dashAlertes"></div></div>
+  <div class="card"><h2>Événements — 30 derniers jours</h2><div id="dashEvts"></div></div>
+  <div class="card"><h2>Propositions refusées</h2><p class="muted">Le refus est un signal d'organisation, pas une faute : il indique ce qui ne passe pas en tournée.</p><div id="dashRefus"></div></div>
+</section>
+
+<!-- ============ CONFORMITÉ & EXPORT (v5 — module 6) ============ -->
+<section id="tab-conf" hidden>
+  <div class="card">
+    <h2>Conformité</h2>
+    <p>Mode données : <b id="confMode"></b></p>
+    <p class="muted">Recueil adossé à la méthodologie de référence <b>MR-004</b> (CNIL) : information des patients, registre des traitements, pas de donnée directement identifiante dans l'export. En mode test, uniquement des patients fictifs tant que l'hébergement n'est pas certifié HDS.</p>
+    <ol style="font-size:13.5px">
+      <li>📄 <b>Registre des traitements</b> — à tenir au cabinet (document RGPD n° 1).</li>
+      <li>📄 <b>Affiche d'information patients</b> — salle d'attente / classeur de soins (document n° 2).</li>
+      <li>📄 <b>Note d'information individuelle</b> — remise au patient à l'inclusion (document n° 3).</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h2>Export pseudonymisé</h2>
+    <p class="muted">Codes P001, P002… Socle + agrégats de transmissions + événements datés + dernières constantes + dernier ICOPE + compteurs. Les post-its RELEVE/ALERTE sortent en compteurs uniquement, les PERSO jamais. Aucun nom, aucune adresse.</p>
+    <div class="row"><button class="btn" id="expPat">⬇ Patients (CSV)</button><button class="btn sec" id="expEvt">⬇ Événements (CSV)</button></div>
+    <details style="margin-top:10px"><summary style="font-size:13px;cursor:pointer">Table de correspondance code ↔ patient (affichée ici, jamais exportée)</summary><div id="expMap" style="font-size:13px;margin-top:6px"></div></details>
+    <p class="muted" id="expStatus"></p>
+  </div>
+</section>
+
+<!-- ============ RÉGLAGES (v5) ============ -->
+<section id="tab-reglages" hidden>
+  <div class="card">
+    <h2>Réglages</h2>
+    <label class="f" for="setAuteur">Initiales de session (auteur des transmissions et post-its)</label>
+    <input type="text" id="setAuteur" maxlength="5" placeholder="AL" style="max-width:120px">
+    <div class="chips" style="margin-top:10px">
+      <button class="chip" id="setGeo" type="button">📍 Géolocaliser les passages (opt-in, jamais par défaut)</button>
+      <button class="chip" id="setRattr" type="button">🔄 Suggérer les rattrapages en tournée</button>
+    </div>
+    <label class="f" for="setProv">Extracteur IA pour la dictée</label>
+    <select id="setProv" style="max-width:320px"></select>
+    <div class="row" style="margin-top:10px"><button class="btn" id="setSave">Enregistrer</button></div>
+    <p class="muted" id="setStatus"></p>
+  </div>
+</section>
 </main>
+<div class="overlay" id="initDlg" hidden>
+  <div class="card">
+    <h2>Vos initiales</h2>
+    <p class="muted">Elles signent chaque transmission, passage et post-it de cette session. Modifiables ensuite dans Réglages.</p>
+    <input type="text" id="initInp" maxlength="5" placeholder="AL">
+    <div class="row" style="margin-top:10px"><button class="btn" id="initOk">Commencer</button></div>
+  </div>
+</div>
 <div id="sheet" hidden></div>
 
 <div class="toast" id="toast"></div>
@@ -409,6 +546,239 @@ function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");setT
 function norm(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
 function LV(k){const d=day.date||"";let v=ref[k]??0;if((k==="AMI"||k==="AMX"||k==="TMI")&&ref.AMI===DEFAULT_REF.AMI){if(d>="2027-11-06")v=3.45;else if(d>="2026-11-06")v=3.35;}return v}
 
+/* ================= V5 — TRANSMISSIONS & DONNÉES ================= */
+/* DATA_MODE "test" tant que l'hébergement n'est pas HDS : bandeau permanent, patients fictifs uniquement. */
+const DATA_MODE="test";
+const SOCLE_J=365,CONSTANTES_J=35,PHOTO_PLAIE_J=15,ICOPE_J=120;
+const PATHOS_LIST=["Diabète","Insuf. cardiaque","AOMI","Cancer actif","Tr. cognitifs","Insuf. rénale","Autre"];
+const AUTONOMIE_LIST=["Autonome","Aide partielle","Dépendant"];
+const ADRESSE_PAR_LIST=["Sortie hospitalisation","Médecin traitant","Confrère IDEL","Demande directe","Autre"];
+const MOTS_EVT=["HOSPIT","URGENCES","CHUTE","DÉCÈS","EHPAD"];
+const OBS_KEYS=["douleur","chute","confusion","peau","surcharge","observance"];
+const CST_KEYS=["ta","fc","spo2","temp","gly","poids"];
+const ICOPE_DOMS=["mobilite","cognition","nutrition","humeur","vision","audition"];
+const TRANS_TYPES=["LIBRE","EVENEMENT","CONSTANTES","OBS","ICOPE","PHOTO"];
+const POSTIT_TYPES=["RELEVE","ALERTE","PERSO"];
+/* actes qui signent une plaie active (bascule patient.plaie) */
+const PLAIE_ACTS=["pans1","pans4","ulc","pico","pico2","pans_diab","topique","topique_diab","bilan_plaie"];
+let settings={auteur:"",geoloc:false,rattrapage:true,iaProvider:"n8n",...loadJSON("lidia.cot.settings",{})};
+let passages5=loadJSON("lidia.cot.passages",[]);
+let drafts=loadJSON("lidia.cot.drafts",{});
+function saveSettings(){try{localStorage.setItem("lidia.cot.settings",JSON.stringify(settings))}catch(e){}}
+function uid(p){return (p||"id")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function todayISO(){return new Date().toISOString().slice(0,10)}
+function nowHM(){const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+
+/* ---- Module 2 : moteur de fraîcheur (fonction pure) ---- */
+function freshness(p,today){
+  today=today||todayISO();
+  const dJ=iso=>{if(!iso)return null;const j=Math.floor((Date.parse(today)-Date.parse(String(iso).slice(0,10)))/86400000);return isFinite(j)?j:null};
+  const state=(iso,lim)=>{const j=dJ(iso);return j==null?{etat:"missing",jours:null,date:null}:{etat:j>lim?"late":"ok",jours:j,date:String(iso).slice(0,10)}};
+  const tr=(p.transmissions||[]).filter(t=>!t.archive);
+  const lastOf=ty=>tr.filter(t=>t.type===ty&&t.date).map(t=>t.date).sort().pop()||null;
+  const socle=state(p.socleDate,SOCLE_J);
+  const constantes=state(lastOf("CONSTANTES"),CONSTANTES_J);
+  const photo=p.plaie?state(lastOf("PHOTO"),PHOTO_PLAIE_J):{etat:"na",jours:null,date:null};
+  const age=p.annee?(+today.slice(0,4))-(+p.annee):null;
+  const icope=(age!=null&&age>=60)?state(lastOf("ICOPE"),ICOPE_J):{etat:"na",jours:null,date:null};
+  return {socle,constantes,photo,icope};
+}
+function nbRetards(f){return ["socle","constantes","photo","icope"].filter(k=>f[k].etat==="late"||f[k].etat==="missing").length}
+
+/* ---- Module 3 : table de déclenchement cotation → recueil (extensible) ---- */
+const TRIGGER_PRIO={photo:0,icope:1,constantes:2,socle:3};
+const TRIGGERS_TABLE=[
+ {type:"photo",lbl:"Photo de plaie",when:(p,acts,f)=>{
+   const plaieActe=acts.some(a=>PLAIE_ACTS.includes(a.id)||(a.tags&&a.tags.lourd));
+   if(!plaieActe)return null;
+   const ph=p.plaie?f.photo:freshness({...p,plaie:true},f._today).photo;
+   if(ph.etat==="ok")return null;
+   return {surface:acts.some(a=>a.id==="bilan_plaie"),msg:ph.etat==="missing"?"Plaie sans photo : documenter ce passage ?":"Dernière photo il y a "+ph.jours+" j — à refaire ce passage ?"};}},
+ {type:"icope",lbl:"Dépistage ICOPE",when:(p,acts,f)=>{
+   if(!acts.length)return null;
+   if(f.icope.etat!=="late"&&f.icope.etat!=="missing")return null;
+   return {msg:f.icope.etat==="missing"?"Jamais dépisté (≥ 60 ans) — faire l'ICOPE ?":"Dernier ICOPE il y a "+f.icope.jours+" j — à refaire ?"};}},
+ {type:"constantes",lbl:"Constantes",when:(p,acts,f)=>{
+   const injPerf=acts.some(a=>/^(inj|insu|implant|k_inj|k_iv|k_chimio)/.test(a.id)||(a.tags&&(a.tags.perfC||a.tags.perfL||a.tags.perfR||a.tags.perfX||a.tags.perfS)));
+   if(!injPerf)return null;
+   if(f.constantes.etat!=="late"&&f.constantes.etat!=="missing")return null;
+   return {msg:f.constantes.etat==="missing"?"Constantes jamais mesurées — à prendre ce passage ?":"Dernière mesure il y a "+f.constantes.jours+" j — à reprendre ?"};}},
+ {type:"socle",lbl:"Socle",when:(p,acts,f)=>{
+   const bsi=acts.some(a=>(a.tags&&a.tags.bsi)||a.id==="bsi_init"||a.id==="bsi_ren");
+   if(!bsi)return null;
+   if(f.socle.etat==="ok")return null;
+   return {msg:f.socle.etat==="missing"?"Socle jamais validé — revalider en 1 tap ?":"Socle validé il y a "+f.socle.jours+" j — revalider ?"};}},
+];
+/* max 2 propositions par passage, priorité photo > icope > constantes > socle ; refus toujours possible et tracé */
+function computeTriggers(p,actIds,f,today){
+  const acts=(actIds||[]).map(id=>byId(id)).filter(Boolean);
+  f=f||freshness(p,today);f._today=today||todayISO();
+  const props=[];
+  TRIGGERS_TABLE.forEach(t=>{const r=t.when(p,acts,f);if(r)props.push({type:t.type,lbl:t.lbl,...r})});
+  props.sort((a,b)=>TRIGGER_PRIO[a.type]-TRIGGER_PRIO[b.type]);
+  const setPlaie=!p.plaie&&acts.some(a=>PLAIE_ACTS.includes(a.id));
+  return {props:props.slice(0,2),setPlaie};
+}
+
+/* ---- Module 1 : construction pure du passage (validation atomique) ---- */
+function buildPassageRecord(p,draft,iso,auteur){
+  const A=auteur||"??",trs=[],t=draft.trans||{};
+  if(t.icope){const manq=ICOPE_DOMS.filter(k=>!t.icope[k]);if(manq.length)return {error:"ICOPE incomplet : les 6 domaines sont requis ("+manq.join(", ")+" manquant·s)"};}
+  if(t.evt&&(t.evt.mot||((t.evt.texte||"").trim())))trs.push({id:uid("tr"),date:iso,auteur:A,type:"EVENEMENT",texte:(t.evt.texte||"").trim(),mot:MOTS_EVT.includes(t.evt.mot)?t.evt.mot:undefined});
+  if(t.cst&&CST_KEYS.some(k=>(t.cst[k]||"").trim())){const cst={};CST_KEYS.forEach(k=>cst[k]=(t.cst[k]||"").trim());trs.push({id:uid("tr"),date:iso,auteur:A,type:"CONSTANTES",texte:(t.cstNote||"").trim(),cst});}
+  if(t.obs&&OBS_KEYS.some(k=>(t.obs[k]||"").trim())){const obs={};OBS_KEYS.forEach(k=>obs[k]=(t.obs[k]||"").trim());trs.push({id:uid("tr"),date:iso,auteur:A,type:"OBS",texte:(t.obsNote||"").trim(),obs});}
+  if(t.icope){const ic={};ICOPE_DOMS.forEach(k=>ic[k]=t.icope[k]);const nbAlerts=ICOPE_DOMS.filter(k=>ic[k]==="alerte").length;trs.push({id:uid("tr"),date:iso,auteur:A,type:"ICOPE",texte:(t.icopeNote||"").trim(),icope:ic,nbAlerts});}
+  if(t.photo)trs.push({id:uid("tr"),date:iso,auteur:A,type:"PHOTO",texte:"Photo de plaie réalisée (stockée sur le téléphone)"+((t.photo.surface||"").trim()?" — surface "+String(t.photo.surface).trim()+" cm²":"")});
+  if((t.libre||"").trim())trs.push({id:uid("tr"),date:iso,auteur:A,type:"LIBRE",texte:t.libre.trim()});
+  const pass={id:uid("pas"),patientId:p.id,date:iso,auteur:A,
+    actes:(draft.acts||[]).map(a=>({id:a.id,k:a.k,c:a.c,l:a.l})),
+    transmissionIds:trs.map(x=>x.id),propositions:(draft.props||[]).slice()};
+  if(!trs.length)pass.transmission="none";
+  trs.forEach(x=>x.passageId=pass.id);
+  const trg=computeTriggers(p,(draft.acts||[]).map(a=>a.id),null,iso.slice(0,10));
+  return {pass,transmissions:trs,setPlaie:trg.setPlaie,socle:draft.socle||null};
+}
+
+/* ---- Module 4 : post-its typés ---- */
+function makePostit(type,texte,auteur,date){
+  if(!POSTIT_TYPES.includes(type))return null;
+  return {id:uid("pi"),date:date||new Date().toISOString(),auteur:auteur||"??",type,texte:String(texte||"").trim(),luPar:[],traite:false,exclureExport:type==="PERSO",archive:false};
+}
+/* RELEVE à afficher à l'ouverture de tournée pour tout auteur ≠ créateur et non lu */
+function relevesAVoir(pats,auteur){
+  const out=[];pats.forEach((p,i)=>(p.postits||[]).forEach(pi=>{
+    if(pi.type==="RELEVE"&&!pi.archive&&pi.auteur!==auteur&&!(pi.luPar||[]).includes(auteur))out.push({p,i,pi});}));
+  return out;
+}
+function alertesOuvertes(pats){
+  const out=[];pats.forEach((p,i)=>(p.postits||[]).forEach(pi=>{if(pi.type==="ALERTE"&&!pi.archive&&!pi.traite)out.push({p,i,pi})}));
+  return out;
+}
+function alertesEnRetard(pats,now){
+  now=now||Date.now();
+  return alertesOuvertes(pats).filter(x=>now-Date.parse(x.pi.date)>48*3600*1000);
+}
+
+/* ---- Module 5 : extraction — interface abstraite + validation stricte ---- */
+function schemaVide(){return {texte:"",mot:null,cst:null,obs:null,icope:null,postit:null}}
+/* validation contre le schéma fermé : tout champ hors liste est rejeté, zéro invention côté app */
+function validerExtraction(j){
+  const err=[],out=schemaVide();
+  if(!j||typeof j!=="object")return {ok:false,erreurs:["réponse non JSON"],data:out};
+  if(typeof j.texte==="string")out.texte=j.texte.trim().slice(0,600);
+  if(j.mot!=null){if(MOTS_EVT.includes(j.mot))out.mot=j.mot;else err.push("mot hors liste : "+j.mot);}
+  if(j.cst!=null){if(typeof j.cst==="object"){out.cst={};CST_KEYS.forEach(k=>out.cst[k]=typeof j.cst[k]==="string"?j.cst[k].trim():(j.cst[k]==null?"":String(j.cst[k])));
+      Object.keys(j.cst).forEach(k=>{if(!CST_KEYS.includes(k))err.push("constante hors schéma : "+k)});
+      if(!CST_KEYS.some(k=>out.cst[k]))out.cst=null;}else err.push("cst invalide");}
+  if(j.obs!=null){if(typeof j.obs==="object"){out.obs={};OBS_KEYS.forEach(k=>out.obs[k]=typeof j.obs[k]==="string"?j.obs[k].trim():"");
+      Object.keys(j.obs).forEach(k=>{if(!OBS_KEYS.includes(k))err.push("observation hors schéma : "+k)});
+      if(!OBS_KEYS.some(k=>out.obs[k]))out.obs=null;}else err.push("obs invalide");}
+  if(j.icope!=null){if(typeof j.icope==="object"){out.icope={};let any=false;
+      ICOPE_DOMS.forEach(k=>{const v=j.icope[k];if(v==="ok"||v==="alerte"){out.icope[k]=v;any=true}else if(v!=null&&v!=="")err.push("icope."+k+" hors valeurs ok|alerte")});
+      Object.keys(j.icope).forEach(k=>{if(!ICOPE_DOMS.includes(k))err.push("icope hors schéma : "+k)});
+      if(!any)out.icope=null;}else err.push("icope invalide");}
+  if(j.postit!=null){if(typeof j.postit==="object"&&POSTIT_TYPES.includes(j.postit.type))out.postit={type:j.postit.type,texte:String(j.postit.texte||"").trim()};else err.push("postit invalide");}
+  return {ok:!err.length,erreurs:err,data:out};
+}
+/* extracteur hors-ligne par règles : n'extrait que ce qui est dicté, n'invente jamais */
+function extraireLocal(texte){
+  const raw=String(texte||"").trim(),out=schemaVide();if(!raw)return out;
+  const t=norm(raw);
+  let corps=raw;
+  const pfx=[[/^note pour la releve\s*[:,–—-]?\s*/i,"RELEVE"],[/^(alerte|a signaler au medecin)\s*[:,–—-]?\s*/i,"ALERTE"],[/^memo\s*[:,–—-]?\s*/i,"PERSO"]];
+  for(const [re,ty] of pfx){const m=t.match(re);if(m){out.postit={type:ty,texte:raw.slice(m[0].length).trim()||raw.trim()};corps=raw.slice(m[0].length);break}}
+  const tc=norm(corps);
+  if(/hospitalis|\bhospit\b/.test(tc))out.mot="HOSPIT";
+  else if(/\burgences?\b/.test(tc))out.mot="URGENCES";
+  else if(/\bdecede|\bdeces\b/.test(tc))out.mot="DÉCÈS";
+  else if(/\behpad\b|maison de retraite/.test(tc))out.mot="EHPAD";
+  else if(/\bchute|\btombe(e?s?)\b/.test(tc))out.mot="CHUTE";
+  const cst={ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""};
+  let m;
+  if(m=tc.match(/(?:\bta\b|tension(?: arterielle)?)[^0-9]{0,12}(\d{1,3})\s*(?:\/|sur)\s*(\d{1,3})/))cst.ta=m[1]+"/"+m[2];
+  else if(m=tc.match(/(?:\bta\b|tension(?: arterielle)?)[^0-9]{0,12}(\d{2})\s+(\d{1,2})\b/))cst.ta=m[1]+"/"+m[2];
+  if(m=tc.match(/(?:pouls|frequence cardiaque|\bfc\b)[^0-9]{0,12}(\d{2,3})/))cst.fc=m[1];
+  if(m=tc.match(/(?:satu?ration|\bsat\b|spo ?2)[^0-9]{0,12}(\d{2,3})/))cst.spo2=m[1];
+  if(m=tc.match(/(?:temperature|fievre a|febrile a)[^0-9]{0,12}(\d{2})(?:[.,]\s?(\d))?/))cst.temp=m[1]+(m[2]?","+m[2]:"");
+  else if((m=tc.match(/\b(3[5-9]|4[01])[.,](\d)\b(?![^ ]*\/)/))&&/temp|fievre|febrile|\bdegres\b/.test(tc))cst.temp=m[1]+","+m[2];
+  if(m=tc.match(/(?:glycemie|dextro|glyc)[^0-9]{0,15}(\d)[.,](\d{1,2})\b/))cst.gly=m[1]+","+m[2];
+  else if(m=tc.match(/(?:glycemie|dextro)[^0-9]{0,15}(\d)\s?(?:g|gramme)/))cst.gly=m[1];
+  else if(m=tc.match(/(\d)[.,](\d{1,2})\s*(?:g(?:\/l| par litre)?|gramme)/))cst.gly=m[1]+","+m[2];
+  if(m=tc.match(/(?:poids|pese)[^0-9]{0,12}(\d{2,3})(?:[.,](\d))?/))cst.poids=m[1]+(m[2]?","+m[2]:"");
+  else if(m=tc.match(/(\d{2,3})(?:[.,](\d))?\s*(?:kilos?|kg)\b/))cst.poids=m[1]+(m[2]?","+m[2]:"");
+  if(CST_KEYS.some(k=>cst[k]))out.cst=cst;
+  const obs={douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""};
+  if(m=tc.match(/\beva[^0-9]{0,8}(\d{1,2})/))obs.douleur=m[1];
+  else if(m=tc.match(/douleur[^0-9a-z]{0,12}(?:a|evaluee a|cotee a)?\s*(\d{1,2})\s*(?:\/\s*10)?/))obs.douleur=m[1];
+  else if(/douloureu|se plaint de douleur|\balgique\b/.test(tc))obs.douleur="oui";
+  if(/\bchute|\btombe(e?s?)\b/.test(tc))obs.chute="oui";
+  if(/confus|desoriente/.test(tc))obs.confusion="oui";
+  if(/escarre/.test(tc))obs.peau="escarre";
+  else if(/rougeur|erytheme/.test(tc))obs.peau="rougeur";
+  else if(/plaie/.test(tc))obs.peau="plaie";
+  if(/surcharge|oedeme|œdeme|jambes? gonflee|crepitants/.test(tc))obs.surcharge="oui";
+  if(/(n'?a pas pris|refuse (son|le|les) (traitement|medicament)|oubli du traitement|mauvaise observance)/.test(tc))obs.observance="mauvaise";
+  if(OBS_KEYS.some(k=>obs[k]))out.obs=obs;
+  out.texte=corps.trim();
+  return out;
+}
+const DICTEE_SYS='Tu es infirmier·e libéral·e (IDEL, France). On te donne une transmission dictée. Retourne UNIQUEMENT un JSON valide, sans markdown : {"texte":"<reformulation professionnelle en 1 à 3 phrases>","mot":null|"HOSPIT"|"URGENCES"|"CHUTE"|"DÉCÈS"|"EHPAD","cst":null|{"ta":"","fc":"","spo2":"","temp":"","gly":"","poids":""},"obs":null|{"douleur":"","chute":"","confusion":"","peau":"","surcharge":"","observance":""},"icope":null|{"mobilite":"ok|alerte","cognition":"ok|alerte","nutrition":"ok|alerte","humeur":"ok|alerte","vision":"ok|alerte","audition":"ok|alerte"},"postit":null|{"type":"RELEVE|ALERTE|PERSO","texte":""}}. RÈGLE ABSOLUE : zéro invention — tout item non dicté reste null ou chaîne vide ; ne déduis rien, ne complète rien. Constantes : chaînes telles que dictées (ex "13/8", "38,2"). Préfixes post-it : "note pour la relève…"=RELEVE, "alerte…" ou "à signaler au médecin…"=ALERTE, "mémo…"=PERSO.';
+/* interface abstraite : provider interchangeable (n8n/Claude, API directe, local) */
+const EXTRACTEURS={
+  n8n:{l:"Webhook n8n du cabinet (Claude)",async extraire(txt){
+    if(!ai.webhook)throw new Error("webhook non configuré");
+    const ctl=new AbortController();const tmo=setTimeout(()=>ctl.abort(),30000);
+    let r;try{r=await fetch(ai.webhook,{method:"POST",headers:Object.assign({"Content-Type":"application/json"},ai.token?{"Authorization":"Bearer "+ai.token}:{}),body:JSON.stringify({text:txt,system:DICTEE_SYS}),signal:ctl.signal});}
+    catch(e){throw new Error(e.name==="AbortError"?"délai dépassé (30 s)":e.message)}finally{clearTimeout(tmo)}
+    const raw=await r.text();if(!r.ok)throw new Error("webhook HTTP "+r.status);
+    try{return JSON.parse(raw)}catch(e){throw new Error("réponse non JSON")}}},
+  anthropic:{l:"API Anthropic directe (déconseillé)",async extraire(txt){
+    if(!ai.key)throw new Error("clé API absente");
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":ai.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:700,system:DICTEE_SYS,messages:[{role:"user",content:txt}]})});
+    if(!r.ok)throw new Error("API "+r.status);const d=await r.json();
+    return JSON.parse((d.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim())}},
+  local:{l:"Hors-ligne (règles, sans IA)",async extraire(txt){return extraireLocal(txt)}},
+};
+const ExtracteurIA={
+  get provider(){return EXTRACTEURS[settings.iaProvider]?settings.iaProvider:"n8n"},
+  async extraire(txt){return EXTRACTEURS[this.provider].extraire(txt)},
+};
+
+/* ---- Module 6 : export pseudonymisé (P001…) — table code↔patient affichée, jamais exportée ---- */
+function codePat(i){return "P"+String(i+1).padStart(3,"0")}
+function buildExport(pats,passList,today){
+  today=today||todayISO();
+  const head=["code","annee","sexe","commune","vitSeul","aidant","institution","pathos","nbMed","autonomie","bsi","adresse_par","plaie","socleDate",
+    "nbPassages","nbTransmissions","nbLibre","nbEvenements","nbConstantes","nbObs","nbIcope","nbPhotos",
+    "der_ta","der_fc","der_spo2","der_temp","der_gly","der_poids","der_cst_date",
+    "icope_mobilite","icope_cognition","icope_nutrition","icope_humeur","icope_vision","icope_audition","icope_nbAlerts","icope_date",
+    "postits_releve","postits_alerte","alertes_traitees","refus_propositions"];
+  const rows=[],events=[],mapping=[];
+  pats.forEach((p,i)=>{
+    const code=codePat(i);mapping.push({code,nom:p.name});
+    const tr=(p.transmissions||[]);
+    const of=ty=>tr.filter(t=>t.type===ty);
+    const lastC=of("CONSTANTES").slice().sort((a,b)=>a.date<b.date?-1:1).pop();
+    const lastI=of("ICOPE").slice().sort((a,b)=>a.date<b.date?-1:1).pop();
+    const myPass=(passList||[]).filter(x=>x.patientId===p.id);
+    const refus=myPass.reduce((s,x)=>s+((x.propositions||[]).filter(pr=>pr.declined).length),0);
+    const pi=(p.postits||[]);
+    of("EVENEMENT").forEach(t=>events.push({code,date:String(t.date).slice(0,10),mot:t.mot||""}));
+    rows.push({code,annee:p.annee||"",sexe:p.sexe||"",commune:p.commune||"",vitSeul:p.vitSeul?1:0,aidant:p.aidant?1:0,institution:p.institution?1:0,
+      pathos:(p.pathos||[]).join("|"),nbMed:p.nbMed??"",autonomie:p.autonomie||"",bsi:p.bsi?1:0,adresse_par:p.adresse_par||"",plaie:p.plaie?1:0,socleDate:p.socleDate||"",
+      nbPassages:myPass.length,nbTransmissions:tr.length,nbLibre:of("LIBRE").length,nbEvenements:of("EVENEMENT").length,nbConstantes:of("CONSTANTES").length,nbObs:of("OBS").length,nbIcope:of("ICOPE").length,nbPhotos:of("PHOTO").length,
+      der_ta:lastC?.cst?.ta||"",der_fc:lastC?.cst?.fc||"",der_spo2:lastC?.cst?.spo2||"",der_temp:lastC?.cst?.temp||"",der_gly:lastC?.cst?.gly||"",der_poids:lastC?.cst?.poids||"",der_cst_date:lastC?String(lastC.date).slice(0,10):"",
+      icope_mobilite:lastI?.icope?.mobilite||"",icope_cognition:lastI?.icope?.cognition||"",icope_nutrition:lastI?.icope?.nutrition||"",icope_humeur:lastI?.icope?.humeur||"",icope_vision:lastI?.icope?.vision||"",icope_audition:lastI?.icope?.audition||"",icope_nbAlerts:lastI?(lastI.nbAlerts??""):"",icope_date:lastI?String(lastI.date).slice(0,10):"",
+      postits_releve:pi.filter(x=>x.type==="RELEVE").length,postits_alerte:pi.filter(x=>x.type==="ALERTE").length,alertes_traitees:pi.filter(x=>x.type==="ALERTE"&&x.traite).length,
+      refus_propositions:refus});
+  });
+  return {head,rows,events,mapping};
+}
+function toCSV(head,rows){
+  const q=v=>{v=String(v??"");return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  return head.join(";")+"\n"+rows.map(r=>head.map(h=>q(r[h])).join(";")).join("\n");
+}
+
 /* ================= MOTEUR — un passage ================= */
 function computePassage(p,dayInfo){
   const ctx=day.ctx,km=parseFloat(day.km)||0,out={lines:[],majs:[],alerts:[],total:0,lost:0};
@@ -519,6 +889,7 @@ function computeDay(){
 /* ================= RENDU ================= */
 function render(){
   if(cur>=day.passages.length)cur=Math.max(0,day.passages.length-1);
+  day.passages.forEach(q=>q.acts.forEach((a,i)=>a.__i=i));
   const D=computeDay(),p=day.passages[cur],o=D.res[cur];
   $("#date").value=day.date;$("#km").value=day.km;
   document.querySelectorAll("#ctx .chip").forEach(b=>b.setAttribute("aria-pressed",!!day.ctx[b.dataset.ctx]));
@@ -526,7 +897,7 @@ function render(){
   $("#pheure").value=p?.heure||"";$("#plabel").value=p?.label||"";$("#tname").textContent=p?.label||"Passage";$("#stamp").textContent=`${day.date} ${p?.heure||""}`;
   const L=$("#lines");L.innerHTML="";
   if(!p||!p.acts.length)L.innerHTML=`<div class="empty">Aucun acte dans ce passage.</div>`;
-  else o.lines.forEach(ln=>{const idx=p.acts.indexOf(ln.a);L.insertAdjacentHTML("beforeend",`<div class="line"><div class="lbl"><span class="code">${ln.code}</span> ${ln.a.l}${ln.a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${[ln.why,ln.full!=null&&ln.taux<100&&"valeur pleine "+eur(ln.full)].filter(Boolean).join(" · ")}</small></div><span class="taux t${ln.taux}">${ln.taux} %</span><div style="display:flex;align-items:center"><span class="amt ${ln.amt===0?'zero':''}">${eur(ln.amt)}</span><button class="x" data-rm="${idx}" aria-label="Retirer">×</button></div></div>`);});
+  else o.lines.forEach(ln=>{const idx=ln.a.__i??p.acts.indexOf(ln.a);L.insertAdjacentHTML("beforeend",`<div class="line"><div class="lbl"><span class="code">${ln.code}</span> ${ln.a.l}${ln.a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${[ln.why,ln.full!=null&&ln.taux<100&&"valeur pleine "+eur(ln.full)].filter(Boolean).join(" · ")}</small></div><span class="taux t${ln.taux}">${ln.taux} %</span><div style="display:flex;align-items:center"><span class="amt ${ln.amt===0?'zero':''}">${eur(ln.amt)}</span><button class="x" data-rm="${idx}" aria-label="Retirer">×</button></div></div>`);});
   $("#majs").innerHTML=o?o.majs.map(m=>`<div class="maj"><span><b>${m.code}</b> · ${m.l}</span><span>+ ${eur(m.amt)}</span></div>`).join(""):"";
   $("#total").textContent=eur(o?o.total:0);
   $("#alerts").innerHTML=o?o.alerts.map(al).join(""):"";
@@ -538,14 +909,9 @@ function render(){
 }
 const al=a=>`<div class="alert ${a.t}" style="flex-wrap:wrap"><span class="ic">${a.t==="gain"?"+":a.t==="stop"?"✕":"!"}</span><span style="flex:1">${a.m}</span>${a.add?`<button class="btn sm" data-add="${a.add}">Ajouter</button>`:""}${a.plan!=null?`<span style="display:flex;gap:6px;width:100%;margin-top:6px"><button class="btn sm" data-plan="jour" data-pi="${a.plan}">Ce soir (AMI 4,1)</button><button class="btn sm sec" data-plan="lendemain" data-pi="${a.plan}">Demain (AMI 5)</button><button class="btn sm sec" data-plan="multi" data-pi="${a.plan}">Plusieurs jours</button></span>`:""}${a.unplan!=null?`<button class="btn sm sec" data-unplan="${a.unplan}">Modifier</button>`:""}</div>`;
 function addAct(id,pi=cur){const a=byId(id);if(!a)return;day.passages[pi].acts.push(JSON.parse(JSON.stringify(a)));render();}
-function search(q){q=norm(q.trim());const R=$("#results");if(!q){R.innerHTML="";return}
-  const mCode=q.match(/(ami|amx|di|bs[abc]|tls|tld)?\s*([\d]+[,.]?\d*)/);
-  const codeK=mCode&&mCode[1]?mCode[1].toUpperCase():null,codeC=mCode?parseFloat(mCode[2].replace(",",".")):null;
-  const w=q.split(/\s+/);
-  const hits=CATALOG.map(a=>{const h=norm(a.l+" "+a.kw+" "+a.k+a.c);let s=0;w.forEach(x=>{if(h.includes(x))s+=x.length>2?2:1});
-    if(codeC!=null&&Math.abs(a.c-codeC)<0.001&&(!codeK||a.k===codeK||(codeK==="AMI"&&a.k==="AMI")))s+=6;
-    if(norm(a.k+" "+a.c).startsWith(q))s+=5;return{a,s}}).filter(x=>x.s>0).sort((x,y)=>y.s-x.s).slice(0,10);
-  R.innerHTML=hits.map(({a})=>`<button class="act" data-id="${a.id}"><span><b>${a.k} ${a.c}</b> ${a.l}${a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${eur(LV(a.k)*a.c)}</small></span><span class="plus">+</span></button>`).join("")||`<div class="muted">Aucun acte trouvé.</div>`;}
+function search(q){const R=$("#results");if(!String(q||"").trim()){R.innerHTML="";return}
+  const hits=catalogHits(q);
+  R.innerHTML=hits.map(a=>`<button class="act" data-id="${a.id}"><span><b>${a.k} ${a.c}</b> ${a.l}${a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${eur(LV(a.k)*a.c)}</small></span><span class="plus">+</span></button>`).join("")||`<div class="muted">Aucun acte trouvé.</div>`;}
 function renderRef(){$("#refTable").innerHTML=Object.keys(DEFAULT_REF).map(k=>`<tr><td>${REF_LABEL[k]}</td><td><input type="number" step="0.01" data-ref="${k}" value="${ref[k]}"> €</td></tr>`).join("");
   $("#catalog").innerHTML=CATALOG.map(a=>`<div class="act" style="margin-bottom:6px"><span><b>${a.k} ${a.c}</b> ${a.l}${a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${[a.tags?.diab&&"art. 5 bis",a.tags?.derog&&"dérogatoire BSI (art. 12)",a.tags?.cancer&&"cancéreux (art. 4)",a.tags?.lourd&&"MCI",a.tags?.bsi&&"forfait",a.tags?.once&&"1×/jour",a.src].filter(Boolean).map(t=>`<span class="tag">${t}</span>`).join(" ")}</small></span></div>`).join("");}
 
@@ -592,6 +958,14 @@ let formActs=[];
 function migratePatients(){let ch=false;patients.forEach(p=>{
   if(!p.actIds){const pr=PROFILES.find(x=>x.id===p.soin);p.actIds=pr?.acts?.slice()||[];ch=true;}
   if(!p.dur){p.dur=actsMinutes(p.actIds);ch=true;}
+  /* migration v5 : socle recherche + transmissions + post-its (spec v5.0) */
+  if(!p.id){p.id=uid("pat");ch=true;}
+  if(p.annee===undefined){p.annee=null;p.sexe="";p.commune=(p.addr||"").split(",").pop()?.trim()||"";p.vitSeul=false;p.aidant=false;p.institution=false;p.pathos=[];p.nbMed=null;p.autonomie="";p.adresse_par="";ch=true;}
+  if(p.bsi===undefined){p.bsi=(p.actIds||[]).some(id=>["bsa","bsb","bsc","bsi_init","bsi_ren"].includes(id));ch=true;}
+  if(p.plaie===undefined){p.plaie=(p.actIds||[]).some(id=>PLAIE_ACTS.includes(id));ch=true;}
+  if(p.socleDate===undefined){p.socleDate=null;ch=true;}
+  if(!p.transmissions){p.transmissions=[];ch=true;}
+  if(!p.postits){p.postits=[];ch=true;}
 });if(ch)savePatients();}
 function actLabel(id){const a=byId(id);return a?`${a.k} ${a.c} · ${a.l.split("(")[0].trim().slice(0,28)}`:id;}
 function renderFormActs(){$("#pActs").innerHTML=formActs.map((id,i)=>`<button type="button" class="chip" aria-pressed="true" data-fa="${i}">${actLabel(id)} ✕</button>`).join("")||'<span class="muted">Aucun soin — ajoutez avec +</span>';}
@@ -607,7 +981,7 @@ function renderPatients(){
 }
 function ptRow(p,i){return `<div class="pt ${p.active?"":"off"}"><div class="pt-body" data-pe="${i}" style="flex:1;cursor:pointer"><b>${esc(p.name)}</b> · ${(p.actIds||[]).map(id=>byId(id)?byId(id).k+" "+byId(id).c:"").join(" + ")||"—"}<small>${p.w1}–${p.w2} · ${p.dur} min · ${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"].filter((d,k)=>p.days.includes(k)).join(" ")||"aucun jour"}${p.to?" · jusqu'au "+esc(p.to):""}${p.geo?"":" · <span style='color:var(--red)'>adresse non localisée</span>"}</small></div><div class="acts" data-row="${i}"><button class="btn sm sec" data-more="${i}">⋯</button><span class="more" hidden><button class="btn sm sec" data-pd="${i}">Passage soir</button><button class="btn sm ${p.active?"sec":""}" data-pt="${i}">${p.active?"Arrêt":"Reprise"}</button><button class="btn sm sec" data-px="${i}">Suppr.</button></span></div></div>`;
 }
-function fillForm(p){$("#pName").value=p?.name||"";$("#pAddr").value=p?.addr||"";formActs=p?.actIds?.slice()||[];renderFormActs();$("#pPal").setAttribute("aria-pressed",!!p?.pal);$("#pK").setAttribute("aria-pressed",!!p?.k);$("#pNuit").setAttribute("aria-pressed",!!p?.nuit);$("#pDur").value=p?.dur||20;$("#pW1").value=p?.w1||"07:00";$("#pW2").value=p?.w2||"12:00";$("#pPrio").value=p?.prio||2;$("#pFrom").value=p?.from||new Date().toISOString().slice(0,10);$("#pTo").value=p?.to||"";$("#pNote").value=p?.note||"";document.querySelectorAll("#pDays .chip").forEach(b=>b.setAttribute("aria-pressed",p?p.days.includes(+b.dataset.d):true));$("#pFormTitle").textContent=p?"Modifier "+p.name:"Ajouter un patient / un passage";$("#pCancel").hidden=!p;}
+function fillForm(p){$("#pName").value=p?.name||"";$("#pAddr").value=p?.addr||"";formActs=p?.actIds?.slice()||[];renderFormActs();$("#pPal").setAttribute("aria-pressed",!!p?.pal);$("#pK").setAttribute("aria-pressed",!!p?.k);$("#pNuit").setAttribute("aria-pressed",!!p?.nuit);$("#pDur").value=p?.dur||20;$("#pW1").value=p?.w1||"07:00";$("#pW2").value=p?.w2||"12:00";$("#pPrio").value=p?.prio||2;$("#pFrom").value=p?.from||new Date().toISOString().slice(0,10);$("#pTo").value=p?.to||"";$("#pNote").value=p?.note||"";document.querySelectorAll("#pDays .chip").forEach(b=>b.setAttribute("aria-pressed",p?p.days.includes(+b.dataset.d):true));$("#pFormTitle").textContent=p?"Modifier "+p.name:"Ajouter un patient / un passage";$("#pCancel").hidden=!p;renderSocleForm(p);renderPPostits(p);}
 async function useGPS(){
   if(!navigator.geolocation){$("#pGeoStatus").textContent="Géolocalisation non disponible sur ce navigateur.";return}
   $("#pGeoStatus").textContent="Recherche de la position… (autorisez l'accès si demandé)";
@@ -623,6 +997,10 @@ async function savePatient(){
   if(!formActs.length){$("#pStatus").textContent="Ajoutez au moins un soin (+).";return}
   const p={name,addr,actIds:formActs.slice(),pal:$("#pPal").getAttribute("aria-pressed")==="true",k:$("#pK").getAttribute("aria-pressed")==="true",nuit:$("#pNuit").getAttribute("aria-pressed")==="true",dur:+$("#pDur").value||20,w1:$("#pW1").value,w2:$("#pW2").value,prio:+$("#pPrio").value,days:[...document.querySelectorAll("#pDays .chip[aria-pressed=true]")].map(b=>+b.dataset.d),from:$("#pFrom").value,to:$("#pTo").value,note:$("#pNote").value.trim(),active:true,geo:null};
   const prev=editIdx!=null?patients[editIdx]:null;
+  /* v5 : conserver dossier, transmissions et post-its lors d'une modification */
+  if(prev)["id","socleDate","transmissions","postits"].forEach(k=>{if(prev[k]!==undefined)p[k]=prev[k]});
+  Object.assign(p,readSocleFields("pSoc"));
+  if(!p.id)p.id=uid("pat");if(p.socleDate===undefined)p.socleDate=null;if(!p.transmissions)p.transmissions=[];if(!p.postits)p.postits=[];
   if(gpsGeo&&$("#pAddr").dataset.gps==="1"){p.geo=gpsGeo;}
   else if(prev&&prev.addr===addr)p.geo=prev.geo;else{$("#pStatus").textContent="Localisation de l'adresse…";try{p.geo=await geocode(addr);}catch(e){p.geo=null;}}
   gpsGeo=null;delete $("#pAddr").dataset.gps;
@@ -709,16 +1087,18 @@ async function planRoute(){
     stats[date][key]={ca:tot+ik,km:best.km,min:dur};
     html+=`<div class="ticket" style="margin-top:14px">
       <div class="th"><h2>${slot.lbl}</h2><small>départ ${fmt(start)} · retour ${fmt(best.end)}</small></div>
-      ${route.map((r,i)=>`<div class="stop${isDone(date,key,r.c)?" doneS":""}"><div class="eta">${fmt(r.st)}<small>${r.d.toFixed(1)} km · ${Math.round(r.tr)}′</small></div>
+      ${route.map((r,i)=>{const fr5=freshness(r.c,date),pis5=(r.c.postits||[]).filter(x=>!x.archive);return `<div class="stop${isDone(date,key,r.c)?" doneS":""}"><div class="eta">${fmt(r.st)}<small>${r.d.toFixed(1)} km · ${Math.round(r.tr)}′</small></div>
         <div class="who"><span class="pname" data-openp="${key}:${i}">${esc(r.c.name)}</span> ${r.c.prio===1?'<span class="imp">IMPÉRATIF</span>':''}
           <span class="soin">${(r.c.actIds||[]).map(id=>byId(id)?byId(id).k+" "+byId(id).c:"").join(" + ")} · <button class="durbtn" data-dur="${key}:${i}">${r.c.dur}′ ▾</button>${r.majCodes?" · "+r.majCodes:""}${r.c.note?" · "+esc(r.c.note):""}</span>
+          <span class="soin">${pastillesHtml(fr5)}${settings.rattrapage!==false&&nbRetards(fr5)>0?'<span class="tag" style="color:var(--amber)">🔄 rattrapage</span>':''}${pis5.some(x=>x.type==="RELEVE"&&x.auteur!==(settings.auteur||"??")&&!(x.luPar||[]).includes(settings.auteur||"??"))?' <span class="tag" style="color:var(--teal)">📌 relève</span>':''}${pis5.some(x=>x.type==="ALERTE"&&!x.traite)?' <span class="tag" style="color:var(--red)">⚠ alerte</span>':''}</span>
           <span class="soin" style="font-size:12px;color:var(--ink2)">📍 ${esc((r.c.addr||"").split(",").slice(0,2).join(","))}</span>
+          ${pis5.filter(x=>x.type==="PERSO").map(x=>`<span class="soin" style="font-size:11.5px;color:var(--ink2)">📝 ${esc(x.texte)}</span>`).join("")}
           <span class="durstep" id="ds-${key}-${i}" hidden>${[10,15,20,30,45,60].map(m=>`<button class="chip" data-dset="${key}:${i}:${m}">${m}′</button>`).join("")}<button class="chip" data-dadj="${key}:${i}:-5">−5</button><button class="chip" data-dadj="${key}:${i}:5">+5</button></span>
           ${r.feeNote?`<span class="flag wait">↺ ${r.feeNote}</span>`:""}
           ${r.late>0?`<span class="flag late">⚠ ${Math.round(r.late)}′ après la fin du créneau (${r.c.w2})</span>`:r.wait>5?`<span class="flag wait">⏳ ${Math.round(r.wait)}′ d'attente (ouvre à ${r.c.w1})</span>`:""}
           ${r.c.geo?"":'<span class="flag late">adresse non localisée</span>'}
         </div>
-        <div class="right"><b>${eur(r.fee||0)}</b><div style="display:flex;gap:4px;justify-content:flex-end"><button class="btn sm ${isDone(date,key,r.c)?"":"sec"}" data-done="${key}:${i}">${isDone(date,key,r.c)?"↺":"✓"}</button><button class="btn sm sec" data-cote="${key}:${i}">€</button></div></div></div>`).join("")}
+        <div class="right"><b>${eur(r.fee||0)}</b><div style="display:flex;gap:4px;justify-content:flex-end"><button class="btn sm ${isDone(date,key,r.c)?"":"sec"}" data-done="${key}:${i}">${isDone(date,key,r.c)?"↺":"✓"}</button><button class="btn sm sec" data-cote="${key}:${i}">€</button></div></div></div>`}).join("")}
       ${(()=>{const sum=c=>route.reduce((a,r)=>a+(r.majs||[]).filter(m=>m.code===c).reduce((x,m)=>x+m.amt,0),0);
         const nF=route.filter(r=>(r.majs||[]).some(m=>m.code==="F")).length,nN=route.filter(r=>(r.majs||[]).some(m=>m.code==="N")).length;
         return (sum("F")>0?`<div class="maj"><span><b>F</b> · Majoration dimanche / férié — ${nF} passage(s)</span><span>+ ${eur(sum("F"))}</span></div>`:"")
@@ -745,9 +1125,9 @@ async function planRoute(){
     <div><b>${gMin?((gCA-gKm*0.45)/(gMin/60)).toFixed(0):0} €/h</b><small>rendement réel, route comprise</small></div>
     <div><b>${fmt(gMin)}</b><small>de tournée au total</small></div>
   </div><div id="hist7"></div></div>`;
-  renderHist(date);setTimeout(renderMap,60);
+  renderReleves();renderHist(date);setTimeout(renderMap,60);
   $("#tRoute").onclick=e=>{const b=e.target.closest("[data-cote]");if(b){const[k,i]=b.dataset.cote.split(":");coterStopIn(k,+i);return}
-    const op=e.target.closest("[data-openp]");if(op){const[k,i]=op.dataset.openp.split(":");const r=(lastRoutes[k]||[])[+i];const idx=patients.indexOf(r?.c);if(idx>=0){editIdx=idx;fillForm(patients[idx]);showTab("pat");setTimeout(()=>$("#pName").scrollIntoView({block:"start"}),60);}return}
+    const op=e.target.closest("[data-openp]");if(op){const[k,i]=op.dataset.openp.split(":");const r=(lastRoutes[k]||[])[+i];const idx=patients.indexOf(r?.c);if(idx>=0)openPassage(idx);return}
     const du=e.target.closest("[data-dur]");if(du){const[k,i]=du.dataset.dur.split(":");const el=document.getElementById("ds-"+k+"-"+i);if(el)el.hidden=!el.hidden;return}
     const dset=e.target.closest("[data-dset]");if(dset){const[k,i,m]=dset.dataset.dset.split(":");const r=(lastRoutes[k]||[])[+i];if(r){r.c.dur=+m;savePatients();toast(r.c.name+" : "+m+" min (enregistré)");planRoute();}return}
     const dadj=e.target.closest("[data-dadj]");if(dadj){const[k,i,m]=dadj.dataset.dadj.split(":");const r=(lastRoutes[k]||[])[+i];if(r){r.c.dur=Math.max(5,(+r.c.dur||20)+ +m);savePatients();toast(r.c.name+" : "+r.c.dur+" min (enregistré)");planRoute();}return}
@@ -889,6 +1269,312 @@ function renderRenta(){
   <p class="muted">Rentable = il te rapporte au moins 80 % de ce que te rapporte le même soin chez un patient de Villeneuve intégré à ta tournée. Entre 50 et 80 % : acceptable si d'autres patients sont près de chez lui. En dessous : chaque passage te coûte du temps que tu vendrais mieux ailleurs.</p>`;
 }
 
+/* ================= V5 — UI ================= */
+function catalogHits(q){q=norm(String(q||"").trim());if(!q)return[];
+  const mCode=q.match(/(ami|amx|di|bs[abc]|tls|tld)?\s*([\d]+[,.]?\d*)/);
+  const codeK=mCode&&mCode[1]?mCode[1].toUpperCase():null,codeC=mCode?parseFloat(mCode[2].replace(",",".")):null;
+  const w=q.split(/\s+/);
+  return CATALOG.map(a=>{const h=norm(a.l+" "+a.kw+" "+a.k+a.c);let s=0;w.forEach(x=>{if(h.includes(x))s+=x.length>2?2:1});
+    if(codeC!=null&&Math.abs(a.c-codeC)<0.001&&(!codeK||a.k===codeK||(codeK==="AMI"&&a.k==="AMI")))s+=6;
+    if(norm(a.k+" "+a.c).startsWith(q))s+=5;return{a,s}}).filter(x=>x.s>0).sort((x,y)=>y.s-x.s).slice(0,10).map(x=>x.a);}
+const FRESH_LBL={socle:"Socle",constantes:"Constantes",photo:"Photo de plaie",icope:"ICOPE"};
+function pastillesHtml(f){
+  const col={ok:"var(--green)",late:"var(--amber)",missing:"var(--red)",na:"var(--line)"};
+  return '<span class="pastilles">'+[["S","socle"],["C","constantes"],["P","photo"],["I","icope"]].map(([l,k])=>{const s=f[k];
+    return `<span class="pastille${s.etat==="na"?" na":""}" style="background:${col[s.etat]}" title="${FRESH_LBL[k]} : ${s.etat}${s.jours!=null?" ("+s.jours+" j)":""}">${l}</span>`}).join("")+'</span>';}
+function freshBandeauxHtml(f){
+  const M={socle:["Socle : jamais validé — à compléter ce passage",j=>"Socle : validé il y a "+j+" j — à revalider ce passage"],
+    constantes:["Constantes : jamais mesurées — à faire ce passage",j=>"Constantes : dernière mesure il y a "+j+" j — à faire ce passage"],
+    photo:["Photo de plaie : jamais faite — à faire ce passage",j=>"Photo de plaie : dernière il y a "+j+" j — à refaire ce passage"],
+    icope:["ICOPE : jamais fait — à proposer ce passage",j=>"ICOPE : dernier dépistage il y a "+j+" j — à refaire ce passage"]};
+  return Object.keys(M).map(k=>{const s=f[k];if(s.etat!=="late"&&s.etat!=="missing")return "";
+    return `<div class="bandeau ${s.etat}"><span>${s.etat==="missing"?M[k][0]:M[k][1](s.jours)}</span></div>`}).join("");}
+function freshTexts(f){const out=[];Object.keys(FRESH_LBL).forEach(k=>{const s=f[k];
+  if(s.etat==="late")out.push(FRESH_LBL[k]+" : "+s.jours+" j");else if(s.etat==="missing")out.push(FRESH_LBL[k]+" : jamais fait");});return out;}
+
+/* ---- écran de passage : état ---- */
+let epIdx=null,epDraft=null,epGeo=null,epDate=null,epPanelOpen={postit:false,socle:false},epPostitDraft=null,epRec=null;
+function saveDraft(){if(epIdx==null||!epDraft)return;const p=patients[epIdx];if(!p)return;
+  epDraft.panelOpen=epPanelOpen;epDraft.postitDraft=epPostitDraft;drafts[p.id]=epDraft;
+  try{localStorage.setItem("lidia.cot.drafts",JSON.stringify(drafts))}catch(e){}}
+function openPassage(i){
+  const p=patients[i];if(!p)return;epIdx=i;
+  epDate=($("#tDate")?.value)||todayISO();
+  const d=drafts[p.id];
+  if(d&&d.date===epDate){epDraft=d;epPanelOpen=d.panelOpen||{postit:false,socle:false};epPostitDraft=d.postitDraft||null;}
+  else{
+    const billed=new Set();passages5.filter(x=>x.patientId===p.id&&String(x.date).slice(0,10)===epDate).forEach(x=>(x.actes||[]).forEach(a=>{const c=byId(a.id);if(c&&c.tags&&(c.tags.bsi||c.tags.once))billed.add(a.id)}));
+    const acts=(p.actIds||[]).map(id=>byId(id)).filter(Boolean).filter(a=>!billed.has(a.id)).map(a=>JSON.parse(JSON.stringify(a)));
+    epDraft={date:epDate,heure:nowHM(),acts,trans:{libre:"",evt:null,cst:null,obs:null,icope:null,photo:null},props:[],socle:null,socleData:null,dictee:""};
+    epPanelOpen={postit:false,socle:false};epPostitDraft=null;
+  }
+  epGeo=null;
+  if(settings.geoloc&&navigator.geolocation)navigator.geolocation.getCurrentPosition(pos=>{epGeo={lat:pos.coords.latitude,lon:pos.coords.longitude}},()=>{},{timeout:8000,enableHighAccuracy:true});
+  saveDraft();showTab("passage");
+}
+function epCompute(){
+  const p=patients[epIdx],saved=day;
+  epDraft.acts.forEach((a,i)=>a.__i=i);
+  const prior=passages5.filter(x=>x.patientId===p.id&&String(x.date).slice(0,10)===epDate).sort((a,b)=>a.date<b.date?-1:1)
+    .map(x=>({label:"",heure:String(x.date).slice(11,16),acts:(x.actes||[]).map(a=>{const c=byId(a.id);return c?JSON.parse(JSON.stringify(c)):null}).filter(Boolean)}));
+  try{
+    day={date:epDate,km:p.geo&&cabinet?+distKm(cabinet,p.geo).toFixed(1):0,ctx:{domicile:true,ferie:$("#tFerie")?.getAttribute("aria-pressed")==="true",palliatif:!!p.pal,cancer:!!p.k},note:"",passages:[...prior,{label:p.name,heure:epDraft.heure,nuit:!!p.nuit,acts:epDraft.acts}]};
+    const D=computeDay();return {D,res:D.res[D.res.length-1]};
+  }finally{day=saved}
+}
+function epAddAct(id){const a=byId(id);if(!a||!epDraft)return;epDraft.acts.push(JSON.parse(JSON.stringify(a)));saveDraft();renderPassage();toast("Acte ajouté");}
+const epAl=a=>`<div class="alert ${a.t}"><span class="ic">${a.t==="gain"?"+":a.t==="stop"?"✕":"!"}</span><span style="flex:1">${a.m}</span>${a.add?`<button class="btn sm" data-epadd="${a.add}">Ajouter</button>`:""}</div>`;
+function renderEpTicket(){
+  if(epIdx==null||!epDraft)return;
+  const o=epCompute(),res=o.res,acts=epDraft.acts;
+  $("#epLines").innerHTML=acts.length?res.lines.map(ln=>{const idx=ln.a.__i??acts.indexOf(ln.a);
+    return `<div class="line"><div class="lbl"><span class="code">${ln.code}</span> ${ln.a.l}${ln.a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${[ln.why,ln.full!=null&&ln.taux<100&&"valeur pleine "+eur(ln.full)].filter(Boolean).join(" · ")}</small></div><span class="taux t${ln.taux}">${ln.taux} %</span><div style="display:flex;align-items:center"><span class="amt ${ln.amt===0?'zero':''}">${eur(ln.amt)}</span><button class="x" data-eprm="${idx}" aria-label="Retirer">×</button></div></div>`}).join("")
+   :`<div class="empty">Aucun acte — recherche ou raccourcis ci-dessus.</div>`;
+  $("#epMajs").innerHTML=res.majs.map(m=>`<div class="maj"><span><b>${m.code}</b> · ${m.l}</span><span>+ ${eur(m.amt)}</span></div>`).join("");
+  $("#epTotal").textContent=eur(res.total);
+  $("#epAlerts").innerHTML=[...res.alerts.map(a=>a.plan!=null||a.unplan!=null?{t:"warn",m:a.m+" — gérer le retrait dans l'onglet Journée (Plus → Cotation manuelle)"}:a),...o.D.alerts].map(epAl).join("");
+}
+/* ---- panneaux de transmission ---- */
+const OBS_OPTS={douleur:["","0","1","2","3","4","5","6","7","8","9","10","oui"],chute:["","oui","non"],confusion:["","oui","non"],peau:["","RAS","rougeur","plaie","escarre"],surcharge:["","oui","non"],observance:["","bonne","partielle","mauvaise"]};
+const OBS_LBL={douleur:"Douleur (EVA)",chute:"Chute",confusion:"Confusion",peau:"Peau",surcharge:"Surcharge",observance:"Observance"};
+const CST_LBL={ta:"TA",fc:"FC",spo2:"SpO₂",temp:"T°",gly:"Glycémie",poids:"Poids"};
+const ICOPE_LBL={mobilite:"Mobilité",cognition:"Cognition",nutrition:"Nutrition",humeur:"Humeur",vision:"Vision",audition:"Audition"};
+function renderEpPanels(){
+  const t=epDraft.trans,p=patients[epIdx],H=[];
+  if(t.evt)H.push(`<div class="panel"><h3>⚡ Événement <button class="x" data-close="evt">×</button></h3><div class="chips">${MOTS_EVT.map(m=>`<button type="button" class="chip" data-evtmot="${m}" aria-pressed="${t.evt.mot===m}">${m}</button>`).join("")}</div><input type="text" data-evttexte="1" placeholder="Précision (facultatif)…" value="${esc(t.evt.texte||"")}" style="margin-top:6px">`+`</div>`);
+  if(t.cst)H.push(`<div class="panel"><h3>🩺 Constantes — vides si non mesurées <button class="x" data-close="cst">×</button></h3><div class="row">${CST_KEYS.map(k=>`<div style="min-width:86px"><label class="f">${CST_LBL[k]}</label><input type="text" inputmode="decimal" data-cst="${k}" value="${esc(t.cst[k]||"")}"></div>`).join("")}</div></div>`);
+  if(t.obs)H.push(`<div class="panel"><h3>👁 Observations <button class="x" data-close="obs">×</button></h3><div class="row">${OBS_KEYS.map(k=>`<div style="min-width:100px"><label class="f">${OBS_LBL[k]}</label><select data-obs="${k}">${OBS_OPTS[k].map(o=>`<option value="${o}"${(t.obs[k]||"")===o?" selected":""}>${o||"—"}</option>`).join("")}</select></div>`).join("")}</div></div>`);
+  if(t.icope)H.push(`<div class="panel"><h3>🧠 ICOPE — les 6 domaines requis <button class="x" data-close="icope">×</button></h3>${ICOPE_DOMS.map(k=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0"><span style="font-size:13px">${ICOPE_LBL[k]}</span><span class="chips" style="margin:0"><button type="button" class="chip" data-icope="${k}" data-val="ok" aria-pressed="${t.icope[k]==="ok"}">ok</button><button type="button" class="chip" data-icope="${k}" data-val="alerte" aria-pressed="${t.icope[k]==="alerte"}">alerte</button></span></div>`).join("")}</div>`);
+  if(t.photo)H.push(`<div class="panel"><h3>📷 Photo faite <button class="x" data-close="photo">×</button></h3><p class="muted" style="margin:0 0 6px">La photo reste sur le téléphone — l'app trace seulement qu'elle a été faite.</p><label class="f">Surface (cm², facultatif)</label><input type="text" inputmode="decimal" data-photosurf="1" value="${esc(t.photo.surface||"")}" style="max-width:120px"></div>`);
+  if(epPanelOpen.postit){const d=epPostitDraft||{type:"RELEVE",texte:""};
+    H.push(`<div class="panel"><h3>📌 Post-it <button class="x" data-close="postit">×</button></h3><div class="chips">${POSTIT_TYPES.map(ty=>`<button type="button" class="chip" data-pitype="${ty}" aria-pressed="${d.type===ty}">${ty==="RELEVE"?"📌 Relève":ty==="ALERTE"?"⚠ Alerte":"📝 Perso"}</button>`).join("")}</div><textarea data-pitexte="1" style="min-height:56px;margin-top:6px" placeholder="L'info à retenir, en 5 secondes…">${esc(d.texte||"")}</textarea><div class="row" style="margin-top:6px"><button type="button" class="btn sm" data-pisave="1">Épingler</button></div><p class="muted" style="margin:6px 0 0">RELEVE : pour la collègue (bandeau tournée) · ALERTE : reste en tête jusqu'à « Traité » · PERSO : jamais exporté ni transmis.</p></div>`);}
+  if(epPanelOpen.socle)H.push(`<div class="panel"><h3>🗂 Revalidation du socle <button class="x" data-close="socle">×</button></h3>${socleFieldsHtml(p,"epSoc")}<div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-socinch="1">✓ Inchangé</button><button type="button" class="btn sm sec" data-socedit="1">Enregistrer les modifications</button></div>${epDraft.socle?`<p class="muted">Socle ${epDraft.socle==="inchange"?"marqué inchangé":"modifié"} — daté à la validation du passage.</p>`:""}</div>`);
+  $("#epPanels").innerHTML=H.join("");
+  [["epBtnEvt",!!t.evt],["epBtnObs",!!t.obs],["epBtnCst",!!t.cst],["epBtnIcope",!!t.icope],["epBtnPhoto",!!t.photo],["epBtnPostit",epPanelOpen.postit]].forEach(([id,on])=>{const b=document.getElementById(id);if(b)b.classList.toggle("on",on)});
+}
+function epPanelInput(e){if(!epDraft)return;const t=epDraft.trans,el=e.target;
+  if(el.dataset.cst){t.cst=t.cst||{};t.cst[el.dataset.cst]=el.value;}
+  else if(el.dataset.obs){t.obs=t.obs||{};t.obs[el.dataset.obs]=el.value;}
+  else if(el.dataset.evttexte){t.evt=t.evt||{mot:null,texte:""};t.evt.texte=el.value;}
+  else if(el.dataset.photosurf){t.photo=t.photo||{};t.photo.surface=el.value;}
+  else if(el.dataset.pitexte){epPostitDraft=epPostitDraft||{type:"RELEVE"};epPostitDraft.texte=el.value;}
+  saveDraft();}
+function epPanelClick(e){if(!epDraft)return;const t=epDraft.trans;
+  const cl=e.target.closest("[data-close]");if(cl){const k=cl.dataset.close;
+    if(k==="postit"){epPanelOpen.postit=false;epPostitDraft=null}
+    else if(k==="socle"){epPanelOpen.socle=false}
+    else t[k]=null;
+    saveDraft();renderPassage();return}
+  const em=e.target.closest("[data-evtmot]");if(em){t.evt=t.evt||{texte:""};t.evt.mot=t.evt.mot===em.dataset.evtmot?null:em.dataset.evtmot;saveDraft();renderPassage();return}
+  const ic=e.target.closest("[data-icope]");if(ic){t.icope=t.icope||{};t.icope[ic.dataset.icope]=ic.dataset.val;saveDraft();renderPassage();return}
+  const pt=e.target.closest("[data-pitype]");if(pt){epPostitDraft=epPostitDraft||{texte:""};epPostitDraft.type=pt.dataset.pitype;saveDraft();renderPassage();return}
+  if(e.target.closest("[data-pisave]")){epSavePostit();return}
+  if(e.target.closest("[data-socinch]")){epDraft.socle="inchange";epDraft.socleData=null;saveDraft();renderPassage();toast("Socle marqué inchangé");return}
+  if(e.target.closest("[data-socedit]")){epDraft.socle="edite";epDraft.socleData=readSocleFields("epSoc");saveDraft();renderPassage();toast("Socle modifié — appliqué à la validation");return}
+}
+function epSavePostit(){const p=patients[epIdx];if(!p)return;const d=epPostitDraft||{};
+  const txt=(($("#epPanels").querySelector("[data-pitexte]")||{}).value||d.texte||"").trim();
+  if(!txt){toast("Texte du post-it requis");return}
+  const pi=makePostit(d.type||"RELEVE",txt,settings.auteur||"??");if(!pi)return;
+  p.postits=p.postits||[];p.postits.push(pi);savePatients();
+  epPostitDraft=null;epPanelOpen.postit=false;saveDraft();renderPassage();renderReleves();toast("Post-it "+pi.type+" épinglé");}
+/* ---- module 3 : bandeaux 1-tap, jamais de popup bloquante ---- */
+function renderEpTriggers(){const p=patients[epIdx];
+  const {props}=computeTriggers(p,epDraft.acts.map(a=>a.id),null,epDate);
+  $("#epTriggers").innerHTML=props.map(pr=>{
+    const dec=(epDraft.props||[]).find(x=>x.type===pr.type);
+    if(dec)return `<div class="trigband done"><span>${dec.declined?"✕":"✓"} ${esc(pr.lbl)} — ${dec.declined?"pas ce passage (tracé)":"pris en compte"}</span></div>`;
+    return `<div class="trigband"><span style="flex:1"><b>${esc(pr.lbl)}</b> · ${esc(pr.msg)}</span><button class="btn sm" data-tracc="${pr.type}">${pr.type==="photo"?"📷 Photo faite":pr.type==="icope"?"Faire maintenant":pr.type==="constantes"?"Prendre":"Revalider"}</button><button class="btn sm sec" data-trdec="${pr.type}">${pr.type==="icope"?"Prochain passage":"Pas ce passage"}</button></div>`;
+  }).join("");}
+function epTriggerClick(e){if(!epDraft)return;const t=epDraft.trans;
+  const a=e.target.closest("[data-tracc]");if(a){const ty=a.dataset.tracc;epDraft.props.push({type:ty,declined:false});
+    if(ty==="photo")t.photo=t.photo||{surface:""};
+    if(ty==="icope")t.icope=t.icope||{};
+    if(ty==="constantes")t.cst=t.cst||{ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""};
+    if(ty==="socle")epPanelOpen.socle=true;
+    saveDraft();renderPassage();return}
+  const d=e.target.closest("[data-trdec]");if(d){epDraft.props.push({type:d.dataset.trdec,declined:true});saveDraft();renderPassage();return}}
+/* ---- dictée IA (module 5) ---- */
+function epMicToggle(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast("Dictée vocale non disponible sur ce navigateur — saisissez au clavier");return}
+  if(epRec){epRec.stop();return}
+  epRec=new SR();epRec.lang="fr-FR";epRec.continuous=true;epRec.interimResults=false;
+  $("#epMic").textContent="⏹ Stop";
+  epRec.onresult=ev=>{let add="";for(let i=ev.resultIndex;i<ev.results.length;i++)if(ev.results[i].isFinal)add+=ev.results[i][0].transcript+" ";
+    if(add){const ta=$("#epDictee");ta.value=(ta.value+" "+add).trim();if(epDraft){epDraft.dictee=ta.value;saveDraft();}}};
+  epRec.onend=()=>{epRec=null;$("#epMic").textContent="🎤 Dicter";};
+  epRec.onerror=()=>{toast("Micro indisponible — la saisie clavier reste possible")};
+  try{epRec.start()}catch(e){epRec=null;$("#epMic").textContent="🎤 Dicter";}
+}
+function objNonVides(o){const r={};Object.keys(o||{}).forEach(k=>{if(o[k])r[k]=o[k]});return r}
+function epApplyExtraction(d){const t=epDraft.trans;
+  if(d.mot){t.evt=t.evt||{mot:null,texte:""};t.evt.mot=d.mot;if(d.texte)t.evt.texte=d.texte;}
+  if(d.cst)t.cst=Object.assign({ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""},t.cst||{},objNonVides(d.cst));
+  if(d.obs)t.obs=Object.assign({douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""},t.obs||{},objNonVides(d.obs));
+  if(d.icope)t.icope=Object.assign({},t.icope||{},objNonVides(d.icope));
+  if(d.texte&&!d.mot&&!d.postit)t.libre=d.texte;
+  if(d.postit){epPostitDraft={type:d.postit.type,texte:d.postit.texte};epPanelOpen.postit=true;}
+  saveDraft();}
+async function epAnalyser(){
+  if(!epDraft)return;
+  const txt=$("#epDictee").value.trim();if(!txt){toast("Rien à analyser");return}
+  epDraft.dictee=txt;$("#epIaStatus").textContent="Analyse en cours…";$("#epAnalyse").disabled=true;
+  let data;
+  try{
+    const raw=await ExtracteurIA.extraire(txt);
+    const v=validerExtraction(raw);data=v.data;
+    $("#epIaStatus").textContent=(v.ok?"Extraction OK":"Extraction partielle — champs hors schéma rejetés : "+v.erreurs.join(" · "))+" ("+EXTRACTEURS[ExtracteurIA.provider].l+"). Rien n'est enregistré : vérifiez puis validez.";
+  }catch(e){
+    const v=validerExtraction(extraireLocal(txt));data=v.data;
+    $("#epIaStatus").textContent="IA indisponible ("+e.message+") — analyse hors-ligne appliquée. La saisie manuelle reste complète.";
+  }
+  $("#epAnalyse").disabled=false;
+  epApplyExtraction(data);renderPassage();
+}
+/* ---- rendu écran de passage ---- */
+function renderPassage(){
+  const p=patients[epIdx];if(!p||!epDraft){showTab("tour");return}
+  const f=freshness(p,epDate);
+  $("#epHead").innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+    <div><h2 style="margin:0 0 2px">${esc(p.name)} ${pastillesHtml(f)}</h2>
+    <span class="muted">${epDate} · auteur ${esc(settings.auteur||"??")}${settings.geoloc?" · 📍 géoloc":""} · brouillon auto-sauvé</span></div>
+    <button class="btn sec sm" data-epfiche="1">✎ Fiche</button></div>${freshBandeauxHtml(f)}`;
+  $("#epHeure").value=epDraft.heure||"";
+  if($("#epDictee").value!==(epDraft.dictee||""))$("#epDictee").value=epDraft.dictee||"";
+  if($("#epLibre").value!==(epDraft.trans.libre||""))$("#epLibre").value=epDraft.trans.libre||"";
+  renderEpTicket();renderEpPanels();renderEpTriggers();renderEpPostits();
+}
+function renderEpPostits(){const p=patients[epIdx];if(!p)return;
+  const vis=(p.postits||[]).filter(x=>!x.archive&&(x.type==="RELEVE"||(x.type==="ALERTE")||x.type==="PERSO"));
+  const strong=vis.filter(x=>x.type==="RELEVE"||(x.type==="ALERTE"&&!x.traite));
+  const perso=vis.filter(x=>x.type==="PERSO");
+  $("#epPostitsList").innerHTML=(strong.length||perso.length)?`<div class="card" style="padding:10px">${strong.map(pi=>postitHtml(p,pi)).join("")}${perso.map(pi=>`<div class="postit" data-pip="${esc(p.id)}" data-pii="${esc(pi.id)}"><span style="font-size:12px;color:var(--ink2)">📝 ${esc(pi.texte)}</span><button class="btn sm sec" data-pidel="1">Suppr.</button></div>`).join("")}</div>`:"";
+}
+/* ---- validation atomique du passage (module 1) ---- */
+function validerPassage(){
+  const p=patients[epIdx];if(!p||!epDraft)return;
+  const iso=epDate+"T"+(epDraft.heure||nowHM())+":00";
+  const rec=buildPassageRecord(p,epDraft,iso,settings.auteur||"??");
+  if(rec.error){toast(rec.error);return}
+  if(!rec.pass.actes.length&&!rec.transmissions.length&&!rec.socle){toast("Passage vide : ajoutez un acte ou une transmission");return}
+  if(rec.pass.actes.length&&!rec.transmissions.length&&!confirm("Valider sans transmission ? (tracé « transmission : aucune »)"))return;
+  if(settings.geoloc&&epGeo)rec.pass.geoloc={lat:epGeo.lat,lng:epGeo.lon};
+  const bakP=JSON.stringify(patients),bakS=JSON.stringify(passages5);
+  try{
+    rec.transmissions.forEach(t=>p.transmissions.push(t));
+    if(rec.setPlaie)p.plaie=true;
+    if(rec.socle){if(rec.socle==="edite"&&epDraft.socleData)Object.assign(p,epDraft.socleData);p.socleDate=epDate;}
+    passages5.push(rec.pass);
+    localStorage.setItem("lidia.cot.passages",JSON.stringify(passages5));
+    localStorage.setItem("lidia.cot.patients",JSON.stringify(patients));
+    delete drafts[p.id];localStorage.setItem("lidia.cot.drafts",JSON.stringify(drafts));
+  }catch(e){patients=JSON.parse(bakP);passages5=JSON.parse(bakS);migratePatients();renderPatients();toast("Stockage plein — passage NON enregistré");return}
+  epDraft=null;epIdx=null;epGeo=null;
+  toast("Passage validé — "+rec.transmissions.length+" transmission(s)");
+  showTab("tour");if(Object.keys(lastRoutes).length)planRoute();renderReleves();
+}
+/* ---- post-its : rendu & actions partagés (module 4) ---- */
+function postitHtml(p,pi){
+  const me=settings.auteur||"??",btns=[];
+  if(pi.type==="RELEVE"&&pi.auteur!==me&&!(pi.luPar||[]).includes(me))btns.push(`<button class="btn sm" data-pilu="1">Lu ✓</button>`);
+  if(pi.type==="ALERTE"&&!pi.traite)btns.push(`<button class="btn sm" data-pitraite="1">Traité</button>`);
+  if(pi.type==="PERSO")btns.push(`<button class="btn sm sec" data-pidel="1">Suppr.</button>`);
+  else btns.push(`<button class="btn sm sec" data-piarch="1">Archiver</button>`);
+  const age=(Date.now()-Date.parse(pi.date))/3600000;
+  return `<div class="postit ${pi.type}" data-pip="${esc(p.id)}" data-pii="${esc(pi.id)}"><span style="flex:1">${pi.type==="RELEVE"?"📌":pi.type==="ALERTE"?"⚠":"📝"} <b>${esc(p.name)}</b> — ${esc(pi.texte)}${pi.type==="ALERTE"&&!pi.traite&&age>48?' <span class="badge">&gt; 48 h</span>':""}${pi.type==="ALERTE"&&pi.traite?" · traité"+(pi.traiteComment?" ("+esc(pi.traiteComment)+")":""):""}<small>${esc(pi.auteur)} · ${esc(String(pi.date).slice(0,16).replace("T"," "))}${pi.type==="RELEVE"&&(pi.luPar||[]).length?" · lu par "+esc(pi.luPar.join(", ")):""}</small></span>${btns.join("")}</div>`;
+}
+function postitListClick(e){
+  const box=e.target.closest("[data-pip]");if(!box)return;
+  const p=patients.find(x=>x.id===box.dataset.pip);if(!p)return;
+  const pi=(p.postits||[]).find(x=>x.id===box.dataset.pii);if(!pi)return;
+  const me=settings.auteur||"??";
+  if(e.target.closest("[data-pilu]")){pi.luPar=pi.luPar||[];if(!pi.luPar.includes(me))pi.luPar.push(me);savePatients();refreshPostitViews();toast("Marqué lu");return}
+  if(e.target.closest("[data-pitraite]")){const c=prompt("Comment ? (appel, MSSanté, mot laissé…)")||"";pi.traite=true;pi.traiteComment=c.trim();savePatients();refreshPostitViews();toast("Alerte traitée");return}
+  if(e.target.closest("[data-piarch]")){pi.archive=true;savePatients();refreshPostitViews();toast("Archivé — traçabilité conservée");return}
+  if(e.target.closest("[data-pidel]")){if(pi.type!=="PERSO")return;if(!confirm("Supprimer ce mémo perso ?"))return;p.postits=p.postits.filter(x=>x.id!==pi.id);savePatients();refreshPostitViews();return}
+}
+function refreshPostitViews(){renderReleves();
+  if(epIdx!=null&&!$("#tab-passage").hidden)renderEpPostits();
+  if(!$("#tab-dash").hidden)renderDash();
+  if(editIdx!=null&&!$("#tab-pat").hidden)renderPPostits(patients[editIdx]);}
+function renderReleves(){
+  const R=relevesAVoir(patients,settings.auteur||"??");
+  const b=$("#navTourBadge");if(b){b.hidden=!R.length;b.textContent=R.length;}
+  const el=$("#tReleves");if(!el)return;
+  el.innerHTML=R.length?`<div class="card" style="border-left:5px solid var(--teal)"><h2>📌 Relève — à lire avant la tournée (${R.length})</h2>${R.map(x=>postitHtml(x.p,x.pi)).join("")}</div>`:"";
+}
+function renderPPostits(p){const el=$("#pPostits");if(!el)return;
+  el.innerHTML=p&&p.postits&&p.postits.filter(x=>!x.archive).length?`<label class="f">Post-its épinglés</label>`+p.postits.filter(x=>!x.archive).map(pi=>postitHtml(p,pi)).join(""):"";}
+/* ---- socle : champs partagés fiche/panneau ---- */
+function socleFieldsHtml(p,pre){
+  const sel=(id,list,val,lbl)=>`<div><label class="f">${lbl}</label><select id="${pre}${id}">${["",...list].map(o=>`<option value="${esc(o)}"${o===val?" selected":""}>${o||"—"}</option>`).join("")}</select></div>`;
+  return `<div class="row" style="margin-top:6px">
+    <div><label class="f">Année de naissance</label><input type="number" id="${pre}Annee" min="1900" max="2030" value="${p.annee||""}"></div>
+    ${sel("Sexe",["F","H"],p.sexe||"","Sexe")}
+    <div><label class="f">Commune</label><input type="text" id="${pre}Commune" value="${esc(p.commune||"")}"></div></div>
+  <div class="chips" style="margin-top:6px">
+    <button type="button" class="chip" id="${pre}VitSeul" data-tgl="1" aria-pressed="${!!p.vitSeul}">Vit seul</button>
+    <button type="button" class="chip" id="${pre}Aidant" data-tgl="1" aria-pressed="${!!p.aidant}">Aidant présent</button>
+    <button type="button" class="chip" id="${pre}Institution" data-tgl="1" aria-pressed="${!!p.institution}">Institution</button>
+    <button type="button" class="chip" id="${pre}Plaie" data-tgl="1" aria-pressed="${!!p.plaie}">Plaie active</button>
+    <button type="button" class="chip" id="${pre}Bsi" data-tgl="1" aria-pressed="${!!p.bsi}">BSI</button></div>
+  <label class="f">Pathologies (liste fermée)</label>
+  <div class="chips" id="${pre}Pathos">${PATHOS_LIST.map(x=>`<button type="button" class="chip" data-tgl="1" data-patho="${esc(x)}" aria-pressed="${(p.pathos||[]).includes(x)}">${x}</button>`).join("")}</div>
+  <div class="row" style="margin-top:6px">
+    <div><label class="f">Nb médicaments</label><input type="number" id="${pre}NbMed" min="0" value="${p.nbMed??""}"></div>
+    ${sel("Autonomie",AUTONOMIE_LIST,p.autonomie||"","Autonomie")}
+    ${sel("AdressePar",ADRESSE_PAR_LIST,p.adresse_par||"","Adressé par")}</div>`;
+}
+function readSocleFields(pre){
+  const g=id=>document.getElementById(pre+id);
+  const chip=id=>g(id)?g(id).getAttribute("aria-pressed")==="true":false;
+  const pathos=[...document.querySelectorAll("#"+pre+"Pathos [data-patho]")].filter(b=>b.getAttribute("aria-pressed")==="true").map(b=>b.dataset.patho);
+  return {annee:g("Annee")&&g("Annee").value?+g("Annee").value:null,sexe:g("Sexe")?g("Sexe").value:"",commune:g("Commune")?g("Commune").value.trim():"",
+    vitSeul:chip("VitSeul"),aidant:chip("Aidant"),institution:chip("Institution"),plaie:chip("Plaie"),bsi:chip("Bsi"),
+    pathos,nbMed:g("NbMed")&&g("NbMed").value!==""?+g("NbMed").value:null,autonomie:g("Autonomie")?g("Autonomie").value:"",adresse_par:g("AdressePar")?g("AdressePar").value:""};
+}
+function renderSocleForm(p){const el=$("#pSocleFields");if(!el)return;
+  el.innerHTML=socleFieldsHtml(p||{pathos:[]},"pSoc");
+  const inf=$("#pSocleInfo");if(inf)inf.textContent=p&&p.socleDate?"Socle validé le "+p.socleDate:"Socle jamais validé";}
+/* ---- tableau de bord (module 2) ---- */
+function renderDash(){
+  const today=todayISO(),act=patients.filter(p=>p.active);
+  const fs=act.map(p=>({p,f:freshness(p,today)}));
+  const ok=fs.filter(x=>nbRetards(x.f)===0).length;
+  const tr7=patients.reduce((s,p)=>s+(p.transmissions||[]).filter(t=>(Date.parse(today)-Date.parse(String(t.date).slice(0,10)))<7*86400000).length,0);
+  $("#dashKpi").innerHTML=`<div class="kpi">
+    <div><b>${act.length?Math.round(ok/act.length*100):100} %</b><small>patients à jour (${ok}/${act.length} actifs)</small></div>
+    <div><b>${passages5.filter(x=>String(x.date).slice(0,10)===today).length}</b><small>passages validés aujourd'hui</small></div>
+    <div><b>${tr7}</b><small>transmissions sur 7 jours</small></div>
+    <div><b>${alertesOuvertes(patients).length}</b><small>alertes non traitées</small></div></div>`;
+  const lateL=fs.filter(x=>nbRetards(x.f)>0).sort((a,b)=>nbRetards(b.f)-nbRetards(a.f));
+  $("#dashLate").innerHTML=lateL.map(x=>`<div class="pt"><div style="flex:1"><b>${esc(x.p.name)}</b> ${pastillesHtml(x.f)}<small>${freshTexts(x.f).join(" · ")}</small></div><button class="btn sm sec" data-dashp="${patients.indexOf(x.p)}">Passage</button></div>`).join("")||`<p class="muted">Tous les patients actifs sont à jour ✓</p>`;
+  const late48=alertesEnRetard(patients).map(x=>x.pi.id);
+  const alr=alertesOuvertes(patients);
+  $("#dashAlertes").innerHTML=alr.length?alr.map(x=>postitHtml(x.p,x.pi)).join("")+(late48.length?`<p class="muted">⏰ ${late48.length} alerte(s) en attente depuis plus de 48 h.</p>`:""):`<p class="muted">Aucune alerte en attente.</p>`;
+  const evts=[];patients.forEach(p=>(p.transmissions||[]).forEach(t=>{if(t.type==="EVENEMENT"&&(Date.parse(today)-Date.parse(String(t.date).slice(0,10)))<=30*86400000)evts.push({p,t})}));
+  evts.sort((a,b)=>a.t.date<b.t.date?1:-1);
+  $("#dashEvts").innerHTML=evts.map(x=>`<div class="day"><span><b>${esc(x.t.mot||"—")}</b> · ${esc(x.p.name)}${x.t.texte?" — "+esc(x.t.texte):""}</span><b>${esc(String(x.t.date).slice(0,10))}</b></div>`).join("")||`<p class="muted">Aucun événement sur 30 jours.</p>`;
+  const refC={photo:0,icope:0,constantes:0,socle:0};
+  passages5.forEach(x=>(x.propositions||[]).forEach(pr=>{if(pr.declined&&refC[pr.type]!=null)refC[pr.type]++}));
+  const totR=Object.values(refC).reduce((a,b)=>a+b,0);
+  $("#dashRefus").innerHTML=totR?Object.entries(refC).filter(([,n])=>n).map(([k,n])=>`<div class="day"><span>${FRESH_LBL[k]||k}</span><b>${n} refus</b></div>`).join(""):`<p class="muted">Aucun refus tracé.</p>`;
+}
+/* ---- conformité & export (module 6) ---- */
+function downloadCSV(name,txt){const b=new Blob(["﻿"+txt],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);}
+function renderConf(){
+  $("#confMode").textContent=DATA_MODE==="test"?"TEST — patients fictifs uniquement (hébergement non HDS)":"PRODUCTION";
+  const E=buildExport(patients,passages5);
+  $("#expMap").innerHTML=E.mapping.map(m=>`<div class="day"><span>${m.code}</span><b>${esc(m.nom)}</b></div>`).join("")||`<p class="muted">Aucun patient.</p>`;
+}
+function renderReglages(){
+  $("#setAuteur").value=settings.auteur||"";
+  $("#setGeo").setAttribute("aria-pressed",!!settings.geoloc);$("#setRattr").setAttribute("aria-pressed",settings.rattrapage!==false);
+  $("#setProv").innerHTML=Object.entries(EXTRACTEURS).map(([k,v])=>`<option value="${k}"${(settings.iaProvider||"n8n")===k?" selected":""}>${v.l}</option>`).join("");
+  $("#setStatus").textContent="Mode données : "+DATA_MODE.toUpperCase()+" · les transmissions restent sur cet appareil.";
+}
+
 document.addEventListener("DOMContentLoaded",()=>{
   $("#date").addEventListener("input",e=>{day.date=e.target.value;render()});$("#km").addEventListener("input",e=>{day.km=e.target.value;render()});
   document.querySelectorAll("#ctx .chip").forEach(b=>b.onclick=()=>{day.ctx[b.dataset.ctx]=!day.ctx[b.dataset.ctx];render()});
@@ -976,12 +1662,54 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#tFerie").onclick=()=>{const b=$("#tFerie");b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true");planRoute();};
   document.querySelectorAll("#tab-plus [data-go]").forEach(b=>b.onclick=()=>showTab(b.dataset.go));
   $("#mapM").onclick=()=>{mapSlot="matin";renderMap();};$("#mapS").onclick=()=>{mapSlot="soir";renderMap();};
+  /* ---- v5 : bandeau test, initiales, écran de passage, post-its, export, réglages ---- */
+  if(DATA_MODE==="test"){$("#testband").hidden=false;$("#epDicteeBand").hidden=false;}
+  if(!settings.auteur)$("#initDlg").hidden=false;
+  $("#initOk").onclick=()=>{const v=$("#initInp").value.trim().toUpperCase();if(!v){toast("Initiales requises");return}settings.auteur=v;saveSettings();$("#initDlg").hidden=true;renderReleves();toast("Bonjour "+v)};
+  document.addEventListener("click",e=>{const b=e.target.closest("[data-tgl]");if(b)b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true")});
+  $("#epHeure").addEventListener("input",e=>{if(epDraft){epDraft.heure=e.target.value;saveDraft();renderEpTicket();}});
+  $("#epQ").addEventListener("input",e=>{const hits=catalogHits(e.target.value);
+    $("#epResults").innerHTML=hits.map(a=>`<button class="act" data-id="${a.id}"><span><b>${a.k} ${a.c}</b> ${a.l}${a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${eur(LV(a.k)*a.c)}</small></span><span class="plus">+</span></button>`).join("")||(e.target.value.trim()?`<div class="muted">Aucun acte trouvé.</div>`:"");});
+  $("#epResults").addEventListener("click",e=>{const b=e.target.closest("[data-id]");if(b){epAddAct(b.dataset.id);$("#epQ").value="";$("#epResults").innerHTML="";}});
+  $("#epQuick").addEventListener("click",e=>{const b=e.target.closest("[data-q]");if(b)epAddAct(b.dataset.q);});
+  $("#epLines").addEventListener("click",e=>{const b=e.target.closest("[data-eprm]");if(b&&epDraft){epDraft.acts.splice(+b.dataset.eprm,1);saveDraft();renderPassage();}});
+  $("#epAlerts").addEventListener("click",e=>{const b=e.target.closest("[data-epadd]");if(b)epAddAct(b.dataset.epadd);});
+  $("#epLibre").addEventListener("input",e=>{if(epDraft){epDraft.trans.libre=e.target.value;saveDraft();}});
+  $("#epDictee").addEventListener("input",e=>{if(epDraft){epDraft.dictee=e.target.value;saveDraft();}});
+  $("#epMic").onclick=epMicToggle;$("#epAnalyse").onclick=epAnalyser;
+  $("#epDicteeLibre").onclick=()=>{if(!epDraft)return;const v=$("#epDictee").value.trim();if(!v){toast("Dictée vide");return}
+    epDraft.trans.libre=((epDraft.trans.libre||"").trim()?epDraft.trans.libre.trim()+"\n":"")+v;saveDraft();renderPassage();toast("Dictée enregistrée en transmission libre")};
+  $("#epBtnEvt").onclick=()=>{const t=epDraft.trans;t.evt=t.evt?null:{mot:null,texte:""};saveDraft();renderPassage()};
+  $("#epBtnObs").onclick=()=>{const t=epDraft.trans;t.obs=t.obs?null:{douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""};saveDraft();renderPassage()};
+  $("#epBtnCst").onclick=()=>{const t=epDraft.trans;t.cst=t.cst?null:{ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""};saveDraft();renderPassage()};
+  $("#epBtnIcope").onclick=()=>{const t=epDraft.trans;t.icope=t.icope?null:{};saveDraft();renderPassage()};
+  $("#epBtnPhoto").onclick=()=>{const t=epDraft.trans;t.photo=t.photo?null:{surface:""};saveDraft();renderPassage();if(t.photo)toast("Photo tracée — la photo reste sur le téléphone")};
+  $("#epBtnPostit").onclick=()=>{epPanelOpen.postit=!epPanelOpen.postit;saveDraft();renderPassage()};
+  $("#epPanels").addEventListener("input",epPanelInput);
+  $("#epPanels").addEventListener("click",epPanelClick);
+  $("#epTriggers").addEventListener("click",epTriggerClick);
+  $("#epHead").addEventListener("click",e=>{if(e.target.closest("[data-epfiche]")&&epIdx!=null){editIdx=epIdx;fillForm(patients[epIdx]);showTab("pat");setTimeout(()=>$("#pName").scrollIntoView({block:"start"}),60);}});
+  $("#epValider").onclick=validerPassage;
+  $("#epRetour").onclick=()=>showTab("tour");
+  $("#epPostitsList").addEventListener("click",postitListClick);
+  $("#tReleves").addEventListener("click",postitListClick);
+  $("#pPostits").addEventListener("click",postitListClick);
+  $("#dashAlertes").addEventListener("click",postitListClick);
+  $("#dashLate").addEventListener("click",e=>{const b=e.target.closest("[data-dashp]");if(b)openPassage(+b.dataset.dashp)});
+  $("#pSocleVal").onclick=()=>{if(editIdx==null){toast("Enregistrez d'abord le patient (le socle sera repris)");return}
+    const p=patients[editIdx];Object.assign(p,readSocleFields("pSoc"));p.socleDate=todayISO();savePatients();renderSocleForm(p);toast("Socle validé aujourd'hui")};
+  $("#expPat").onclick=()=>{const E=buildExport(patients,passages5);downloadCSV("lidia_patients_"+todayISO()+".csv",toCSV(E.head,E.rows));$("#expStatus").textContent=E.rows.length+" patient(s) exporté(s), pseudonymisés (P001…)."};
+  $("#expEvt").onclick=()=>{const E=buildExport(patients,passages5);downloadCSV("lidia_evenements_"+todayISO()+".csv",toCSV(["code","date","mot"],E.events));$("#expStatus").textContent=E.events.length+" événement(s) exporté(s) (code, date, mot — sans texte libre)."};
+  ["setGeo","setRattr"].forEach(id=>$("#"+id).onclick=()=>{const b=$("#"+id);b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true")});
+  $("#setSave").onclick=()=>{settings.auteur=$("#setAuteur").value.trim().toUpperCase();settings.geoloc=$("#setGeo").getAttribute("aria-pressed")==="true";settings.rattrapage=$("#setRattr").getAttribute("aria-pressed")==="true";settings.iaProvider=$("#setProv").value;saveSettings();renderReleves();toast("Réglages enregistrés")};
+  renderReleves();
   render();
 });
 function showTab(t){document.querySelectorAll("main > section").forEach(s=>s.hidden=(s.id!=="tab-"+t));
-  const navFor=t==="tour"?"tour":t==="pat"?"pat":"plus";
+  const navFor=(t==="tour"||t==="passage")?"tour":t==="pat"?"pat":t==="dash"?"dash":"plus";
   document.querySelectorAll("nav [data-tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===navFor));
-  window.scrollTo({top:0});if(t==="tour")initMapArea();}
+  window.scrollTo({top:0});if(t==="tour")initMapArea();
+  if(t==="passage")renderPassage();if(t==="dash")renderDash();if(t==="conf")renderConf();if(t==="reglages")renderReglages();}
 async function initMapArea(){if(!cabinet){try{cabinet=await geocode(CAB_ADDR);savePatients();}catch(e){}}setTimeout(renderMap,60);if(patients.some(p=>p.active)&&!Object.keys(lastRoutes).length)planRoute();}
 </script>
 </body>
