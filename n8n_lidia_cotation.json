@@ -1,0 +1,162 @@
+{
+ "name": "LIDIA Cotation — lecture ordonnance",
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "lidia-cotation",
+    "responseMode": "responseNode",
+    "options": {
+     "allowedOrigins": "*"
+    }
+   },
+   "name": "Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    0
+   ],
+   "id": "a1"
+  },
+  {
+   "parameters": {
+    "jsCode": "const b = $input.first().json.body || $input.first().json;\nconst content = [];\nif (b.image_base64) content.push(b.media_type==='application/pdf' ? {type:'document', source:{type:'base64', media_type:'application/pdf', data: b.image_base64}} : {type:'image', source:{type:'base64', media_type: b.media_type || 'image/jpeg', data: b.image_base64}});\ncontent.push({type:'text', text: b.text || \"Lis cette ordonnance.\"});\nreturn [{ json: { payload: { model: 'claude-sonnet-4-6', max_tokens: 1200, system: b.system || 'Réponds en JSON.', messages: [{ role: 'user', content }] } } }];"
+   },
+   "name": "Préparer la requête",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    0
+   ],
+   "id": "a2"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.anthropic.com/v1/messages",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "anthropic-version",
+       "value": "2023-06-01"
+      },
+      {
+       "name": "content-type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify($json.payload) }}",
+    "options": {
+     "timeout": 60000
+    }
+   },
+   "name": "Appel Claude",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    440,
+    0
+   ],
+   "id": "a3",
+   "credentials": {
+    "httpHeaderAuth": {
+     "name": "x-api-key"
+    }
+   },
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "jsCode": "const r = $input.first().json;\nif (r.error) return [{ json: { actes: [], remarques: 'Erreur API Anthropic : ' + (r.error.message || JSON.stringify(r.error)) } }];\nconst txt = (r.content||[]).map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();\nlet out;\ntry { out = JSON.parse(txt); } catch(e) { const m = txt.match(/\\{[\\s\\S]*\\}/); try { out = m ? JSON.parse(m[0]) : null; } catch(e2) { out = null; } }\nif (!out) out = { actes: [], remarques: 'Réponse IA illisible : ' + (txt ? txt.slice(0,200) : JSON.stringify(r).slice(0,200)) };\nreturn [{ json: out }];"
+   },
+   "name": "Extraire le JSON",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ],
+   "id": "a4"
+  },
+  {
+   "parameters": {
+    "respondWith": "firstIncomingItem",
+    "options": {
+     "responseHeaders": {
+      "entries": [
+       {
+        "name": "Access-Control-Allow-Origin",
+        "value": "*"
+       }
+      ]
+     }
+    }
+   },
+   "name": "Répondre",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.1,
+   "position": [
+    880,
+    0
+   ],
+   "id": "a5"
+  }
+ ],
+ "connections": {
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Préparer la requête",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Préparer la requête": {
+   "main": [
+    [
+     {
+      "node": "Appel Claude",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Appel Claude": {
+   "main": [
+    [
+     {
+      "node": "Extraire le JSON",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Extraire le JSON": {
+   "main": [
+    [
+     {
+      "node": "Répondre",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

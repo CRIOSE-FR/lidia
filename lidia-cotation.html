@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LIDIA Cotation — journée, sans perte</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F3F5F7;--card:#fff;--ink:#0E1E2B;--ink2:#4A5A68;--line:#DCE3EA;--teal:#0E7C86;--teal-soft:#E3F3F4;--amber:#B86E0A;--amber-soft:#FFF3DF;--green:#2A7F57;--green-soft:#E4F4EB;--red:#B3382E;--red-soft:#FBE6E4;--mono:"IBM Plex Mono",ui-monospace,monospace;--body:"IBM Plex Sans",system-ui,sans-serif;--disp:"Sora",system-ui,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+header{background:var(--ink);color:#fff;padding:12px 16px 10px;position:sticky;top:0;z-index:5}
+header h1{font-family:var(--disp);font-size:18px;margin:0}header h1 span{color:#8FD7DD}header p{margin:2px 0 0;font-size:12px;color:#B9C6D0}
+nav{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+nav button{flex:1;min-width:90px;background:transparent;border:1px solid #3A4B5A;color:#CFD8E0;border-radius:999px;padding:7px 10px;font-size:13px;font-weight:500;white-space:nowrap}
+nav button[aria-selected=true]{background:#fff;color:var(--ink);border-color:#fff}
+main{padding:14px 14px 28px;max-width:720px;margin:0 auto}section[hidden],[hidden]{display:none!important}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+h2{font-family:var(--disp);font-size:15px;margin:0 0 10px}
+label.f{display:block;font-size:12px;color:var(--ink2);margin:8px 0 4px;font-weight:500}
+input[type=text],input[type=password],input[type=url],input[type=number],input[type=date],input[type=time],select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+textarea{min-height:110px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:110px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:500}
+.chip[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:600;background:var(--teal);color:#fff}.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn.sm{padding:7px 10px;font-size:13px}.btn:disabled{opacity:.5}
+.results{margin-top:8px;display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}
+.act{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;text-align:left;width:100%}
+.act b{font-family:var(--mono);font-size:13px;color:var(--teal);white-space:nowrap}.act small{display:block;color:var(--ink2);font-size:12px}.act .plus{font-weight:700;font-size:20px;color:var(--teal)}
+.verif{display:inline-block;font-size:10px;font-weight:600;background:var(--amber-soft);color:var(--amber);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle}
+/* passages */
+.ptabs{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto}
+.ptab{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;font-size:13px;white-space:nowrap;display:flex;flex-direction:column;align-items:flex-start}
+.ptab b{font-family:var(--mono);font-size:12px}.ptab[aria-selected=true]{border-color:var(--teal);background:var(--teal-soft)}
+.ptab.add{border-style:dashed;justify-content:center;align-items:center;color:var(--teal);font-weight:600}
+.ticket{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:8px}
+.ticket .th{background:var(--ink);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}.ticket .th h2{margin:0;color:#fff}.ticket .th small{color:#B9C6D0;font-family:var(--mono);font-size:11px}
+.line{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px dashed var(--line)}
+.line .lbl{font-size:14px}.line .lbl small{display:block;color:var(--ink2);font-size:12px}.line .code{font-family:var(--mono);font-size:12px;color:var(--teal)}
+.taux{font-family:var(--mono);font-size:11px;padding:2px 6px;border-radius:4px;white-space:nowrap}.t100{background:var(--green-soft);color:var(--green)}.t50{background:var(--amber-soft);color:var(--amber)}.t0{background:var(--red-soft);color:var(--red)}
+.amt{font-family:var(--mono);font-size:14px;text-align:right;min-width:64px}.amt.zero{color:var(--red);text-decoration:line-through}
+.x{background:none;border:0;color:var(--ink2);font-size:18px;padding:8px 10px;margin:-8px -6px -8px 0}
+.maj{padding:6px 14px;display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);border-bottom:1px dashed var(--line)}.maj span:last-child{font-family:var(--mono);color:var(--ink)}
+.total{display:flex;justify-content:space-between;align-items:baseline;padding:12px 14px;background:var(--teal-soft)}.total b{font-family:var(--disp);font-size:22px;color:var(--teal)}.total small{color:var(--ink2)}
+.empty{padding:20px 14px;text-align:center;color:var(--ink2);font-size:14px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;margin-top:8px;font-size:13.5px}
+.alert.gain{background:var(--green-soft);color:#1F5E41}.alert.warn{background:var(--amber-soft);color:#7A4A05}.alert.stop{background:var(--red-soft);color:#7C2620}.alert .ic{font-family:var(--mono);font-weight:700;flex:none}.alert button{margin-left:auto;flex:none}
+.dl{padding:8px 14px;border-bottom:1px solid var(--line);cursor:pointer}.dl[aria-selected=true]{background:var(--teal-soft);border-left:4px solid var(--teal)}.dl .h{display:flex;justify-content:space-between;font-weight:600}.dl .h b{font-family:var(--mono)}.dl .h small{color:var(--ink2);font-weight:400;font-family:var(--mono)}.dl .l{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:2px 0}.dl .l span:first-child{color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dl .l b{font-family:var(--mono);font-weight:500;white-space:nowrap}.dl .l .t{font-family:var(--mono);font-size:11px;padding:0 4px;border-radius:3px;margin-right:4px}.dl .m{font-size:12px;color:var(--ink2);padding-top:2px}
+.day{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13.5px;padding:4px 0}.day b{font-family:var(--mono)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:10px;z-index:5}
+.bar .sum{flex:1}.bar .sum b{font-family:var(--disp);font-size:20px;color:var(--teal)}.bar .sum small{display:block;color:var(--ink2);font-size:12px}
+.muted{color:var(--ink2);font-size:12.5px}
+.stop{display:grid;grid-template-columns:56px 1fr auto;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:center}
+.stop .eta{font-family:var(--mono);font-weight:700;color:var(--ink);font-size:17px;line-height:1.1}.stop .eta small{display:block;color:var(--ink2);font-weight:400;font-size:10.5px}
+.stop .who{font-weight:600;font-size:15px}.stop .who .soin{display:block;font-weight:400;color:var(--ink2);font-size:12.5px}.stop .who .flag{display:block;font-size:12px;margin-top:2px}
+.stop .late{color:var(--red);font-weight:600}.stop .wait{color:var(--amber)}
+.stop .right{text-align:right}.stop .right b{font-family:var(--mono);font-size:14px;display:block}.stop .right .btn{margin-top:4px}
+.stop.doneS{opacity:.5}.stop.doneS .who{text-decoration:line-through}
+.pname{text-decoration:underline dotted var(--ink2);text-underline-offset:3px;cursor:pointer}
+.durbtn{border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:2px 8px;font:inherit;font-size:12px}
+.durstep{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.stop .imp{background:var(--red-soft);color:var(--red);font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;vertical-align:middle}
+.kpi{display:grid;grid-template-columns:1fr 1fr;gap:8px}.kpi>div{background:var(--paper);border-radius:10px;padding:10px}.kpi b{font-family:var(--disp);font-size:19px;color:var(--teal);display:block}.kpi small{color:var(--ink2);font-size:11.5px}
+.ring{display:grid;grid-template-columns:70px 1fr auto auto;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line);align-items:center}.ring .bar{height:8px;border-radius:4px;background:var(--teal)}.ring b{font-family:var(--mono);font-weight:500}
+.pt{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}.pt.off{opacity:.5}.pt small{display:block;color:var(--ink2);font-size:12px}.pt .acts{display:flex;gap:4px;flex:none;align-items:center;flex-wrap:wrap;justify-content:flex-end}.pt .more{display:flex;gap:4px}
+.rt{width:100%;border-collapse:collapse;font-size:13px}.rt th{text-align:left;font-size:11px;color:var(--ink2);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)}.rt td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}.rt td.n{font-family:var(--mono);text-align:right;white-space:nowrap}.rt input{width:52px;padding:3px 5px;font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:6px}.rt .ok{color:var(--green);font-weight:600}.rt .mid{color:var(--amber);font-weight:600}.rt .ko{color:var(--red);font-weight:600}.rt small{display:block;color:var(--ink2);font-size:11px}
+.ref table{width:100%;border-collapse:collapse;font-size:13px}.ref td{padding:6px 4px;border-bottom:1px solid var(--line)}.ref input{width:84px;padding:5px 8px;font-family:var(--mono)}
+.tag{font-size:11px;background:var(--paper);border-radius:4px;padding:1px 5px;color:var(--ink2)}
+.ordo-acts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}.toast.on{opacity:1}
+ol{padding-left:18px;font-size:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+#sheet{display:none;font:13px/1.5 var(--body);color:#000;padding:10mm}
+#sheet h1{font:700 17px var(--disp);margin:0 0 2mm}#sheet h2{font:700 14px var(--disp);margin:5mm 0 2mm;border-bottom:1px solid #000;padding-bottom:1mm}
+#sheet .sl{display:grid;grid-template-columns:14mm 1fr;gap:2mm;padding:1.6mm 0;border-bottom:1px dotted #999;break-inside:avoid}
+#sheet .sl b{font-family:var(--mono)}#sheet .sl small{display:block;color:#333}
+@media print{body>*{display:none!important}#sheet{display:block!important}body{background:#fff}}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v4.2.2</small></h1>
+  <p>Une journée, plusieurs passages, zéro perte</p>
+  <nav role="tablist">
+    <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui</button>
+    <button role="tab" aria-selected="false" data-tab="pat">Patients</button>
+    <button role="tab" aria-selected="false" data-tab="plus">Plus</button>
+  </nav>
+</header>
+
+<main>
+<!-- ============ JOURNÉE ============ -->
+<section id="tab-jour">
+  <div class="card">
+    <h2>Patient &amp; journée</h2>
+    <div class="row">
+      <div><label class="f" for="date">Date</label><input type="date" id="date"></div>
+      <div><label class="f" for="km">Km aller (cabinet→patient)</label><input type="number" id="km" min="0" step="0.5" value="0"></div>
+    </div>
+    <div class="chips" id="ctx">
+      <button class="chip" data-ctx="domicile" aria-pressed="true">Domicile</button>
+      <button class="chip" data-ctx="ferie" aria-pressed="false">Jour férié</button>
+      <button class="chip" data-ctx="enfant" aria-pressed="false">Enfant &lt; 7 ans</button>
+      <button class="chip" data-ctx="palliatif" aria-pressed="false">Soins palliatifs</button>
+      <button class="chip" data-ctx="cancer" aria-pressed="false">Cancéreux / immunodéprimé</button>
+      <button class="chip" data-ctx="montagne" aria-pressed="false">Montagne</button>
+      <button class="chip" data-ctx="nuit" aria-pressed="false">Majoration nuit</button>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="th" style="background:var(--ink);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;color:#fff">Journée</h2><b id="dayTotalTop" style="font-family:var(--disp);color:#8FD7DD"></b></div>
+    <div id="dayLedger"></div>
+    <div id="dayAlerts" style="padding:0 10px"></div>
+    <div style="padding:8px 14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec sm" id="addP">+ Ajouter un passage</button><button class="btn sec sm" id="copy">Copier</button><button class="btn sec sm" id="clearDay">Nouvelle journée</button></div>
+  </div>
+  <div class="ptabs" id="ptabs" hidden></div>
+
+  <div class="card">
+    <div class="row">
+      <div><label class="f" for="pheure">Heure du passage</label><input type="time" id="pheure"></div>
+      <div><label class="f" for="plabel">Libellé</label><input type="text" id="plabel" placeholder="Matin, Midi, Soir…"></div>
+    </div>
+    <label class="f" for="q">Ajouter un acte à ce passage</label>
+    <div class="chips" style="margin-bottom:6px" id="quick">
+      <button class="chip" data-q="prelev">Prise de sang</button><button class="chip" data-q="insu">Insuline</button><button class="chip" data-q="dextro">Dextro</button><button class="chip" data-q="pans1">Pansement</button><button class="chip" data-q="pans4">Pans. lourd</button><button class="chip" data-q="inj">Injection</button><button class="chip" data-q="bsc">BSC</button><button class="chip" data-q="perf9">Perf ≤1h</button>
+    </div>
+    <input type="text" id="q" placeholder="insuline, dextro, prise de sang, pansement, perfusion, BSI…" autocomplete="off">
+    <div class="results" id="results"></div>
+  </div>
+
+  <div class="ticket">
+    <div class="th"><h2 id="tname">Passage</h2><small id="stamp"></small></div>
+    <div id="lines"></div><div id="majs"></div>
+    <div class="total"><small>Total du passage</small><b id="total">0,00 €</b></div>
+  </div>
+  <div id="alerts"></div>
+  <div class="row" style="margin:10px 0">
+    <button class="btn sec sm" id="clearP">Vider ce passage</button>
+    <button class="btn sec sm" id="delP">Supprimer ce passage</button>
+  </div>
+</section>
+
+<!-- ============ ORDONNANCE ============ -->
+<section id="tab-ordo" hidden>
+  <div class="card">
+    <h2>Lire une ordonnance</h2>
+    <p class="muted">Texte collé ou photo. LIDIA propose les actes, leur fréquence et les répartit par passage (matin/soir…). Vous validez avant d'ajouter.</p>
+    <textarea id="ordoTxt" placeholder="Ex : « IDE à domicile : glycémie + insuline matin et soir, pansement d'ulcère 3×/semaine, prise de sang INR lundi, 1 mois »"></textarea>
+    <div class="row" style="margin-top:8px">
+      <label class="btn sec" style="text-align:center">📷 Photo · galerie · PDF<input type="file" id="ordoImg" accept="image/*,application/pdf" hidden></label>
+      <button class="btn" id="analyse">Analyser</button>
+    </div>
+    <p class="muted" id="ordoStatus"></p>
+    <div class="ordo-acts" id="ordoActs"></div><div id="ordoNotes"></div>
+    <button class="btn" id="ordoAdd" hidden style="margin-top:10px;width:100%">Construire la journée avec les actes cochés</button>
+  </div>
+</section>
+
+<!-- ============ RÉFÉRENTIEL ============ -->
+<section id="tab-ref" hidden>
+  <div class="card ref">
+    <h2>Lettres-clés &amp; majorations</h2>
+    <p class="muted">Métropole, août 2026. AMI/AMX passe à 3,35 € le 06/11/2026 puis 3,45 € le 06/11/2027 (avenant 11) : bascule automatique selon la date saisie.</p>
+    <table id="refTable"></table>
+    <button class="btn sec sm" id="refReset" style="margin-top:10px">Valeurs par défaut</button>
+  </div>
+  <div class="card ref"><h2>Catalogue des actes</h2><div id="catalog"></div></div>
+</section>
+
+<!-- ============ RÈGLES ============ -->
+<section id="tab-regles" hidden>
+  <div class="card">
+    <h2>Règles du moteur — NGAP version du 21/06/2026</h2>
+    <ol>
+      <li><b>Séance = passage.</b> L'art. 11B s'applique « au cours d'une même séance » : chaque passage est coté séparément, la journée additionne. Des passages distincts supposent des horaires distincts prescrits ou justifiés.</li>
+      <li><b>Art. 11B.1</b> : acte au coefficient le plus élevé à 100 %, 2ᵉ à 50 %, suivants sans honoraires.</li>
+      <li><b>Hors 11B</b> (11B.4) : TLS/TLD/TLL et vaccination à domicile. <b>Ponction veineuse</b> AMI 1,5 : taux plein quel que soit l'acte associé (ch. I art. 1).</li>
+      <li><b>Groupes à taux plein entre eux</b> : art. 5 bis (dextro, insulines, pansement diabétique, analgésie) ; perfusion courte + perfusion longue (ch. II art. 3/4) ; analgésie topique + pansement d'ulcère/escarre (art. 3) ; actes post-op art. 7. Chaque groupe compte pour un acte dans le classement 11B.</li>
+      <li><b>BSI (11B.5 + ch. I art. 12)</b> : forfait toujours à 100 %, <b>pas de MAU</b>, déplacement en <b>IFI</b> (4 max/jour). Pansement courant (art. 2) : <b>inclus dans le forfait, 0 €</b>. Injections et actes art. 5 bis : AMX à 50 % (1ᵉʳ) puis 0 %. Dérogations art. 12 à taux plein : perfusion, pansement <b>lourd et complexe</b> (art. 3), séance IC/BPCO art. 5 ter, ponction veineuse. BSI préalable obligatoire.</li>
+      <li><b>AIS</b> : art. 11 abrogé le 02/06/26 — plus de cotation AIS.</li>
+      <li><b>Perfusions</b> : AMI 14 (ou 15) une fois par jour, 2ᵉ perfusion longue AMI 4,1 (CIR-9/2025) ; AMI 5 retrait non cumulable avec AMI 9/10 ; AMI 4 organisation de surveillance sans déplacement ni majoration ; AMI 6 par heure supplémentaire (5 max).</li>
+      <li><b>Retrait automatique</b> : à chaque perfusion longue, l'app demande quand elle s'arrête. Le jour même → AMI 4,1 ajouté au dernier passage (arrêt &lt; 24 h, CIR-9/2025). Le lendemain ou plus → AMI 5 le jour du retrait, AMI 4 les jours intermédiaires, jamais d'AMI 4 le jour de la pose ni du retrait.</li>
+      <li><b>Cancéreux / immunodéprimé (ch. II art. 4)</b> : injection IM/SC 1,5, IV 2,5, chimio IV 7, perfusion 10 / 15, aérosol prophylactique 5.</li>
+      <li><b>Art. 10</b> : les actes de surveillance (administration médicamenteuse 1,2 ; surveillance de traitement 1 ; accompagnement 5,1 / 4,6) ne sont pas cumulables entre eux.</li>
+      <li><b>MAU</b> 1,35 € (art. 23.1) : acte unique AMI ≤ 1,5, cabinet ou domicile ; jamais avec BSI, AMX, IFI ni MCI. <b>MCI</b> 5 € (art. 23.2) : domicile, pansement lourd (art. 3 ou 5 bis, sauf bilan AMI 11) ou soins palliatifs, 1×/intervention. <b>MIE</b> 3,15 € (art. 23.5) : &lt; 7 ans, cumulable avec tout.</li>
+      <li><b>Nuit / dimanche-férié</b> : non cumulables entre elles ; exclues pour l'AMI 4 d'organisation de surveillance et l'art. 5 ter. <b>IFD</b> 2,75 € par déplacement ; <b>IK/IKM</b> = (km A/R − 4 plaine / − 2 montagne) × 0,35 / 0,50 € ; plafonnement journalier &gt; 299 km non géré.</li>
+      <li>Pansements : « jusqu'à cicatrisation » vaut 3 mois maximum (art. 2, 3, 5 bis).</li>
+    </ol>
+    <p class="muted">Aide à la décision : la cotation reste sous la responsabilité de l'IDEL. Les actes « à vérifier » ont un point litigieux (cumul ou libellé) documenté dans le catalogue.</p>
+  </div>
+</section>
+
+<!-- ============ TOURNÉE ============ -->
+<section id="tab-tour" hidden>
+  <div class="card">
+    <h2>Tournée du jour</h2>
+    <div class="row">
+      <div><label class="f" for="tDate">Date</label><input type="date" id="tDate"></div>
+      <div><label class="f" for="tStartM">Départ matin</label><input type="time" id="tStartM" value="06:30"></div>
+      <div><label class="f" for="tStartS">Départ soir</label><input type="time" id="tStartS" value="17:00"></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="tGo">Recalculer</button><button class="btn sec" id="goPat">+ Patient</button><button class="btn sec" id="tSheet">Feuille</button><button class="chip" id="tFerie" aria-pressed="false" style="align-self:center">Jour férié</button><button class="btn sec" id="tMaps" hidden>Maps</button></div>
+    <p class="muted" id="tStatus"></p>
+  </div>
+  <div id="tRoute"></div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="th" style="background:var(--ink);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <h2 style="margin:0;color:#fff">Carte</h2>
+      <div style="display:flex;gap:6px">
+        <button class="chip" id="mapM" aria-pressed="true" style="border-color:#0E7C86;background:#0E7C86;color:#fff">Matin</button>
+        <button class="chip" id="mapS" aria-pressed="false" style="border-color:#5B4FA8;background:transparent;color:#cfc8f0">Soir</button>
+      </div>
+      <small id="mapInfo" style="color:#B9C6D0"></small></div>
+    <div id="map" style="height:340px"></div>
+    <div id="mapLegend" style="padding:8px 14px;font-size:12px;color:var(--ink2)">Fond du numéro = rentabilité du patient : <b style="color:#2A7F57">● bonne</b> · <b style="color:#B86E0A">● moyenne</b> · <b style="color:#B3382E">● faible</b> (vs médiane de ta patientèle). Contour = tournée. Cercles : 2/5/10 km.</div>
+  </div>
+  <div class="card"><h2>Indicateurs de zone</h2><div id="kpi"></div></div>
+</section>
+
+<!-- ============ PATIENTS ============ -->
+<section id="tab-pat" hidden>
+  <div class="card">
+    <h2 id="pFormTitle">Ajouter un patient / un passage</h2>
+    <p class="muted">Données stockées uniquement sur cet appareil. Utilisez des initiales. Un patient vu matin et soir = deux passages (bouton « Dupliquer »).</p>
+    <div class="row"><div><label class="f" for="pName">Patient (initiales)</label><input type="text" id="pName" placeholder="M. D."></div></div>
+    <label class="f">Soins de ce passage (cumul calculé par le moteur NGAP)</label>
+    <div style="display:flex;gap:8px"><select id="pSoin" style="flex:1"></select><button class="btn sec" type="button" id="pAddSoin">+</button></div>
+    <div class="chips" id="pActs" style="margin-top:6px"></div>
+    <div class="chips"><button class="chip" id="pPal" aria-pressed="false">Soins palliatifs</button><button class="chip" id="pK" aria-pressed="false">Cancéreux</button><button class="chip" id="pNuit" aria-pressed="false">Nuit (MM/MN)</button></div>
+    <label class="f" for="pAddr">Adresse</label>
+    <div style="display:flex;gap:8px;position:relative"><input type="text" id="pAddr" placeholder="12 rue des Pins, Cugnaux" style="flex:1" autocomplete="off"><button class="btn sec" id="pGPS" type="button" title="Utiliser ma position actuelle">📍</button><div id="pSug" class="results" style="position:absolute;top:100%;left:0;right:0;z-index:9;background:#fff;box-shadow:0 8px 20px rgba(0,0,0,.12);border-radius:10px"></div></div>
+    <p class="muted" id="pGeoStatus" style="margin:4px 0 0"></p>
+    <div class="row"><div><label class="f" for="pDur">Durée soin (min)</label><input type="number" id="pDur" value="20" min="5"></div><div><label class="f" for="pW1">Au plus tôt</label><input type="time" id="pW1" value="07:00"></div><div><label class="f" for="pW2">Au plus tard</label><input type="time" id="pW2" value="12:00"></div></div>
+    <label class="f">Priorité</label>
+    <select id="pPrio"><option value="1">Horaire impératif (insuline, chimio, perfusion)</option><option value="2" selected>Créneau souhaité</option><option value="3">Souple (n'importe quand dans la demi-journée)</option></select>
+    <label class="f">Jours</label>
+    <div class="chips" id="pDays"><button class="chip" data-d="1" aria-pressed="true">L</button><button class="chip" data-d="2" aria-pressed="true">M</button><button class="chip" data-d="3" aria-pressed="true">Me</button><button class="chip" data-d="4" aria-pressed="true">J</button><button class="chip" data-d="5" aria-pressed="true">V</button><button class="chip" data-d="6" aria-pressed="true">S</button><button class="chip" data-d="0" aria-pressed="true">D</button></div>
+    <div class="row"><div><label class="f" for="pFrom">Début</label><input type="date" id="pFrom"></div><div><label class="f" for="pTo">Fin (vide = sans fin)</label><input type="date" id="pTo"></div></div>
+    <label class="f" for="pNote">Note</label><input type="text" id="pNote" placeholder="code portail, chien, clé sous le pot…">
+    <div class="row" style="margin-top:10px"><button class="btn" id="pSave">Enregistrer</button><button class="btn sec" id="pCancel" hidden>Annuler</button></div>
+    <p class="muted" id="pStatus"></p>
+  </div>
+  <div class="card"><h2>Patients (<span id="pCount">0</span>)</h2><div id="pList"></div></div>
+</section>
+
+<!-- ============ PLUS ============ -->
+<section id="tab-plus" hidden>
+  <div class="card" style="padding:6px 0">
+    <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="jour"><span><b>🧮</b> Cotation manuelle (Journée)<small>construire une journée acte par acte</small></span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="ordo"><span><b>📄</b> Lire une ordonnance<small>photo, PDF ou texte → actes proposés</small></span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="renta"><span><b>📈</b> Rentabilité d'un nouveau patient</span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="ref"><span><b>📚</b> Référentiel NGAP<small>actes, lettres-clés, valeurs</small></span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="regles"><span><b>⚖️</b> Règles du moteur</span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-radius:0" data-go="param"><span><b>🤖</b> Connexion IA</span><span class="plus">›</span></button>
+  </div>
+</section>
+
+<!-- ============ RENTABILITÉ ============ -->
+<section id="tab-renta" hidden>
+  <div class="card">
+    <h2>Nouveau patient : est-ce rentable de le prendre ?</h2>
+    <label class="f" for="rSoin">Quel soin ?</label>
+    <select id="rSoin"></select>
+    <div class="row">
+      <div><label class="f" for="rKm">Il est à… (km depuis le cabinet)</label><input type="number" id="rKm" value="15" min="0" step="0.5"></div>
+      <div><label class="f" for="rFreq">Passages par semaine</label><input type="number" id="rFreq" value="7" min="1" max="21"></div>
+    </div>
+    <div class="chips"><button class="chip" id="rTour" aria-pressed="false">J'ai déjà des patients près de chez lui</button></div>
+    <details><summary>Réglages avancés</summary>
+      <div class="row"><div><label class="f" for="rV">Vitesse moyenne km/h</label><input type="number" id="rV" value="35"></div><div><label class="f" for="rCost">Coût voiture €/km</label><input type="number" id="rCost" value="0.45" step="0.05"></div><div><label class="f" for="rMinSoin">Durée du soin (min)</label><input type="number" id="rMinSoin" min="1"></div></div>
+      <div class="chips"><button class="chip" id="rMont" aria-pressed="false">Montagne</button></div>
+    </details>
+  </div>
+  <div id="rTable"></div>
+</section>
+
+<!-- ============ IA ============ -->
+<section id="tab-param" hidden>
+  <div class="card">
+    <h2>Connexion IA (lecture d'ordonnance)</h2>
+    <p class="muted">L'IA est active par défaut pour tous les utilisateurs via le webhook n8n du cabinet (la clé Anthropic reste dans n8n). Ne modifier l'URL ci-dessous que si le workflow change.</p>
+    <label class="f" for="webhook">URL du webhook n8n (production)</label>
+    <input type="url" id="webhook" placeholder="https://lidiaplan.app.n8n.cloud/webhook/lidia-cotation">
+    <label class="f" for="whToken">Jeton du webhook (optionnel — si « Header Auth » est activée sur le nœud Webhook n8n)</label>
+    <input type="password" id="whToken" placeholder="jeton partagé">
+    <details><summary>Avancé — clé API directe (déconseillé : la clé serait visible dans le navigateur)</summary>
+    <input type="password" id="apiKey" placeholder="sk-ant-…" style="margin-top:6px"></details>
+    <div class="row" style="margin-top:10px"><button class="btn" id="saveAI">Enregistrer</button><button class="btn sec" id="testAI">Tester</button></div>
+    <p class="muted" id="aiStatus"></p>
+    <p class="muted">Importer <b>n8n_lidia_cotation.json</b> dans n8n → nœud « Appel Claude » → choisir la credential x-api-key existante → Activer → copier l'URL de production ici. Sans réglage, analyse hors-ligne par mots-clés.</p>
+  </div>
+</section>
+</main>
+<div id="sheet" hidden></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= RÉFÉRENTIEL ================= */
+const DEFAULT_REF={AMI:3.15,AMX:3.15,TMI:3.15,DI:10,TLS:10,TLD:15,IFI:2.75,BSA:13,BSB:18.20,BSC:28.70,MAU:1.35,MCI:5,MIE:3.15,NUIT:9.15,NUIT2:18.30,DIM:8.50,IFD:2.75,IK_PLAINE:0.35,IK_MONT:0.50};
+const REF_LABEL={AMI:"AMI",AMX:"AMX (en séance BSI)",TMI:"TMI (télésoin)",DI:"DI (bilan BSI)",TLS:"TLS téléconsultation",TLD:"TLD téléconsultation domicile",IFI:"IFI déplacement BSI",BSA:"BSA /jour",BSB:"BSB /jour",BSC:"BSC /jour",MAU:"MAU acte unique",MCI:"MCI coordination",MIE:"MIE < 7 ans",NUIT:"Nuit 20h–23h / 5h–8h",NUIT2:"Nuit 23h–5h",DIM:"Dimanche / férié",IFD:"IFD",IK_PLAINE:"IK plaine /km",IK_MONT:"IK montagne /km"};
+/* tags: diab=art.5bis ; derog=art.12 (taux plein en BSI) ; lourd=MCI ; bsi=forfait ; once=1×/jour ; perfL=perf longue ; perfC=perf courte ; topique ; unique=acte isolé possible pour MAU ; verif */
+const CATALOG=[
+ /* ---- Ch. I art. 1 : prélèvements & injections ---- */
+ {id:"prelev",k:"AMI",c:1.5,l:"Prélèvement par ponction veineuse directe",kw:"prise de sang prelevement sanguin inr nfs bilan ponction veineuse",tags:{derog:1,plein:1},src:"Ch.I art.1 — cumul à taux plein quel que soit l'acte associé"},
+ {id:"prelev_kt",k:"AMI",c:1,l:"Prélèvement sanguin sur cathéter central / chambre implantable",kw:"prise de sang pac picc catheter central prelevement",src:"Ch.II art.2"},
+ {id:"prelev_autre",k:"AMI",c:1,l:"Prélèvement aseptique cutané, muqueux, selles ou urines",kw:"ecbu prelevement urines selles ecouvillon",src:"Ch.I art.1"},
+ {id:"inj",k:"AMI",c:1,l:"Injection IM, SC ou intradermique",kw:"injection intramusculaire sous-cutanee lovenox heparine anticoagulant b12 intradermique",src:"Ch.I art.1"},
+ {id:"inj_iv",k:"AMI",c:2,l:"Injection intraveineuse directe isolée",kw:"injection intraveineuse iv directe",src:"Ch.I art.1"},
+ {id:"inj_iv_s",k:"AMI",c:1.5,l:"Injection intraveineuse directe en série",kw:"injection intraveineuse iv serie",src:"Ch.I art.1"},
+ {id:"inj_pac",k:"AMI",c:4,l:"Injection IV sur site implanté (PAC), héparinisation et pansement inclus",kw:"injection pac chambre implantable site implante",src:"Ch.II art.2"},
+ {id:"inj_kt",k:"AMI",c:3,l:"Injection IV sur cathéter central, héparinisation et pansement inclus",kw:"injection catheter central picc",src:"Ch.II art.2"},
+ {id:"implant",k:"AMI",c:2.5,l:"Injection d'un implant sous-cutané",kw:"implant sous-cutane nexplanon",src:"Ch.I art.1"},
+ {id:"vacc",k:"AMI",c:2.4,l:"Vaccination avec prescription (ou vaccin sans prescription requise)",kw:"vaccin vaccination grippe covid",tags:{vacc:1},src:"Ch.I art.1 — hors art.11B à domicile (11B.4.d)"},
+ {id:"vacc2",k:"AMI",c:3.05,l:"Vaccination sans prescription médicale",kw:"vaccin vaccination sans prescription",tags:{vacc:1},src:"Ch.I art.1 — hors art.11B à domicile"},
+ /* ---- art. 5 bis diabète ---- */
+ {id:"insu",k:"AMI",c:1,l:"Injection sous-cutanée d'insuline (par injection)",kw:"insuline lantus novorapid",tags:{diab:1},src:"Ch.II art.5 bis"},
+ {id:"dextro",k:"AMI",c:1,l:"Surveillance diabétique insulino-traité avec adaptation des doses (dextro), par séance",kw:"glycemie dextro capillaire surveillance glycemique adaptation",tags:{diab:1},src:"Ch.II art.5 bis"},
+ {id:"surv75",k:"AMI",c:4,l:"Séance hebdomadaire de surveillance clinique, diabétique > 75 ans (1×/semaine, pas avec BSI)",kw:"surveillance diabetique 75 ans hebdomadaire",tags:{diab:1,once:1,nobsi:1},src:"Ch.II art.5 bis"},
+ {id:"pans_diab",k:"AMI",c:4,l:"Pansement lourd et complexe du diabétique insulino-traité (détersion, défibrination)",kw:"pied diabetique pansement lourd diabete",tags:{diab:1,lourd:1,derog:1},src:"Ch.II art.5 bis"},
+ {id:"topique_diab",k:"AMI",c:1.1,l:"Analgésie topique préalable au pansement du diabétique",kw:"analgesie topique emla diabete",tags:{diab:1},src:"Ch.II art.5 bis — 8 max/épisode"},
+ /* ---- Ch. I art. 2 : pansements courants ---- */
+ {id:"pans1",k:"AMI",c:2.02,l:"Pansement de plaie non chirurgicale (ulcère, escarre, plaie chronique ou aiguë)",kw:"pansement simple courant plaie ulcere escarre non chirurgical",src:"Ch.I art.2 (02/06/26)"},
+ {id:"pans1c",k:"AMI",c:2.02,l:"Pansement de plaie chirurgicale simple",kw:"pansement post operatoire plaie chirurgicale cicatrice",src:"Ch.I art.2 (02/06/26)"},
+ {id:"stomie",k:"AMI",c:3,l:"Pansement de stomie",kw:"stomie colostomie urostomie poche",src:"Ch.I art.2"},
+ {id:"trach",k:"AMI",c:3,l:"Pansement de trachéotomie, aspiration et changement de canule inclus",kw:"tracheotomie canule aspiration",src:"Ch.I art.2"},
+ {id:"fils",k:"AMI",c:2,l:"Ablation de fils ou d'agrafes (10 ou moins)",kw:"ablation fils agrafes",src:"Ch.I art.2"},
+ {id:"fils2",k:"AMI",c:4,l:"Ablation de fils ou d'agrafes (plus de 10)",kw:"ablation fils agrafes nombreux",src:"Ch.I art.2"},
+ {id:"pans_mam",k:"AMI",c:3,l:"Pansement de plaies opératoires étendues (abdominoplastie, chirurgie mammaire)",kw:"abdominoplastie mammaire plaies etendues",src:"Ch.I art.2"},
+ {id:"pans_var",k:"AMI",c:3,l:"Pansement post-opératoire d'exérèse de varices (2 max)",kw:"varices stripping",src:"Ch.I art.2"},
+ /* ---- Ch. I art. 3 : pansements lourds et complexes ---- */
+ {id:"bilan_plaie",k:"AMI",c:11,l:"Bilan à la 1re prise en charge d'une plaie nécessitant un pansement lourd (1×/an, pas de MCI)",kw:"bilan plaie premiere prise en charge",tags:{derog:1,lourd:1,nomci:1,once:1},src:"Ch.I art.3"},
+ {id:"pans4",k:"AMI",c:4,l:"Pansement lourd et complexe (brûlure >5 %, ulcère/greffe >60 cm², amputation, fistule, méchage/irrigation, escarre profonde, ostéosynthèse extériorisée…)",kw:"pansement lourd complexe escarre amputation brulure radiotherapie greffe fistule mechage irrigation osteosynthese pertes de substance plaie chimique thermique",tags:{lourd:1,derog:1},src:"Ch.I art.3"},
+ {id:"ulc",k:"AMI",c:5.1,l:"Pansement d'ulcère ou de greffe cutanée avec pose de compression",kw:"ulcere compression bande contention greffe",tags:{lourd:1,derog:1},src:"Ch.I art.3"},
+ {id:"topique",k:"AMI",c:1.1,l:"Analgésie topique préalable à un pansement d'ulcère / escarre",kw:"analgesie topique emla anesthesiant",tags:{topique:1},src:"Ch.I art.3 — taux plein avec le pansement, 8 max/épisode"},
+ {id:"pico",k:"AMI",c:4.6,l:"Pose de TPN à usage unique (PICO) — console et pansement",kw:"pico pression negative tpn vac",tags:{lourd:1,derog:1},src:"Ch.I art.3"},
+ {id:"pico2",k:"AMI",c:2.1,l:"Pansement additionnel TPN sans changement de console",kw:"pico pression negative additionnel",tags:{derog:1},src:"Ch.I art.3"},
+ /* ---- Ch. I art. 4-8 ---- */
+ {id:"sng",k:"AMI",c:3,l:"Pose de sonde gastrique",kw:"sonde gastrique naso",src:"Ch.I art.4"},
+ {id:"enteral",k:"AMI",c:3,l:"Alimentation entérale (gavage, déclive, nutri-pompe), surveillance incluse, par séance",kw:"alimentation enterale gastrostomie peg nutripompe",src:"Ch.I art.4"},
+ {id:"aero",k:"AMI",c:1.5,l:"Séance d'aérosol",kw:"aerosol nebulisation",src:"Ch.I art.5"},
+ {id:"sondeF",k:"AMI",c:3,l:"Cathétérisme urétral ou changement de sonde à demeure (femme)",kw:"sonde vesicale urinaire femme sondage",src:"Ch.I art.6"},
+ {id:"sondeH",k:"AMI",c:4,l:"Cathétérisme urétral ou changement de sonde à demeure (homme)",kw:"sonde vesicale urinaire homme sondage",src:"Ch.I art.6"},
+ {id:"lavage",k:"AMI",c:1.25,l:"Instillation / lavage vésical (sonde en place)",kw:"lavage vesical instillation",src:"Ch.I art.6"},
+ {id:"etui",k:"AMI",c:1,l:"Pose isolée d'étui pénien (1×/24 h)",kw:"etui penien",tags:{once:1},src:"Ch.I art.6"},
+ {id:"retrait_su",k:"AMI",c:2,l:"Retrait de sonde urinaire",kw:"retrait sonde urinaire ablation",src:"Ch.I art.6"},
+ {id:"lavement",k:"AMI",c:3,l:"Lavement évacuateur ou médicamenteux",kw:"lavement evacuateur normacol",src:"Ch.I art.7"},
+ {id:"fecalome",k:"AMI",c:3,l:"Extraction de fécalome / extraction manuelle des selles",kw:"fecalome extraction selles",src:"Ch.I art.7"},
+ {id:"bouche",k:"AMI",c:1.25,l:"Soins de bouche médicamenteux post-radiothérapie",kw:"soins de bouche radiotherapie",src:"Ch.I art.7"},
+ {id:"pulve",k:"AMI",c:1.25,l:"Pulvérisation de produit médicamenteux",kw:"pulverisation spray cutane",src:"Ch.I art.8"},
+ /* ---- Ch. I art. 10 : surveillance (non cumulables entre eux) ---- */
+ {id:"medic",k:"AMI",c:1.2,l:"Administration et surveillance de la prise médicamenteuse (troubles neuro, psy, cognitifs, sensoriels, moteurs), par passage",kw:"medicaments traitement oral pilulier psychiatrie alzheimer prise medicamenteuse collyre",tags:{a10:1},src:"Ch.I art.10 — AP au-delà du 1er mois"},
+ {id:"surv_ttt",k:"AMI",c:1,l:"Surveillance et observation lors de la mise en œuvre / modification d'un traitement (15 passages max)",kw:"surveillance observation traitement tension fiche",tags:{a10:1},src:"Ch.I art.10"},
+ {id:"accomp1",k:"AMI",c:5.1,l:"Accompagnement à la prise médicamenteuse — séance initiale",kw:"accompagnement prise medicamenteuse polymedique fragile",tags:{a10:1},src:"Ch.I art.10"},
+ {id:"accomp2",k:"AMI",c:4.6,l:"Accompagnement à la prise médicamenteuse — 2e et 3e séance",kw:"accompagnement prise medicamenteuse suite",tags:{a10:1},src:"Ch.I art.10"},
+ {id:"tele_pans",k:"TMI",c:1.6,l:"Surveillance à distance d'un pansement (télésoin, 4/mois max)",kw:"telesoin video pansement distance",tags:{once:1},src:"Ch.I art.14"},
+ /* ---- Ch. I art. 12 : BSI ---- */
+ {id:"bsi_init",k:"DI",c:2.5,l:"BSI initial",kw:"bsi bilan soins infirmiers initial",tags:{once:1},src:"Ch.I art.12"},
+ {id:"bsi_ren",k:"DI",c:1.2,l:"BSI de renouvellement (12 mois) ou intermédiaire (2 max/an)",kw:"bsi renouvellement intermediaire",tags:{once:1},src:"Ch.I art.12"},
+ {id:"bsa",k:"BSA",c:1,l:"Forfait journalier dépendance légère BSA",kw:"bsa forfait dependance toilette nursing",tags:{bsi:1,once:1},src:"Art.23.3"},
+ {id:"bsb",k:"BSB",c:1,l:"Forfait journalier dépendance intermédiaire BSB",kw:"bsb forfait dependance toilette nursing",tags:{bsi:1,once:1},src:"Art.23.3"},
+ {id:"bsc",k:"BSC",c:1,l:"Forfait journalier dépendance lourde BSC",kw:"bsc forfait dependance toilette nursing lourd",tags:{bsi:1,once:1},src:"Art.23.3"},
+ /* ---- Ch. II art. 1 & 3 : cathéters, perfusions ---- */
+ {id:"kt_entretien",k:"AMI",c:4,l:"Entretien de cathéter (PAC, PICC, central, péritonéal) hors perfusion, pansement inclus",kw:"entretien catheter pac picc rincage heparinisation",src:"Ch.II art.1"},
+ {id:"perf9",k:"AMI",c:9,l:"Perfusion courte ≤ 1 h sous surveillance continue (pose, surveillance, arrêt, pansement)",kw:"perfusion courte antibiotique antalgique perf",tags:{derog:1,perfC:1},src:"Ch.II art.3"},
+ {id:"perf6",k:"AMI",c:6,l:"Supplément par heure de surveillance continue au-delà de la 1re heure (5 max)",kw:"heure supplementaire surveillance continue",tags:{derog:1,perfS:1},src:"Ch.II art.3"},
+ {id:"perf14",k:"AMI",c:14,l:"Perfusion > 1 h avec organisation d'une surveillance (pose) — 1×/jour",kw:"perfusion longue hydratation 12h antibiotherapie pompe",tags:{derog:1,perfL:1,once:1},src:"Ch.II art.3 + CIR-9/2025"},
+ {id:"perf41",k:"AMI",c:4.1,l:"Changement de flacon, branchement en Y, débranchement, contrôle de débit (hors séance de pose) / 2e perfusion longue du jour",kw:"changement flacon deuxieme perfusion debranchement controle debit",tags:{derog:1,perfX:1},src:"Ch.II art.3 + CIR-9/2025"},
+ {id:"perf4",k:"AMI",c:4,l:"Organisation de la surveillance d'une perfusion, par jour hors pose et retrait (sans IFD ni majorations)",kw:"surveillance perfusion astreinte organisation",tags:{derog:1,nodep:1,once:1},src:"Ch.II art.3"},
+ {id:"perf5",k:"AMI",c:5,l:"Arrêt et retrait du dispositif de perfusion, pansement inclus (pas avec AMI 9/10)",kw:"arret definitif perfusion retrait debranchement",tags:{derog:1,perfR:1},src:"Ch.II art.3"},
+ /* ---- Ch. II art. 4 : cancéreux / immunodéprimé ---- */
+ {id:"k_inj",k:"AMI",c:1.5,l:"Injection IM ou SC chez patient cancéreux / immunodéprimé",kw:"cancer cancereux immunodeprime injection sous-cutanee neupogen granocyte",tags:{cancer:1},src:"Ch.II art.4"},
+ {id:"k_iv",k:"AMI",c:2.5,l:"Injection IV chez patient cancéreux / immunodéprimé",kw:"cancer injection intraveineuse iv",tags:{cancer:1},src:"Ch.II art.4"},
+ {id:"k_chimio",k:"AMI",c:7,l:"Injection IV d'un produit de chimiothérapie anticancéreuse",kw:"chimiotherapie injection iv bolus",tags:{cancer:1},src:"Ch.II art.4"},
+ {id:"k_aero",k:"AMI",c:5,l:"Aérosol à visée prophylactique (immunodéprimé)",kw:"aerosol prophylactique pentamidine",tags:{cancer:1},src:"Ch.II art.4"},
+ {id:"k_perf10",k:"AMI",c:10,l:"Perfusion courte ≤ 1 h sous surveillance continue, patient cancéreux",kw:"cancer chimiotherapie perfusion courte pac picc",tags:{derog:1,perfC:1,cancer:1},src:"Ch.II art.4"},
+ {id:"k_perf15",k:"AMI",c:15,l:"Perfusion > 1 h avec organisation de surveillance, patient cancéreux (diffuseur, pompe, PCA, cassette) — 1×/jour",kw:"cancer chimiotherapie diffuseur pompe pca cassette baxter infuseur",tags:{derog:1,perfL:1,once:1,cancer:1},src:"Ch.II art.4"},
+ {id:"k_surv",k:"AMI",c:4,l:"Organisation de la surveillance, patient cancéreux, par jour hors pose et retrait (sans IFD ni majorations)",kw:"astreinte surveillance chimio organisation",tags:{derog:1,cancer:1,once:1,nodep:1},src:"Ch.II art.4"},
+ {id:"k_ret",k:"AMI",c:5,l:"Arrêt et retrait du dispositif, patient cancéreux (rinçage, retrait aiguille, pansement)",kw:"retrait diffuseur debranchement pac gripper rincage fin de chimio",tags:{derog:1,cancer:1,perfR:1},src:"Ch.II art.4"},
+ /* ---- Ch. II art. 5 ter, 6, 7 ---- */
+ {id:"post_hosp",k:"AMI",c:5.8,l:"Surveillance clinique et prévention après hospitalisation IC / BPCO (15 max, formation requise, pas de nuit/férié)",kw:"insuffisance cardiaque bpco hospitalisation surveillance prado",tags:{derog:1,once:1,nomaj:1},src:"Ch.II art.5 ter"},
+ {id:"dialyse",k:"AMI",c:4,l:"Dialyse péritonéale, par séance (4 max/jour)",kw:"dialyse peritoneale",src:"Ch.II art.6"},
+ {id:"irrig",k:"AMI",c:4,l:"Irrigation colique après stomie définitive (20 max)",kw:"irrigation colique stomie",src:"Ch.II art.6"},
+ {id:"postop",k:"AMI",c:3.9,l:"Surveillance clinique post-opératoire (ambulatoire / RAAC), 3 max",kw:"post operatoire ambulatoire raac surveillance",tags:{postop:1},src:"Ch.II art.7"},
+ {id:"kt_peri",k:"AMI",c:4.2,l:"Surveillance / retrait de cathéter périnerveux (analgésie post-op)",kw:"catheter perinerveux analgesie",tags:{postop:1},src:"Ch.II art.7"},
+ {id:"redon",k:"AMI",c:2.8,l:"Surveillance / retrait de drain de Redon (2 max)",kw:"redon drain retrait",tags:{postop:1},src:"Ch.II art.7"},
+ /* ---- Téléconsultation (hors art. 11B) ---- */
+ {id:"tls",k:"TLS",c:1,l:"Accompagnement à la téléconsultation au décours d'un soin (10 €)",kw:"teleconsultation accompagnement tls",tags:{tele:1},src:"Art.14.9.5 — hors 11B"},
+ {id:"tld",k:"TLD",c:1,l:"Accompagnement à la téléconsultation isolé au domicile (15 €)",kw:"teleconsultation accompagnement domicile tld",tags:{tele:1},src:"Art.14.9.5"},
+];
+const byId=id=>CATALOG.find(c=>c.id===id);
+
+let ref={...DEFAULT_REF,...loadJSON("lidia.cot.ref",{})};Object.keys(ref).forEach(k=>{if(typeof ref[k]!=="number"||isNaN(ref[k]))ref[k]=DEFAULT_REF[k]??0});
+let day=loadJSON("lidia.cot.day",null)||newDay();
+let cur=0;
+const DEFAULT_WEBHOOK="https://lidiaplan.app.n8n.cloud/webhook/lidia-cotation";
+let ai={key:"",webhook:DEFAULT_WEBHOOK,...loadJSON("lidia.cot.ai",{})};if(!ai.webhook)ai.webhook=DEFAULT_WEBHOOK;
+
+function newDay(){return {date:new Date().toISOString().slice(0,10),km:0,ctx:{domicile:true},note:"",passages:[{label:"Matin",heure:"08:00",acts:[]}]}}
+function loadJSON(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function save(){try{localStorage.setItem("lidia.cot.ref",JSON.stringify(ref));localStorage.setItem("lidia.cot.day",JSON.stringify(day));localStorage.setItem("lidia.cot.ai",JSON.stringify(ai))}catch(e){}}
+const eur=n=>(isFinite(n)?n:0).toFixed(2).replace(".",",")+" €";const $=s=>document.querySelector(s);
+function esc(x){return String(x??"").replace(/[&<>"\x27]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","\x27":"&#39;"}[c]))}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),1800)}
+function norm(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function LV(k){const d=day.date||"";let v=ref[k]??0;if((k==="AMI"||k==="AMX"||k==="TMI")&&ref.AMI===DEFAULT_REF.AMI){if(d>="2027-11-06")v=3.45;else if(d>="2026-11-06")v=3.35;}return v}
+
+/* ================= MOTEUR — un passage ================= */
+function computePassage(p,dayInfo){
+  const ctx=day.ctx,km=parseFloat(day.km)||0,out={lines:[],majs:[],alerts:[],total:0,lost:0};
+  const forfaits=p.acts.filter(a=>a.tags?.bsi),di=p.acts.filter(a=>a.k==="DI"),tele=p.acts.filter(a=>a.tags?.tele),hasBSI=forfaits.length>0||dayInfo.bsiDay;
+  let techs=p.acts.filter(a=>!a.tags?.bsi&&a.k!=="DI"&&!a.tags?.tele).map(a=>({...a,k:hasBSI&&a.k==="AMI"?"AMX":a.k}));
+  if(ctx.cancer) techs.forEach(t=>{if(t.id==="perf9"){t.c=10;t.l+=" → cancéreux (art. 4)";}if(t.id==="perf14"){t.c=15;t.l+=" → cancéreux (art. 4)";}if(t.id==="inj"){t.c=1.5;t.l+=" → cancéreux (art. 4)";}if(t.id==="inj_iv"){t.c=2.5;t.l+=" → cancéreux (art. 4)";}});
+  forfaits.forEach(f=>out.lines.push({a:f,code:f.k,taux:100,amt:LV(f.k),why:"forfait journalier toujours à taux plein (11B.5)"}));
+  di.forEach(d=>out.lines.push({a:d,code:`DI ${d.c}`,taux:100,amt:LV("DI")*d.c}));
+  tele.forEach(t=>out.lines.push({a:t,code:t.k,taux:100,amt:LV(t.k),why:"téléconsultation : hors art. 11B (11B.4.c)"}));
+  const val=t=>LV(t.k)*t.c;
+  // hors cumul : vaccination à domicile (11B.4.d), prélèvement veineux (taux plein quel que soit l'acte associé)
+  const free=techs.filter(t=>(t.tags?.vacc&&ctx.domicile)||t.tags?.plein);
+  free.forEach(t=>out.lines.push({a:t,code:`${t.k} ${t.c}`,taux:100,amt:val(t),full:val(t),why:t.tags?.vacc?"vaccination à domicile : hors art. 11B (11B.4.d)":"ponction veineuse : taux plein quel que soit l'acte associé (ch. I art. 1)"}));
+  let rest=techs.filter(t=>!free.includes(t));
+  // groupes à taux plein entre eux
+  const groups=[];
+  const diab=rest.filter(t=>t.tags?.diab);if(diab.length)groups.push({items:diab,derog:diab.some(t=>t.tags?.derog),lbl:"art. 5 bis"});
+  const perfs=rest.filter(t=>t.tags?.perfC||t.tags?.perfL||t.tags?.perfS);if(perfs.length)groups.push({items:perfs,derog:true,lbl:perfs.length>1?"perfusions":undefined});
+  const ulcs=rest.filter(t=>t.id==="ulc"||t.id==="pans4"),top=rest.filter(t=>t.tags?.topique);
+  if(ulcs.length&&top.length)groups.push({items:[ulcs[0],...top],derog:true,lbl:"ulcère + analgésie"});
+  const postop=rest.filter(t=>t.tags?.postop);if(postop.length>1)groups.push({items:postop,derog:false,lbl:"post-op art. 7"});
+  const used=new Set(groups.flatMap(g=>g.items));
+  rest.forEach(t=>{if(!used.has(t)){groups.push({items:[t],derog:!!t.tags?.derog});used.add(t);}});
+  const gval=g=>g.items.reduce((s,t)=>s+val(t),0);groups.sort((a,b)=>gval(b)-gval(a));
+  const INCLUS_BSI=["pans1","pans1c","stomie","fils","fils2","pans_mam","pans_var"];
+  let rank=0,rankND=0;
+  const GRP={"art. 5 bis":"art. 5 bis : actes diabète cumulés à taux plein entre eux","perfusions":"perfusion courte + longue : taux plein par dérogation à l'art. 11B (ch. II art. 3)","ulcère + analgésie":"analgésie topique + pansement : taux plein (ch. I art. 3)","post-op art. 7":"actes post-op cumulés sans art. 11B (ch. II art. 7)"};
+  groups.forEach(g=>{
+    let taux,why;
+    if(hasBSI){ if(g.derog){taux=100;why="dérogation art. 12 en BSI : taux plein";} else if(g.items.every(t=>INCLUS_BSI.includes(t.id))){taux=0;why="pansement courant : inclus dans le forfait de dépendance, non facturable en BSI";} else {taux=rankND===0?50:0;rankND++;why=taux?"AMX en BSI : 50 % (11B.5)":"acte suivant en BSI : non facturable";} }
+    else { taux=rank===0?100:(rank===1?50:0); why=rank===0?"acte principal (coefficient le plus élevé)":rank===1?"2ᵉ acte : 50 % (art. 11B)":"3ᵉ acte et suivants : non facturables (art. 11B)"; rank++; }
+    if(g.lbl&&GRP[g.lbl])why=GRP[g.lbl]+(taux<100?" — groupe classé "+(taux===50?"2ᵉ":"3ᵉ+")+" → "+taux+" %":"");
+    g.items.forEach(t=>{const full=val(t),amt=Math.round(full*taux)/100;out.lines.push({a:t,code:`${t.k} ${t.c}`,taux,amt,full,why});out.lost+=full-amt;});
+  });
+  // incompatibilités
+  const has=id=>techs.some(t=>t.id===id);
+  if(techs.some(t=>t.tags?.perfR)&&techs.some(t=>t.tags?.perfC))out.alerts.push({t:"stop",m:"AMI 5 (arrêt/retrait) ne se cumule pas avec une perfusion sous surveillance continue (AMI 9/10) : le retrait est inclus dans le forfait."});
+  if(techs.filter(t=>t.tags?.a10).length>1)out.alerts.push({t:"stop",m:"Art. 10 : les actes de surveillance ne sont pas cumulables entre eux dans la même séance."});
+  if(has("surv75")&&hasBSI)out.alerts.push({t:"stop",m:"La séance hebdomadaire diabétique > 75 ans ne se cumule pas avec une prise en charge BSI."});
+  if(has("bilan_plaie")&&techs.some(t=>t.tags?.lourd&&t.id!=="bilan_plaie"))out.alerts.push({t:"warn",m:"Le bilan de plaie AMI 11 comprend la réalisation du pansement : ne pas coter le pansement en plus."});
+  // majorations
+  const onlyNoDep=techs.length&&techs.every(t=>t.tags?.nodep)&&!forfaits.length&&!di.length;
+  const noMaj=techs.some(t=>t.tags?.nomaj);
+  const lourd=techs.some(t=>t.tags?.lourd&&!t.tags?.nomci);
+  const mci=(ctx.palliatif||lourd)&&ctx.domicile&&!onlyNoDep;
+  const solo=techs.length===1&&!forfaits.length&&!di.length&&!tele.length&&!hasBSI&&techs[0].k==="AMI"&&techs[0].c<=1.5&&!mci&&!onlyNoDep;
+  if(solo)out.majs.push({code:"MAU",l:"Acte unique AMI ≤ 1,5 (art. 23.1)",amt:ref.MAU});
+  if(mci)out.majs.push({code:"MCI",l:ctx.palliatif?"Coordination — soins palliatifs":"Coordination — pansement lourd et complexe",amt:ref.MCI});
+  if(ctx.enfant&&p.acts.length)out.majs.push({code:"MIE",l:"Enfant < 7 ans (art. 23.5)",amt:ref.MIE});
+  let nuit=0,nuitL="";const h=p.heure?+p.heure.slice(0,2):-1;
+  if(ctx.nuit||p.nuit){
+    if(h>=23||(h>=0&&h<5)){nuit=ref.NUIT2;nuitL="Nuit 23h–5h"}
+    else{nuit=ref.NUIT;nuitL="Nuit 20h–23h / 5h–8h"}
+  }
+  const dim=(day.date&&new Date(day.date+"T12:00").getDay()===0)||ctx.ferie?ref.DIM:0;
+  if(p.acts.length&&(nuit||dim)&&!onlyNoDep&&!noMaj){nuit>=dim?out.majs.push({code:"N",l:nuitL,amt:nuit}):out.majs.push({code:"F",l:"Dimanche / férié",amt:dim});}
+  if(ctx.domicile&&(p.acts.length||p.forceDep)&&!onlyNoDep){
+    if(hasBSI)out.majs.push({code:"IFI",l:"Déplacement patient dépendant (4 max/jour)",amt:ref.IFI});else out.majs.push({code:"IFD",l:"Déplacement",amt:ref.IFD});
+    const ar=km*2,ab=ctx.montagne?2:4,tarif=ctx.montagne?ref.IK_MONT:ref.IK_PLAINE,kmf=Math.max(0,ar-ab);if(kmf>0)out.majs.push({code:ctx.montagne?"IKM":"IK",l:`${kmf.toFixed(1)} km (${ar} A/R − ${ab})`,amt:Math.round(kmf*tarif*100)/100});}
+  out.lines.sort((a,b)=>(b.a.tags?.bsi?1:0)-(a.a.tags?.bsi?1:0)||(b.full??b.amt)-(a.full??a.amt));
+  out.total=out.lines.reduce((s,l)=>s+l.amt,0)+out.majs.reduce((s,m)=>s+m.amt,0);
+  // alertes anti-perte
+  if(!ctx.domicile&&p.acts.length)out.alerts.push({t:"warn",m:"Cabinet : pas d'IFD/IK ni de MCI (majoration domicile)."});
+  if(p.forceDep&&!p.acts.length)out.alerts.push({t:"warn",m:"Passage de dépendance couvert par le forfait déjà facturé : IFI seule (art. 13, 4 max/jour)."});
+  if(onlyNoDep)out.alerts.push({t:"warn",m:"Organisation de surveillance AMI 4 : sans déplacement ni majoration (texte de l'acte)."});
+  if(hasBSI&&techs.length)out.alerts.push({t:"warn",m:"Forfait BSI : AMX à 50 % (1er non dérogatoire), 0 % ensuite ; actes de l'art. 12 (perfusions, pansements lourds, ponction veineuse, art. 5 ter) à taux plein. Certaines CPAM limitent à un seul acte dérogatoire à taux plein : en cas de rejet, AMX suivants à 50 %."});
+  if(hasBSI&&techs.some(t=>INCLUS_BSI.includes(t.id)))out.alerts.push({t:"stop",m:"Pansement courant + BSI : inclus dans le forfait, 0 €. Seul un pansement lourd et complexe (art. 3 : escarre profonde, ulcère/greffe > 60 cm², amputation, fistule, méchage…) sort du forfait à taux plein — si la plaie y répond, cotez AMX 4 ou 5,1.",add:"pans4"});
+  if(diab.length>1)out.alerts.push({t:"gain",m:"Art. 5 bis : les actes diabète se cumulent à taux plein entre eux."});
+  if(lourd&&!ctx.palliatif&&ctx.domicile)out.alerts.push({t:"gain",m:"MCI 5 € ajoutée (pansement lourd et complexe, art. 23.2)."});
+  if(solo)out.alerts.push({t:"gain",m:"MAU 1,35 € ajoutée (acte unique AMI ≤ 1,5)."});
+  if(techs.length===1&&techs[0].c<=1.5&&mci)out.alerts.push({t:"warn",m:"MAU non cumulable avec la MCI : la MCI (5 €) est retenue."});
+  if(out.lost>0)out.alerts.push({t:"warn",m:`${eur(out.lost)} abattus par le cumul (art. 11B) sur ce passage.`});
+  if(!(ctx.nuit||p.nuit)&&(h>=20||h<8)&&h>=0&&p.acts.length)out.alerts.push({t:"gain",m:"Passage entre 20h et 8h : si l'appel ou la prescription justifie la nuit, cochez « Majoration nuit » (9,15 € / 18,30 €)."});
+  if(has("insu")&&!has("dextro"))out.alerts.push({t:"gain",m:"Insuline sans surveillance/adaptation : si prescrite, ajoutez le dextro (AMI 1, taux plein).",add:"dextro"});
+  if(ulcs.length&&!top.length)out.alerts.push({t:"gain",m:"Ulcère/escarre : une analgésie topique prescrite se cote AMI 1,1 en plus, à taux plein.",add:"topique"});
+  if(has("pans_diab")&&!has("topique_diab"))out.alerts.push({t:"gain",m:"Pied diabétique : analgésie topique AMI 1,1 cumulable à taux plein (art. 5 bis).",add:"topique_diab"});
+  if(has("pans1")&&/escarre profonde|amput|brul|greffe|fistule|mechage|irrigation|60 ?cm|compression/.test(norm(day.note)))out.alerts.push({t:"gain",m:"L'ordonnance évoque une plaie relevant de l'art. 3 : pansement lourd et complexe (AMI 4) ?",add:"pans4"});
+  if(has("pans1")&&/ulcere.*(compression|bande|contention)|(compression|contention).*ulcere/.test(norm(day.note)))out.alerts.push({t:"gain",m:"Ulcère avec compression : AMI 5,1 plutôt que 2,02.",add:"ulc"});
+  if(ctx.cancer&&(has("inj")||has("perf9")||has("perf14")||has("inj_iv")))out.alerts.push({t:"gain",m:"Patient cancéreux : coefficients de l'art. 4 ch. II appliqués (injection 1,5 / 2,5, perfusion 10 / 15)."});
+  if(!ctx.cancer&&techs.some(t=>t.tags?.cancer))out.alerts.push({t:"warn",m:"Acte réservé aux patients cancéreux / immunodéprimés : activez le chip « Cancéreux » ou vérifiez l'indication."});
+  if(ctx.cancer&&techs.some(t=>t.tags?.perfL)&&!day.passages.some(q=>q.acts.some(a=>a.id==="k_surv")))out.alerts.push({t:"gain",m:"Perfusion longue : l'organisation de la surveillance AMI 4 se cote chaque jour entre la pose et le retrait (passage sans déplacement).",add:"k_surv"});
+  const pl=p.acts.find(a=>a.tags?.perfL&&!a.fin);
+  if(pl)out.alerts.push({t:"gain",m:"Retrait de cette perfusion longue — quand ?",plan:p.acts.indexOf(pl)});
+  const pl2=p.acts.find(a=>a.tags?.perfL&&a.fin);
+  if(pl2)out.alerts.push({t:"warn",m:pl2.fin==="jour"?"Arrêt le jour même : AMI 4,1 ajouté au dernier passage (CIR-9/2025, arrêt < 24 h).":pl2.fin==="lendemain"?"Arrêt demain : aujourd'hui rien de plus (AMI 4 exclu le jour de la pose). Demain : AMI 5 arrêt-retrait + IFD, sans AMI 4.":"Perfusion sur plusieurs jours : jours intermédiaires → AMI 4 par jour (sans déplacement) ; jour du retrait → AMI 5 + IFD, sans AMI 4. Aujourd'hui : rien de plus.",unplan:p.acts.indexOf(pl2)});
+  if(p.acts.some(a=>a.tags?.verif))out.alerts.push({t:"warn",m:"Acte « à vérifier » présent."});
+  return out;
+}
+/* ================= MOTEUR — journée ================= */
+function computeDay(){
+  const bsiDay=day.passages.some(p=>p.acts.some(a=>a.tags?.bsi));
+  const res=day.passages.map(p=>computePassage(p,{bsiDay}));
+  const all=day.passages.flatMap(p=>p.acts),alerts=[];
+  const cnt=id=>all.filter(a=>a.id===id).length;
+  if(all.filter(a=>a.tags?.bsi).length>1)alerts.push({t:"stop",m:"Plusieurs forfaits BSI dans la journée : un seul par patient et par jour."});
+  if((cnt("perf4")||cnt("k_surv"))&&(cnt("perf14")||cnt("k_perf15")||cnt("perf5")||cnt("k_ret")))alerts.push({t:"stop",m:"AMI 4 (organisation de la surveillance) est exclu le jour de la pose (AMI 14/15) et le jour du retrait (AMI 5) — texte de l'acte, ch. II art. 3/4."});
+  if((cnt("perf4")||cnt("k_surv"))&&(cnt("perf14")||cnt("k_perf15")||cnt("perf5")||cnt("k_ret")))alerts.push({t:"stop",m:"AMI 4 (organisation de la surveillance) exclu le jour de la pose (AMI 14/15) et le jour du retrait (AMI 5) — texte de l'acte, ch. II art. 3/4."});
+  if(cnt("k_perf15")>1)alerts.push({t:"stop",m:"Deux AMI 15 le même jour : la 2ᵉ perfusion longue se cote AMI 4,1 (CIR-9/2025)."});
+  if(day.passages.filter(p=>p.acts.some(a=>a.tags?.bsi)).length>0&&day.passages.filter(p=>p.acts.length).length>4)alerts.push({t:"stop",m:"Patient BSI : 4 IFI maximum par jour."});
+  if(cnt("perf14")>1)alerts.push({t:"stop",m:"Deux AMI 14 le même jour : la 2ᵉ perfusion longue se cote AMI 4,1 (CIR-9/2025)."});
+  all.filter(a=>a.tags?.once&&!a.tags?.bsi).forEach(a=>{if(cnt(a.id)>1&&!alerts.some(x=>x.m.includes(a.l)))alerts.push({t:"stop",m:`« ${a.l} » ne se facture qu'une fois par jour.`});});
+  if(day.passages.length>1&&day.passages.every(p=>p.acts.length)){const hs=day.passages.map(p=>p.heure).filter(Boolean);if(new Set(hs).size<hs.length)alerts.push({t:"stop",m:"Deux passages à la même heure : des passages distincts exigent des horaires distincts."});alerts.push({t:"warn",m:`${day.passages.length} passages : chaque passage ouvre IFD + majorations, mais doit être prescrit ou cliniquement justifié (pas de fractionnement d'une séance).`});}
+  const lost=res.reduce((s,r)=>s+r.lost,0);
+  if(lost>3&&day.passages.length===1)alerts.push({t:"warn",m:`${eur(lost)} perdus au cumul. Si la prescription prévoit des horaires distincts (ex. insuline matin et soir), répartissez en passages.`});
+  return {res,total:res.reduce((s,r)=>s+r.total,0),alerts};
+}
+
+/* ================= RENDU ================= */
+function render(){
+  if(cur>=day.passages.length)cur=Math.max(0,day.passages.length-1);
+  const D=computeDay(),p=day.passages[cur],o=D.res[cur];
+  $("#date").value=day.date;$("#km").value=day.km;
+  document.querySelectorAll("#ctx .chip").forEach(b=>b.setAttribute("aria-pressed",!!day.ctx[b.dataset.ctx]));
+  $("#ptabs").innerHTML=day.passages.map((q,i)=>`<button class="ptab" aria-selected="${i===cur}" data-p="${i}"><span>${q.label||"Passage "+(i+1)}</span><b>${q.heure||"--:--"} · ${eur(D.res[i].total)}</b></button>`).join("")+`<button class="ptab add" data-p="new">+ Passage</button>`;
+  $("#pheure").value=p?.heure||"";$("#plabel").value=p?.label||"";$("#tname").textContent=p?.label||"Passage";$("#stamp").textContent=`${day.date} ${p?.heure||""}`;
+  const L=$("#lines");L.innerHTML="";
+  if(!p||!p.acts.length)L.innerHTML=`<div class="empty">Aucun acte dans ce passage.</div>`;
+  else o.lines.forEach(ln=>{const idx=p.acts.indexOf(ln.a);L.insertAdjacentHTML("beforeend",`<div class="line"><div class="lbl"><span class="code">${ln.code}</span> ${ln.a.l}${ln.a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${[ln.why,ln.full!=null&&ln.taux<100&&"valeur pleine "+eur(ln.full)].filter(Boolean).join(" · ")}</small></div><span class="taux t${ln.taux}">${ln.taux} %</span><div style="display:flex;align-items:center"><span class="amt ${ln.amt===0?'zero':''}">${eur(ln.amt)}</span><button class="x" data-rm="${idx}" aria-label="Retirer">×</button></div></div>`);});
+  $("#majs").innerHTML=o?o.majs.map(m=>`<div class="maj"><span><b>${m.code}</b> · ${m.l}</span><span>+ ${eur(m.amt)}</span></div>`).join(""):"";
+  $("#total").textContent=eur(o?o.total:0);
+  $("#alerts").innerHTML=o?o.alerts.map(al).join(""):"";
+  $("#dayLedger").innerHTML=day.passages.map((q,i)=>{const r=D.res[i];return `<div class="dl" aria-selected="${i===cur}" data-p="${i}"><div class="h"><span>${esc(q.label||"Passage "+(i+1))} <small>${q.heure||""}</small></span><b>${eur(r.total)}</b></div>${r.lines.map(l=>`<div class="l"><span><span class="t t${l.taux}">${l.taux}%</span>${l.code} · ${l.a.l}</span><b>${eur(l.amt)}</b></div>`).join("")||'<div class="m">vide — touchez pour ajouter</div>'}${r.majs.length?`<div class="m">${r.majs.map(m=>m.code+" "+eur(m.amt)).join(" · ")}</div>`:""}</div>`}).join("");
+  $("#dayTotalTop").textContent=eur(D.total);
+  
+  $("#dayAlerts").innerHTML=D.alerts.map(al).join("");
+  save();
+}
+const al=a=>`<div class="alert ${a.t}" style="flex-wrap:wrap"><span class="ic">${a.t==="gain"?"+":a.t==="stop"?"✕":"!"}</span><span style="flex:1">${a.m}</span>${a.add?`<button class="btn sm" data-add="${a.add}">Ajouter</button>`:""}${a.plan!=null?`<span style="display:flex;gap:6px;width:100%;margin-top:6px"><button class="btn sm" data-plan="jour" data-pi="${a.plan}">Ce soir (AMI 4,1)</button><button class="btn sm sec" data-plan="lendemain" data-pi="${a.plan}">Demain (AMI 5)</button><button class="btn sm sec" data-plan="multi" data-pi="${a.plan}">Plusieurs jours</button></span>`:""}${a.unplan!=null?`<button class="btn sm sec" data-unplan="${a.unplan}">Modifier</button>`:""}</div>`;
+function addAct(id,pi=cur){const a=byId(id);if(!a)return;day.passages[pi].acts.push(JSON.parse(JSON.stringify(a)));render();}
+function search(q){q=norm(q.trim());const R=$("#results");if(!q){R.innerHTML="";return}
+  const mCode=q.match(/(ami|amx|di|bs[abc]|tls|tld)?\s*([\d]+[,.]?\d*)/);
+  const codeK=mCode&&mCode[1]?mCode[1].toUpperCase():null,codeC=mCode?parseFloat(mCode[2].replace(",",".")):null;
+  const w=q.split(/\s+/);
+  const hits=CATALOG.map(a=>{const h=norm(a.l+" "+a.kw+" "+a.k+a.c);let s=0;w.forEach(x=>{if(h.includes(x))s+=x.length>2?2:1});
+    if(codeC!=null&&Math.abs(a.c-codeC)<0.001&&(!codeK||a.k===codeK||(codeK==="AMI"&&a.k==="AMI")))s+=6;
+    if(norm(a.k+" "+a.c).startsWith(q))s+=5;return{a,s}}).filter(x=>x.s>0).sort((x,y)=>y.s-x.s).slice(0,10);
+  R.innerHTML=hits.map(({a})=>`<button class="act" data-id="${a.id}"><span><b>${a.k} ${a.c}</b> ${a.l}${a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${eur(LV(a.k)*a.c)}</small></span><span class="plus">+</span></button>`).join("")||`<div class="muted">Aucun acte trouvé.</div>`;}
+function renderRef(){$("#refTable").innerHTML=Object.keys(DEFAULT_REF).map(k=>`<tr><td>${REF_LABEL[k]}</td><td><input type="number" step="0.01" data-ref="${k}" value="${ref[k]}"> €</td></tr>`).join("");
+  $("#catalog").innerHTML=CATALOG.map(a=>`<div class="act" style="margin-bottom:6px"><span><b>${a.k} ${a.c}</b> ${a.l}${a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${[a.tags?.diab&&"art. 5 bis",a.tags?.derog&&"dérogatoire BSI (art. 12)",a.tags?.cancer&&"cancéreux (art. 4)",a.tags?.lourd&&"MCI",a.tags?.bsi&&"forfait",a.tags?.once&&"1×/jour",a.src].filter(Boolean).map(t=>`<span class="tag">${t}</span>`).join(" ")}</small></span></div>`).join("");}
+
+/* ================= ORDONNANCE ================= */
+let ordoImage=null,ordoResult=[];
+function offlineParse(txt){const t=norm(txt),found=[];
+  const rules=[["insu",/insulin/],["dextro",/(glyc|dextro)/],["prelev",/(prise de sang|prelev|inr|nfs|bilan (sanguin|bio))/],["vacc",/vaccin/],["ulc",/(ulcere.*(compression|bande|contention)|(compression|contention).*ulcere)/],["pans4",/(escarre|ulcere|amput|brul|greffe|stomie|lourd|complexe)/],["pans1",/pansement/],["fils",/(fils|agrafe)/],["perf14",/(perfusion.*(long|12 ?h|24 ?h|hydratation))/],["perf9",/perfusion/],["lavement",/lavement/],["aero",/aerosol/],["sondeF",/sond/],["medic",/(pilulier|prise (du|des|de) (traitement|medicament)|medicaments)/],["bsa",/(toilette|nursing|hygiene|dependan)/],["inj",/(injection|intramusc|sous.?cutan|lovenox|heparin|b12)/]];
+  rules.forEach(([id,re])=>{if(re.test(t)&&!found.some(f=>f.id===id))found.push({id,freq:"",horaires:""})});
+  const drop=(a,b)=>{if(found.some(f=>f.id===a)){const i=found.findIndex(f=>f.id===b);if(i>-1)found.splice(i,1)}};drop("pans4","pans1");drop("ulc","pans4");drop("insu","inj");drop("perf14","perf9");
+  const ms=/matin\s*(et|\/|-)\s*soir|2\s*(x|fois)\s*(par|\/)\s*j/i.test(txt);found.forEach(f=>{if(ms&&(f.id==="insu"||f.id==="dextro"))f.horaires="matin,soir";else f.horaires="matin"});
+  return{actes:found,remarques:"Analyse hors-ligne par mots-clés : vérifiez fréquences, horaires et coefficients."};}
+async function aiParse(txt,img){
+  const codes=CATALOG.map(c=>`${c.id} = ${c.k} ${c.c} ${c.l}`).join("\n");
+  const sys=`Tu es expert de la NGAP infirmière (IDEL, France). On te donne une ordonnance (texte et/ou image). Retourne UNIQUEMENT un JSON valide sans markdown : {"actes":[{"id":"<id catalogue>","freq":"<ex 2×/jour, 3×/semaine>","duree":"<durée>","horaires":"<liste séparée par virgules parmi matin,midi,soir,nuit ; 'matin' si non précisé>","note":"<précision>","incertain":true si l'acte ou son coefficient n'est pas certain}],"warnings":["<chaque mention manquante ou ambiguë : durée absente, renouvellement, critères art. 3 non précisés…>"],"remarques":"<vigilance globale>"}. N'invente JAMAIS une information absente : omets le champ ou mets incertain:true. Une plaie sans critère explicite de pansement lourd (art. 3 : brûlure >5 %, ulcère >60 cm², méchage, escarre profonde…) = pansement courant (pans1) avec incertain:true, jamais pans4 par défaut. Pour l'insuline, crée une entrée par injection. Catalogue (id obligatoires) :\n${codes}\nSi pas d'équivalent : id "autre" + note.`;
+  const ctl=new AbortController();const tmo=setTimeout(()=>ctl.abort(),45000);
+  if(ai.webhook){let r;try{r=await fetch(ai.webhook,{method:"POST",headers:Object.assign({"Content-Type":"application/json"},ai.token?{"Authorization":"Bearer "+ai.token}:{}),body:JSON.stringify({text:txt,image_base64:img?.data||null,media_type:img?.type||null,system:sys}),signal:ctl.signal});}catch(e){clearTimeout(tmo);throw new Error(e.name==="AbortError"?"webhook : délai dépassé (45 s)":e.message);}finally{clearTimeout(tmo);}const raw=await r.text();if(!r.ok)throw new Error("webhook HTTP "+r.status+" : "+raw.slice(0,120));if(!raw.trim())throw new Error("webhook : réponse vide (vérifier le nœud Répondre / workflow actif)");try{return JSON.parse(raw);}catch(e){throw new Error("webhook : réponse non JSON : "+raw.slice(0,120));}}
+  const content=[];if(img)content.push(img.type==="application/pdf"?{type:"document",source:{type:"base64",media_type:"application/pdf",data:img.data}}:{type:"image",source:{type:"base64",media_type:img.type,data:img.data}});content.push({type:"text",text:txt||"Lis cette ordonnance."});
+  const headers={"Content-Type":"application/json"};if(ai.key){headers["x-api-key"]=ai.key;headers["anthropic-version"]="2023-06-01";headers["anthropic-dangerous-direct-browser-access"]="true";}
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,system:sys,messages:[{role:"user",content}]})});
+  if(!r.ok)throw new Error("API "+r.status);const d=await r.json();return JSON.parse((d.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim());}
+function renderOrdo(res){ordoResult=res.actes||[];
+  const inDay=id=>day.passages.some(q=>q.acts.some(a=>a.id===id));
+  $("#ordoActs").innerHTML=ordoResult.map((x,i)=>{const a=byId(x.id);const dup=a&&inDay(x.id);
+    return`<label class="act" style="cursor:pointer${x.incertain?";border-color:var(--amber)":""}"><span style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" data-oi="${i}" ${a?(dup?"":"checked"):"disabled"} style="margin-top:4px"><span>${a?`<b>${a.k} ${a.c}</b> ${a.l}`:`<b>?</b> Non reconnu`}${x.incertain?'<span class="verif">à confirmer</span>':""}${dup?'<span class="verif" style="background:var(--red-soft);color:var(--red)">déjà dans la journée</span>':""}<small>${[x.horaires&&"passages : "+esc(x.horaires),esc(x.freq),esc(x.duree),esc(x.note)].filter(Boolean).join(" · ")}</small></span></span></label>`}).join("")||`<div class="muted">Aucun acte identifié.</div>`;
+  const warn=[...(res.warnings||[]),res.remarques].filter(Boolean);
+  $("#ordoNotes").innerHTML=warn.map(w=>`<div class="alert warn"><span class="ic">!</span><span>${esc(w)}</span></div>`).join("");
+  $("#ordoAdd").hidden=!ordoResult.some(x=>byId(x.id));}
+const SLOT={matin:["Matin","08:00"],midi:["Midi","12:00"],soir:["Soir","19:00"],nuit:["Nuit","21:00"]};
+function buildDayFromOrdo(){const chosen=[...document.querySelectorAll("[data-oi]:checked")].map(cb=>ordoResult[+cb.dataset.oi]).filter(x=>byId(x.id));
+  const slots={};chosen.forEach(x=>{(x.horaires||"matin").split(/[,;/ ]+/).map(s=>norm(s)).filter(s=>SLOT[s]).forEach(s=>{(slots[s]=slots[s]||[]).push(x.id)});});
+  const order=["matin","midi","soir","nuit"];const ps=order.filter(s=>slots[s]).map(s=>({label:SLOT[s][0],heure:SLOT[s][1],acts:slots[s].map(id=>JSON.parse(JSON.stringify(byId(id))))}));
+  if(ps.length){day.passages=ps;cur=0;}render();showTab("jour");toast(`${ps.length} passage(s) construit(s)`);}
+
+/* ================= TOURNÉE ================= */
+let patients=loadJSON("lidia.cot.patients",[]),cabinet=loadJSON("lidia.cot.cabinet",null),editIdx=null,lastRoute=null,gpsGeo=null;
+const CAB_ADDR="1 bis chemin du Blanquet, 31270 Villeneuve-Tolosane";
+function savePatients(){try{localStorage.setItem("lidia.cot.patients",JSON.stringify(patients));if(cabinet)localStorage.setItem("lidia.cot.cabinet",JSON.stringify(cabinet))}catch(e){}}
+async function geocode(addr){const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=fr&q="+encodeURIComponent(addr),{headers:{"Accept":"application/json"}});const j=await r.json();if(!j.length)return null;return {lat:+j[0].lat,lon:+j[0].lon,label:j[0].display_name};}
+function distKm(a,b){if(!a||!b)return null;const R=6371,dl=(b.lat-a.lat)*Math.PI/180,dn=(b.lon-a.lon)*Math.PI/180,x=Math.sin(dl/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))*1.3;}
+const tmin=t=>{const [h,m]=(t||"00:00").split(":").map(Number);return h*60+m};const fmt=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(Math.round(m%60)).padStart(2,"0");
+const ACT_MIN={bsc:45,bsb:35,bsa:25,perf14:30,perf9:50,k_perf15:30,k_perf10:50,pans4:25,ulc:30,pico:30,bilan_plaie:40,pans1:15,pans1c:15,stomie:15,trach:20,fils:10,fils2:15,prelev:8,insu:5,dextro:5,inj:7,inj_iv:10,inj_pac:15,medic:10,vacc:8,post_hosp:30,dep_hosp:25,sng:15,enteral:20,sondeF:15,sondeH:15,lavement:20,k_ret:15,kt_entretien:15,perf41:10,perf5:15,accomp1:30,accomp2:25};
+const actsMinutes=ids=>Math.max(8,(ids||[]).reduce((s,id)=>s+(ACT_MIN[id]??8),0));
+let formActs=[];
+function migratePatients(){let ch=false;patients.forEach(p=>{
+  if(!p.actIds){const pr=PROFILES.find(x=>x.id===p.soin);p.actIds=pr?.acts?.slice()||[];ch=true;}
+  if(!p.dur){p.dur=actsMinutes(p.actIds);ch=true;}
+});if(ch)savePatients();}
+function actLabel(id){const a=byId(id);return a?`${a.k} ${a.c} · ${a.l.split("(")[0].trim().slice(0,28)}`:id;}
+function renderFormActs(){$("#pActs").innerHTML=formActs.map((id,i)=>`<button type="button" class="chip" aria-pressed="true" data-fa="${i}">${actLabel(id)} ✕</button>`).join("")||'<span class="muted">Aucun soin — ajoutez avec +</span>';}
+function renderPatients(){
+  const sel=$("#pSoin");if(!sel.options.length){
+    sel.insertAdjacentHTML("beforeend",'<optgroup label="Profils fréquents">'+PROFILES.filter(p=>!p.nodep&&p.acts&&p.acts.length).map(pr=>`<option value="P:${pr.id}">${pr.l}</option>`).join("")+"</optgroup>");
+    sel.insertAdjacentHTML("beforeend",'<optgroup label="Tous les actes NGAP">'+CATALOG.map(a=>`<option value="A:${a.id}">${a.k} ${a.c} — ${a.l.slice(0,48)}</option>`).join("")+"</optgroup>");}
+  $("#pCount").textContent=patients.filter(p=>p.active).length+" actifs / "+patients.length;
+  const slotOf=p=>tmin(p.w1)<14*60?"Matin":"Soir";
+  const groups=["Matin","Soir"];
+  $("#pList").innerHTML=groups.map(g=>{const list=patients.map((p,i)=>({p,i})).filter(x=>slotOf(x.p)===g);if(!list.length)return "";
+    return `<div style="font-weight:700;font-size:13px;color:var(--teal);margin:10px 0 2px">${g} (${list.filter(x=>x.p.active).length})</div>`+list.map(({p,i})=>ptRow(p,i)).join("");}).join("")||`<p class="muted">Aucun patient enregistré.</p>`;
+}
+function ptRow(p,i){return `<div class="pt ${p.active?"":"off"}"><div class="pt-body" data-pe="${i}" style="flex:1;cursor:pointer"><b>${esc(p.name)}</b> · ${(p.actIds||[]).map(id=>byId(id)?byId(id).k+" "+byId(id).c:"").join(" + ")||"—"}<small>${p.w1}–${p.w2} · ${p.dur} min · ${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"].filter((d,k)=>p.days.includes(k)).join(" ")||"aucun jour"}${p.to?" · jusqu'au "+esc(p.to):""}${p.geo?"":" · <span style='color:var(--red)'>adresse non localisée</span>"}</small></div><div class="acts" data-row="${i}"><button class="btn sm sec" data-more="${i}">⋯</button><span class="more" hidden><button class="btn sm sec" data-pd="${i}">Passage soir</button><button class="btn sm ${p.active?"sec":""}" data-pt="${i}">${p.active?"Arrêt":"Reprise"}</button><button class="btn sm sec" data-px="${i}">Suppr.</button></span></div></div>`;
+}
+function fillForm(p){$("#pName").value=p?.name||"";$("#pAddr").value=p?.addr||"";formActs=p?.actIds?.slice()||[];renderFormActs();$("#pPal").setAttribute("aria-pressed",!!p?.pal);$("#pK").setAttribute("aria-pressed",!!p?.k);$("#pNuit").setAttribute("aria-pressed",!!p?.nuit);$("#pDur").value=p?.dur||20;$("#pW1").value=p?.w1||"07:00";$("#pW2").value=p?.w2||"12:00";$("#pPrio").value=p?.prio||2;$("#pFrom").value=p?.from||new Date().toISOString().slice(0,10);$("#pTo").value=p?.to||"";$("#pNote").value=p?.note||"";document.querySelectorAll("#pDays .chip").forEach(b=>b.setAttribute("aria-pressed",p?p.days.includes(+b.dataset.d):true));$("#pFormTitle").textContent=p?"Modifier "+p.name:"Ajouter un patient / un passage";$("#pCancel").hidden=!p;}
+async function useGPS(){
+  if(!navigator.geolocation){$("#pGeoStatus").textContent="Géolocalisation non disponible sur ce navigateur.";return}
+  $("#pGeoStatus").textContent="Recherche de la position… (autorisez l'accès si demandé)";
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    gpsGeo={lat:pos.coords.latitude,lon:pos.coords.longitude,label:"Position GPS"};
+    $("#pGeoStatus").textContent=`Position captée (± ${Math.round(pos.coords.accuracy)} m).`;
+    try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${gpsGeo.lat}&lon=${gpsGeo.lon}`);const j=await r.json();
+      if(j.display_name){gpsGeo.label=j.display_name;$("#pAddr").value=j.display_name.split(",").slice(0,3).join(",");$("#pAddr").dataset.gps="1";$("#pGeoStatus").textContent=`Position captée : ${$("#pAddr").value}`;}}catch(e){}
+  },err=>{$("#pGeoStatus").textContent=err.code===1?"Accès refusé : autorisez la localisation pour ce site dans Chrome (icône cadenas → Autorisations).":"Position introuvable ("+err.message+"). Le GPS nécessite HTTPS — ok sur Netlify.";},{enableHighAccuracy:true,timeout:12000});
+}
+async function savePatient(){
+  const name=$("#pName").value.trim(),addr=$("#pAddr").value.trim();if(!name||!addr){$("#pStatus").textContent="Nom et adresse requis.";return}
+  if(!formActs.length){$("#pStatus").textContent="Ajoutez au moins un soin (+).";return}
+  const p={name,addr,actIds:formActs.slice(),pal:$("#pPal").getAttribute("aria-pressed")==="true",k:$("#pK").getAttribute("aria-pressed")==="true",nuit:$("#pNuit").getAttribute("aria-pressed")==="true",dur:+$("#pDur").value||20,w1:$("#pW1").value,w2:$("#pW2").value,prio:+$("#pPrio").value,days:[...document.querySelectorAll("#pDays .chip[aria-pressed=true]")].map(b=>+b.dataset.d),from:$("#pFrom").value,to:$("#pTo").value,note:$("#pNote").value.trim(),active:true,geo:null};
+  const prev=editIdx!=null?patients[editIdx]:null;
+  if(gpsGeo&&$("#pAddr").dataset.gps==="1"){p.geo=gpsGeo;}
+  else if(prev&&prev.addr===addr)p.geo=prev.geo;else{$("#pStatus").textContent="Localisation de l'adresse…";try{p.geo=await geocode(addr);}catch(e){p.geo=null;}}
+  gpsGeo=null;delete $("#pAddr").dataset.gps;
+  if(prev)p.active=prev.active;
+  if(editIdx!=null)patients[editIdx]=p;else patients.push(p);editIdx=null;savePatients();fillForm(null);renderPatients();setTimeout(renderMap,60);
+  $("#pStatus").textContent=p.geo?`Enregistré — ${p.geo.label.split(",").slice(0,2).join(",")}`:"Enregistré, mais adresse introuvable : précisez (numéro, commune).";
+}
+const SLOTS={matin:{a:0,b:14*60,inp:"tStartM",lbl:"Tournée du matin"},soir:{a:14*60,b:24*60,inp:"tStartS",lbl:"Tournée du soir"}};
+let lastRoutes={};
+function optimizeList(list,start){
+  function schedule(order){let now=start,pos=cabinet,km=0,pen=0;const legs=[];
+    for(const c of order){const d=c.geo?distKm(pos,c.geo):8,tr=d/35*60,arr=now+tr,st=Math.max(arr,tmin(c.w1)),late=Math.max(0,st+c.dur-tmin(c.w2)),wait=st-arr;
+      pen+=late*(c.prio===1?30:c.prio===2?8:2)+wait*0.4;km+=d;legs.push({c,d,tr,arr,st,late,wait});now=st+c.dur;pos=c.geo||pos;}
+    const back=distKm(pos,cabinet)||0;km+=back;
+    return {legs,km,back,end:now+back/35*60,cost:(now+back/35*60-start)+pen+km*3};}
+  let rem=[...list],order=[],pos0=cabinet,now0=start;
+  while(rem.length){let best=null,bs=1e9;
+    for(const c of rem){const d=c.geo?distKm(pos0,c.geo):8,tr=d/35*60,st=Math.max(now0+tr,tmin(c.w1)),late=Math.max(0,st+c.dur-tmin(c.w2));
+      const sc=tr+(st-now0-tr)*0.6+late*(c.prio===1?20:c.prio===2?6:2)+(tmin(c.w2)-now0)*0.15;
+      if(sc<bs){bs=sc;best=c;}}
+    rem.splice(rem.indexOf(best),1);order.push(best);const d=best.geo?distKm(pos0,best.geo):8;now0=Math.max(now0+d/35*60,tmin(best.w1))+best.dur;pos0=best.geo||pos0;}
+  let best=schedule(order),improved=true,guard=0;
+  while(improved&&guard++<40){improved=false;
+    for(let i=0;i<order.length-1;i++)for(let j=i+1;j<order.length;j++){
+      const o2=order.slice(0,i).concat(order.slice(i,j+1).reverse(),order.slice(j+1));
+      const s2=schedule(o2);if(s2.cost<best.cost-0.01){order=o2;best=s2;improved=true;}}
+    for(let i=0;i<order.length;i++)for(let j=0;j<order.length;j++){if(i===j)continue;
+      const o2=order.slice();const [m]=o2.splice(i,1);o2.splice(j,0,m);
+      const s2=schedule(o2);if(s2.cost<best.cost-0.01){order=o2;best=s2;improved=true;}}
+  }
+  return best;
+}
+async function planRoute(){
+  const date=$("#tDate").value,dow=new Date(date+"T12:00").getDay();
+  if(!cabinet){$("#tStatus").textContent="Localisation du cabinet…";try{cabinet=await geocode(CAB_ADDR);savePatients();}catch(e){}if(!cabinet){$("#tStatus").textContent="Cabinet non localisé (réseau ?).";return}}
+  lastRoutes={};stats[date]=stats[date]||{};
+  // ---- phase 1 : circuits par tournée ----
+  const tours=[];
+  for(const key of ["matin","soir"]){
+    const slot=SLOTS[key],start=tmin($("#"+slot.inp).value);
+    const todo=patients.filter(p=>p.active&&p.days.includes(dow)&&(!p.from||p.from<=date)&&(!p.to||p.to>=date)&&tmin(p.w2)>slot.a&&tmin(p.w1)<slot.b);
+    if(!todo.length)continue;
+    const best=optimizeList(todo,start),route=best.legs;lastRoutes[key]=route;
+    const free=c=>({...c,w1:fmt(slot.a),w2:fmt(Math.min(slot.b,1439))});
+    const ideal=optimizeList(todo.map(c=>c.prio===1?c:free(c)),start);
+    const sugg=[];
+    for(const c of todo){if(c.prio===1)continue;
+      const alt=optimizeList(todo.map(x=>x===c?free(x):x),start);
+      const gT=(best.end-start)-(alt.end-start),gK=best.km-alt.km;
+      if(gT>=8||gK>=2){const leg=alt.legs.find(l=>l.c.name===c.name&&l.c.addr===c.addr);sugg.push({name:esc(c.name),newT:leg?fmt(leg.st):"?",gT:Math.round(gT),gK});}}
+    sugg.sort((x,y)=>y.gT-x.gT);
+    tours.push({key,slot,start,best,route,ideal,sugg});
+  }
+  if(!tours.length){$("#tRoute").innerHTML="";$("#tStatus").textContent="Aucun passage prévu ce jour.";return}
+  // ---- phase 2 : cotation liée matin+soir par patient (forfaits 1×/jour, AMX, IFI) ----
+  const groups={};
+  tours.forEach(t=>t.route.forEach(leg=>{const gk=norm(leg.c.name)+"|"+norm(leg.c.addr||"");(groups[gk]=groups[gk]||[]).push({leg,t});}));
+  const saved=day;
+  try{
+    for(const gk in groups){
+      const g=groups[gk].sort((x,y)=>x.leg.st-y.leg.st);
+      const seen=new Set();const dropped=[];
+      const passages=g.map(({leg,t})=>{
+        const acts=[];
+        (leg.c.actIds||[]).forEach(id=>{const a=byId(id);if(!a)return;
+          if((a.tags?.bsi||a.tags?.once)&&seen.has(id)){dropped.push({leg,lbl:a.k+(a.tags?.bsi?"":" "+a.c)});return;}
+          if(a.tags?.bsi||a.tags?.once)seen.add(id);
+          acts.push(JSON.parse(JSON.stringify(a)));});
+        return {label:leg.c.name,heure:fmt(leg.st),acts,nuit:!!leg.c.nuit,forceDep:acts.length===0&&(leg.c.actIds||[]).length>0};});
+      const f0=g[0].leg.c;
+      day={date,km:(f0.geo&&cabinet?distKm(cabinet,f0.geo):3),ctx:{domicile:true,ferie:$("#tFerie").getAttribute("aria-pressed")==="true",palliatif:g.some(x=>x.leg.c.pal),cancer:g.some(x=>x.leg.c.k)},note:"",passages};
+      const D=computeDay();
+      g.forEach((x,i)=>{x.leg.fee=D.res[i].total;x.leg.majs=D.res[i].majs;x.leg.majCodes=D.res[i].majs.map(m=>m.code).join("+");
+        const dr=dropped.filter(d=>d.leg===x.leg);if(dr.length)x.leg.feeNote=dr.map(d=>d.lbl).join(", ")+" déjà facturé ce jour";});
+    }
+  } finally { day=saved; }
+  // ---- phase 3 : rendu ----
+  let html="",gCA=0,gKm=0,gMin=0,gN=0;
+  for(const t of tours){
+    const {key,slot,start,best,route,ideal,sugg}=t;
+    const tot=route.reduce((x,r)=>x+(r.fee||0),0),ik=Math.max(0,best.km-4)*ref.IK_PLAINE,dur=best.end-start;
+    const dTime=(best.end-start)-(ideal.end-start);
+    gCA+=tot+ik;gKm+=best.km;gMin+=dur;gN+=route.length;
+    stats[date][key]={ca:tot+ik,km:best.km,min:dur};
+    html+=`<div class="ticket" style="margin-top:14px">
+      <div class="th"><h2>${slot.lbl}</h2><small>départ ${fmt(start)} · retour ${fmt(best.end)}</small></div>
+      ${route.map((r,i)=>`<div class="stop${isDone(date,key,r.c)?" doneS":""}"><div class="eta">${fmt(r.st)}<small>${r.d.toFixed(1)} km · ${Math.round(r.tr)}′</small></div>
+        <div class="who"><span class="pname" data-openp="${key}:${i}">${esc(r.c.name)}</span> ${r.c.prio===1?'<span class="imp">IMPÉRATIF</span>':''}
+          <span class="soin">${(r.c.actIds||[]).map(id=>byId(id)?byId(id).k+" "+byId(id).c:"").join(" + ")} · <button class="durbtn" data-dur="${key}:${i}">${r.c.dur}′ ▾</button>${r.majCodes?" · "+r.majCodes:""}${r.c.note?" · "+esc(r.c.note):""}</span>
+          <span class="soin" style="font-size:12px;color:var(--ink2)">📍 ${esc((r.c.addr||"").split(",").slice(0,2).join(","))}</span>
+          <span class="durstep" id="ds-${key}-${i}" hidden>${[10,15,20,30,45,60].map(m=>`<button class="chip" data-dset="${key}:${i}:${m}">${m}′</button>`).join("")}<button class="chip" data-dadj="${key}:${i}:-5">−5</button><button class="chip" data-dadj="${key}:${i}:5">+5</button></span>
+          ${r.feeNote?`<span class="flag wait">↺ ${r.feeNote}</span>`:""}
+          ${r.late>0?`<span class="flag late">⚠ ${Math.round(r.late)}′ après la fin du créneau (${r.c.w2})</span>`:r.wait>5?`<span class="flag wait">⏳ ${Math.round(r.wait)}′ d'attente (ouvre à ${r.c.w1})</span>`:""}
+          ${r.c.geo?"":'<span class="flag late">adresse non localisée</span>'}
+        </div>
+        <div class="right"><b>${eur(r.fee||0)}</b><div style="display:flex;gap:4px;justify-content:flex-end"><button class="btn sm ${isDone(date,key,r.c)?"":"sec"}" data-done="${key}:${i}">${isDone(date,key,r.c)?"↺":"✓"}</button><button class="btn sm sec" data-cote="${key}:${i}">€</button></div></div></div>`).join("")}
+      ${(()=>{const sum=c=>route.reduce((a,r)=>a+(r.majs||[]).filter(m=>m.code===c).reduce((x,m)=>x+m.amt,0),0);
+        const nF=route.filter(r=>(r.majs||[]).some(m=>m.code==="F")).length,nN=route.filter(r=>(r.majs||[]).some(m=>m.code==="N")).length;
+        return (sum("F")>0?`<div class="maj"><span><b>F</b> · Majoration dimanche / férié — ${nF} passage(s)</span><span>+ ${eur(sum("F"))}</span></div>`:"")
+             +(sum("N")>0?`<div class="maj"><span><b>N</b> · Majoration de nuit — ${nN} passage(s)</span><span>+ ${eur(sum("N"))}</span></div>`:"");})()}
+      <div class="total"><small>${route.length} passages · ${best.km.toFixed(0)} km · ${fmt(dur)} · ${((tot+ik-best.km*0.45)/(dur/60)).toFixed(0)} €/h net</small><b>${eur(tot+ik)}</b></div>
+      <div style="padding:6px 10px 10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn sm sec" data-maps="${key}">Google Maps</button>
+        ${dTime>5?`<span class="tag" style="align-self:center">◎ +${Math.round(dTime)} min vs créneaux libres</span>`:'<span class="tag" style="align-self:center;color:var(--green)">◎ quasi optimale</span>'}
+      </div>
+      ${sugg.slice(0,2).map(x=>`<div class="alert warn" style="margin:0 10px 10px"><span class="ic">⏱</span><span>Si <b>${x.name}</b> accepte ${x.newT} : −${x.gT} min${x.gK>=0.5?", −"+x.gK.toFixed(1)+" km":""}.</span></div>`).join("")}
+    </div>`;
+  }
+  try{localStorage.setItem("lidia.cot.stats",JSON.stringify(stats))}catch(e){}
+  $("#tStatus").textContent="";$("#tMaps").hidden=true;
+  const ratio=k=>{const st=stats[date][k];if(!st)return "";const net=st.ca-st.km*0.45;
+    return `<div style="flex:1;min-width:130px;background:var(--paper);border-radius:10px;padding:10px;border-top:3px solid ${k==="matin"?"#0E7C86":"#5B4FA8"}">
+      <div style="font-weight:700;font-size:13px">${k==="matin"?"Matin":"Soir"}</div>
+      <b style="font-family:var(--disp);font-size:18px;color:var(--teal)">${(net/(st.min/60)).toFixed(0)} €/h</b>
+      <small style="display:block;color:var(--ink2);font-size:11.5px">${eur(st.ca)} · ${st.km.toFixed(0)} km · ${fmt(st.min)}<br>${eur(net/Math.max(1,(lastRoutes[k]||[]).length))} net / passage</small></div>`};
+  const compHtml=(stats[date].matin&&stats[date].soir)?`<div style="display:flex;gap:8px;margin-bottom:10px">${ratio("matin")}${ratio("soir")}</div>`:"";
+  $("#tRoute").innerHTML=html+`<div class="card"><h2>Journée complète</h2>${compHtml}<div class="kpi">
+    <div><b>${eur(gCA)}</b><small>facturé (${tours.length} tournée(s), ${gN} passages)</small></div>
+    <div><b>${eur(gCA-gKm*0.45)}</b><small>net après ${eur(gKm*0.45)} de voiture (${gKm.toFixed(0)} km)</small></div>
+    <div><b>${gMin?((gCA-gKm*0.45)/(gMin/60)).toFixed(0):0} €/h</b><small>rendement réel, route comprise</small></div>
+    <div><b>${fmt(gMin)}</b><small>de tournée au total</small></div>
+  </div><div id="hist7"></div></div>`;
+  renderHist(date);setTimeout(renderMap,60);
+  $("#tRoute").onclick=e=>{const b=e.target.closest("[data-cote]");if(b){const[k,i]=b.dataset.cote.split(":");coterStopIn(k,+i);return}
+    const op=e.target.closest("[data-openp]");if(op){const[k,i]=op.dataset.openp.split(":");const r=(lastRoutes[k]||[])[+i];const idx=patients.indexOf(r?.c);if(idx>=0){editIdx=idx;fillForm(patients[idx]);showTab("pat");setTimeout(()=>$("#pName").scrollIntoView({block:"start"}),60);}return}
+    const du=e.target.closest("[data-dur]");if(du){const[k,i]=du.dataset.dur.split(":");const el=document.getElementById("ds-"+k+"-"+i);if(el)el.hidden=!el.hidden;return}
+    const dset=e.target.closest("[data-dset]");if(dset){const[k,i,m]=dset.dataset.dset.split(":");const r=(lastRoutes[k]||[])[+i];if(r){r.c.dur=+m;savePatients();toast(r.c.name+" : "+m+" min (enregistré)");planRoute();}return}
+    const dadj=e.target.closest("[data-dadj]");if(dadj){const[k,i,m]=dadj.dataset.dadj.split(":");const r=(lastRoutes[k]||[])[+i];if(r){r.c.dur=Math.max(5,(+r.c.dur||20)+ +m);savePatients();toast(r.c.name+" : "+r.c.dur+" min (enregistré)");planRoute();}return}
+    const d=e.target.closest("[data-done]");if(d){const[k,i]=d.dataset.done.split(":");const r=(lastRoutes[k]||[])[+i];if(r){toggleDone(date,k,r.c);planRoute();}return}
+    const m=e.target.closest("[data-maps]");if(m)openMaps(m.dataset.maps);};
+}
+function stopCotation(f,eta,km){
+  const saved=day;
+  day={date:$("#tDate")?.value||new Date().toISOString().slice(0,10),km:km??0,ctx:{domicile:true,palliatif:!!f.pal,cancer:!!f.k},note:"",passages:[{label:f.name,heure:eta,nuit:!!f.nuit,acts:(f.actIds||[]).map(id=>JSON.parse(JSON.stringify(byId(id)))).filter(Boolean)}]};
+  let r;try{r=computeDay().res[0];}finally{day=saved;}
+  return r;
+}
+function coterStopIn(k,i){
+  const r=(lastRoutes[k]||[])[i];if(!r)return;
+  const gk=norm(r.c.name)+"|"+norm(r.c.addr||"");
+  const legs=[];Object.entries(lastRoutes).forEach(([kk,rt])=>rt.forEach(l=>{if(norm(l.c.name)+"|"+norm(l.c.addr||"")===gk)legs.push(l);}));
+  legs.sort((x,y)=>x.st-y.st);
+  const seen=new Set();
+  const passages=legs.map(l=>{const acts=(l.c.actIds||[]).map(id=>byId(id)).filter(Boolean).filter(a=>{const dup=(a.tags?.bsi||a.tags?.once)&&seen.has(a.id);if(a.tags?.bsi||a.tags?.once)seen.add(a.id);return !dup;}).map(a=>JSON.parse(JSON.stringify(a)));return {label:l.c.name,heure:fmt(l.st),acts,nuit:!!l.c.nuit,forceDep:acts.length===0&&(l.c.actIds||[]).length>0};});
+  day={date:$("#tDate").value,km:(r.c.geo&&cabinet?distKm(cabinet,r.c.geo):0).toFixed(1),ctx:{domicile:true,ferie:$("#tFerie").getAttribute("aria-pressed")==="true",palliatif:!!r.c.pal,cancer:!!r.c.k},note:"",passages};
+  cur=Math.max(0,legs.indexOf(r));save();render();showTab("jour");toast(passages.length>1?"Journée complète du patient chargée (matin + soir)":"Passage prêt à coter");
+}
+function renderHist(date){
+  const days=[...Array(7)].map((_,i)=>{const d=new Date(date+"T12:00");d.setDate(d.getDate()-i);return d.toISOString().slice(0,10);}).reverse();
+  const rows=days.map(d=>{const sl=stats[d]||{};const ca=Object.values(sl).reduce((a,x)=>a+x.ca,0),km=Object.values(sl).reduce((a,x)=>a+x.km,0),min=Object.values(sl).reduce((a,x)=>a+x.min,0);return{d,ca,km,min}}).filter(r=>r.ca>0);
+  if(rows.length<2){$("#hist7").innerHTML="";return}
+  const tCA=rows.reduce((a,r)=>a+r.ca,0),tMin=rows.reduce((a,r)=>a+r.min,0),tKm=rows.reduce((a,r)=>a+r.km,0);
+  $("#hist7").innerHTML=`<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><b style="font-size:13px">7 derniers jours calculés</b>
+  <div style="font-size:13px;color:var(--ink2)">${eur(tCA)} facturés · ${tKm.toFixed(0)} km · ${(tCA/(tMin/60)).toFixed(0)} €/h moyen</div>
+  <div style="display:flex;gap:3px;align-items:flex-end;height:44px;margin-top:6px">${rows.map(r=>`<div title="${r.d} ${eur(r.ca)}" style="flex:1;background:var(--teal);opacity:.85;border-radius:3px 3px 0 0;height:${Math.max(8,r.ca/Math.max(...rows.map(x=>x.ca))*100)}%"></div>`).join("")}</div></div>`;
+}
+function openMaps(k){const rt=lastRoutes[k];if(!rt||!cabinet)return;const pts=rt.filter(r=>r.c.geo).map(r=>r.c.geo.lat+","+r.c.geo.lon);const o=cabinet.lat+","+cabinet.lon;window.open(`https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${o}&travelmode=driving&waypoints=${encodeURIComponent(pts.join("|"))}`,"_blank");}
+/* ================= CARTE & KPI ================= */
+let map=null,mapLayer=null,stats=loadJSON("lidia.cot.stats",{}),mapSlot="matin",done=loadJSON("lidia.cot.done",{});
+const doneKey=(k,c)=>k+"|"+norm(c.name)+"|"+norm(c.addr||"")+"|"+c.w1;
+function isDone(date,k,c){return !!(done[date]&&done[date][doneKey(k,c)]);}
+function toggleDone(date,k,c){done[date]=done[date]||{};const dk=doneKey(k,c);done[date][dk]=!done[date][dk];try{localStorage.setItem("lidia.cot.done",JSON.stringify(done))}catch(e){}}
+function patientPerf(p){
+  const km=p.geo&&cabinet?distKm(cabinet,p.geo):null;if(km===null||!(p.actIds||[]).length)return null;
+  const c=stopCotation(p,"10:00",km);if(!c)return null;
+  const ar=km*2,net=c.total-ar*0.45,mins=p.dur+ar/35*60/2;
+  return {km,net,mins,perH:net/(mins/60)};}
+function renderMap(){
+  if(typeof L==="undefined"||!cabinet)return;
+  $("#map").innerHTML="";if(map){map.remove();map=null;}
+  map=L.map("map",{zoomControl:false}).setView([cabinet.lat,cabinet.lon],12);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(map);
+  [2,5,10].forEach(r=>L.circle([cabinet.lat,cabinet.lon],{radius:r*1000/1.3,color:"#0E7C86",weight:1,fill:false,dashArray:"4 6"}).addTo(map));
+  L.marker([cabinet.lat,cabinet.lon]).addTo(map).bindPopup("<b>Cabinet du Blanquet</b>");
+  const inSlot=p=>mapSlot==="matin"?tmin(p.w1)<14*60:tmin(p.w1)>=14*60;
+  const act=patients.filter(p=>p.active&&p.geo&&inSlot(p)),perfs=act.map(p=>({p,f:patientPerf(p)})).filter(x=>x.f);
+  const med=perfs.length?perfs.map(x=>x.f.perH).sort((a,b)=>a-b)[Math.floor(perfs.length/2)]:40;
+  const perfCol=c=>{const x=perfs.find(y=>y.p===c);if(!x)return "#4A5A68";return x.f.perH>=med?"#2A7F57":x.f.perH>=med*0.7?"#B86E0A":"#B3382E";};
+  const routed=new Set((lastRoutes[mapSlot]||[]).map(r=>r.c));
+  const pts=[[cabinet.lat,cabinet.lon]];
+  perfs.filter(({p})=>!routed.has(p)).forEach(({p,f})=>{const col=f.perH>=med?"#2A7F57":f.perH>=med*0.7?"#B86E0A":"#B3382E";
+    L.circleMarker([p.geo.lat,p.geo.lon],{radius:9,color:col,fillColor:col,fillOpacity:.85,weight:2})
+     .addTo(map).bindPopup(`<b>${esc(p.name)}</b><br>${PROFILES.find(x=>x.id===p.soin)?.l||""}<br>${f.km.toFixed(1)} km · <b>${f.perH.toFixed(0)} €/h</b> · ${eur(f.net)}/passage`);
+    pts.push([p.geo.lat,p.geo.lon]);});
+  const styles={matin:{color:"#0E7C86",dashArray:null},soir:{color:"#5B4FA8",dashArray:"2 6"}};
+  Object.entries(lastRoutes).filter(([k])=>k===mapSlot).forEach(([k,rt])=>{if(!rt.length)return;
+    const line=[[cabinet.lat,cabinet.lon],...rt.filter(r=>r.c.geo).map(r=>[r.c.geo.lat,r.c.geo.lon]),[cabinet.lat,cabinet.lon]];
+    L.polyline(line,{color:styles[k].color,weight:3,opacity:.75,dashArray:styles[k].dashArray}).addTo(map);
+    rt.forEach((r,i)=>{if(!r.c.geo)return;const pc=perfCol(r.c);
+      L.marker([r.c.geo.lat,r.c.geo.lon],{icon:L.divIcon({className:"",html:`<div style="background:${pc};color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font:700 11px sans-serif;border:2.5px solid ${styles[k].color};box-shadow:0 1px 3px rgba(0,0,0,.4)">${i+1}</div>`,iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map)
+       .bindPopup(()=>{const x=perfs.find(y=>y.p===r.c);return `<b>${i+1}. ${esc(r.c.name)}</b> ${fmt(r.st)}<br>${(r.c.actIds||[]).map(id=>byId(id)?byId(id).k+" "+byId(id).c:"").join(" + ")}${x?`<br>${x.f.km.toFixed(1)} km · <b>${x.f.perH.toFixed(0)} €/h</b> · ${eur(x.f.net)}/passage`:""}`});
+      pts.push([r.c.geo.lat,r.c.geo.lon]);});});
+  if(pts.length>1)map.fitBounds(pts,{padding:[24,24]});
+  $("#mapInfo").textContent=`${perfs.length} patients`;
+  $("#mapM").style.background=mapSlot==="matin"?"#0E7C86":"transparent";$("#mapM").style.color=mapSlot==="matin"?"#fff":"#9fd6da";
+  $("#mapS").style.background=mapSlot==="soir"?"#5B4FA8":"transparent";$("#mapS").style.color=mapSlot==="soir"?"#fff":"#cfc8f0";
+  // KPI
+  const rings=[["< 2 km",0,2],["2–5 km",2,5],["5–10 km",5,10],["> 10 km",10,999]].map(([l,a,b])=>{const g=perfs.filter(x=>x.f.km>=a&&x.f.km<b);return {l,n:g.length,ca:g.reduce((s,x)=>s+x.f.net,0),t:g.reduce((s,x)=>s+x.f.mins,0)};});
+  const tot={n:perfs.length,ca:rings.reduce((s,r)=>s+r.ca,0),t:rings.reduce((s,r)=>s+r.t,0)};
+  const far=perfs.slice().sort((a,b)=>b.f.km-a.f.km)[0],worst=perfs.slice().sort((a,b)=>a.f.perH-b.f.perH)[0];
+  const kmMoy=perfs.length?perfs.reduce((s,x)=>s+x.f.km,0)/perfs.length:0;
+  $("#kpi").innerHTML=`<div class="kpi">
+    <div><b>${eur(tot.ca)}</b><small>CA net potentiel / jour (patients actifs du jour type)</small></div>
+    <div><b>${tot.t?(tot.ca/(tot.t/60)).toFixed(0):0} €/h</b><small>rendement moyen de la patientèle, route comprise</small></div>
+    <div><b>${kmMoy.toFixed(1)} km</b><small>distance moyenne cabinet → patient</small></div>
+    <div><b>${far?far.f.km.toFixed(1)+" km":"—"}</b><small>le plus éloigné : ${far?far.p.name:"—"}${worst?" · le moins rentable : "+worst.p.name+" ("+worst.f.perH.toFixed(0)+" €/h)":""}</small></div>
+  </div>
+  <div style="margin-top:10px">${rings.map(r=>`<div class="ring"><span>${r.l}</span><div class="bar" style="width:${tot.n?Math.max(4,r.n/tot.n*100):0}%"></div><b>${r.n} pat.</b><b>${eur(r.ca)}</b></div>`).join("")}</div>
+  <p class="muted" style="margin-top:8px">Un patient rouge sur la carte n'est pas forcément à lâcher : c'est un patient à densifier (en recruter d'autres dans sa rue) ou à regrouper sur un passage existant.</p>`;
+}
+/* ================= RENTABILITÉ ================= */
+const PROFILES=[
+ {id:"bsc",l:"BSC — 1 passage/jour",sn:"BSC",acts:["bsc"],fee:()=>ref.BSC,dep:"IFI",min:45},
+ {id:"bsb",l:"BSB — 1 passage/jour",sn:"BSB",acts:["bsb"],fee:()=>ref.BSB,dep:"IFI",min:35},
+ {id:"bsa",l:"BSA — 1 passage/jour",sn:"BSA",acts:["bsa"],fee:()=>ref.BSA,dep:"IFI",min:25},
+ {id:"bsc2",l:"BSC — 2ᵉ passage du jour (IFI seule)",sn:"BSC 2ᵉ pass.",acts:[],fee:()=>0,dep:"IFI",min:30},
+ {id:"perf149",l:"Perfusion AMI 14 + AMI 9",sn:"Perf 14+9",acts:["perf14","perf9"],fee:()=>LV("AMI")*23,dep:"IFD",min:60},
+ {id:"perf14",l:"Perfusion longue AMI 14 (pose)",sn:"Perf 14",acts:["perf14"],fee:()=>LV("AMI")*14,dep:"IFD",min:30},
+ {id:"perf9",l:"Perfusion courte AMI 9",sn:"Perf 9",acts:["perf9"],fee:()=>LV("AMI")*9,dep:"IFD",min:50},
+ {id:"k15",l:"Chimio AMI 15 (cancéreux)",sn:"Chimio 15",acts:["k_perf15"],fee:()=>LV("AMI")*15,dep:"IFD",min:30},
+ {id:"plaie11",l:"Bilan de plaie AMI 11",sn:"Bilan plaie",acts:["bilan_plaie"],fee:()=>LV("AMI")*11,dep:"IFD",min:40},
+ {id:"ulc",l:"Ulcère + compression 5,1 + analgésie 1,1 + MCI",sn:"Ulcère 5,1+1,1",acts:["ulc","topique"],fee:()=>LV("AMI")*6.2+ref.MCI,dep:"IFD",min:35},
+ {id:"pans4",l:"Pansement lourd AMI 4 + MCI",sn:"Pans. lourd",acts:["pans4"],fee:()=>LV("AMI")*4+ref.MCI,dep:"IFD",min:25},
+ {id:"post",l:"Post-hospit. IC/BPCO AMI 5,8",sn:"Post-hosp 5,8",acts:["post_hosp"],fee:()=>LV("AMI")*5.8,dep:"IFD",min:30},
+ {id:"diab2",l:"Insuline + dextro (AMI 1 + 1)",sn:"Insuline+dextro",acts:["insu","dextro"],fee:()=>LV("AMI")*2,dep:"IFD",min:10},
+ {id:"diab_pans",l:"Insuline + dextro + pansement 2,02/2",sn:"Diab.+pans.",acts:["insu","dextro","pans1"],fee:()=>LV("AMI")*3.01,dep:"IFD",min:20},
+ {id:"pans1",l:"Pansement courant AMI 2,02",sn:"Pansement",acts:["pans1"],fee:()=>LV("AMI")*2.02,dep:"IFD",min:15},
+ {id:"prelev",l:"Prise de sang seule (1,5 + MAU)",sn:"Prise de sang",acts:["prelev"],fee:()=>LV("AMI")*1.5+ref.MAU,dep:"IFD",min:10},
+ {id:"inj",l:"Injection seule (AMI 1 + MAU)",sn:"Injection",acts:["inj"],fee:()=>LV("AMI")*1+ref.MAU,dep:"IFD",min:8},
+ {id:"medic",l:"Administration médicamenteuse AMI 1,2 + MAU",sn:"Médicaments",acts:["medic"],fee:()=>LV("AMI")*1.2+ref.MAU,dep:"IFD",min:10},
+ {id:"vacc",l:"Vaccination AMI 2,4",sn:"Vaccin",acts:["vacc"],fee:()=>LV("AMI")*2.4,dep:"IFD",min:10},
+ {id:"astreinte",l:"Astreinte perfusion AMI 4 (sans déplacement)",sn:"Astreinte",acts:["perf4"],fee:()=>LV("AMI")*4,dep:"none",min:5,nodep:1},
+];
+let rMin=loadJSON("lidia.cot.rmin",{});
+function rentaRow(pr,km,v,cost,target,tour,mont){
+  const ar=pr.nodep?0:km*2, ab=mont?2:4, tarif=mont?ref.IK_MONT:ref.IK_PLAINE;
+  const ik=Math.max(0,ar-ab)*tarif, dep=pr.nodep?0:(pr.dep==="IFI"?ref.IFI:ref.IFD);
+  const gross=pr.fee()+dep+ik, veh=ar*cost, net=gross-veh;
+  const mins=(rMin[pr.id]??pr.min)+(pr.nodep?0:(ar/v*60)/(tour?3:1));
+  const perH=net/(mins/60);
+  // km limite : résoudre net/h = target
+  let kmLim=null; if(!pr.nodep){for(let d=0;d<=60;d+=0.5){const a=d*2,i=Math.max(0,a-ab)*tarif,n=pr.fee()+dep+i-a*cost,m=(rMin[pr.id]??pr.min)+(a/v*60)/(tour?3:1);if(n/(m/60)<target){kmLim=d;break;}}}
+  return {gross,net,mins,perH,kmLim};
+}
+function renderRenta(){
+  const sel=$("#rSoin");if(!sel.options.length){PROFILES.filter(p=>!p.nodep).forEach(pr=>sel.insertAdjacentHTML("beforeend",`<option value="${pr.id}">${pr.l}</option>`));}
+  const pr=PROFILES.find(p=>p.id===sel.value)||PROFILES[0];
+  const km=+$("#rKm").value||0,v=+$("#rV").value||30,cost=+$("#rCost").value||0,freq=+$("#rFreq").value||1,tour=$("#rTour").getAttribute("aria-pressed")==="true",mont=$("#rMont").getAttribute("aria-pressed")==="true";
+  const mS=$("#rMinSoin");if(!mS.value||mS.dataset.for!==pr.id){mS.value=pr.min;mS.dataset.for=pr.id;}rMin[pr.id]=+mS.value||pr.min;
+  const here=rentaRow(pr,km,v,cost,0,tour,mont);          // ce patient
+  const refr=rentaRow(pr,2,v,cost,0,true,false);           // même soin à Villeneuve, en tournée
+  const ratio=refr.perH>0?here.perH/refr.perH:0;
+  const month=here.net*freq*52/12, monthH=here.mins*freq*52/12/60, lossMonth=(refr.net-here.net)*freq*52/12;
+  const verdict=ratio>=0.8?["✓ Rentable, tu peux le prendre","var(--green)"]:ratio>=0.5?["~ Moyennement rentable : oui s'il densifie une tournée, sinon négocie le créneau","var(--amber)"]:["✕ Pas rentable : il te fait perdre de l'argent par rapport à tes autres patients","var(--red)"];
+  const h=m=>m>=60?Math.floor(m/60)+" h "+String(Math.round(m%60)).padStart(2,"0"):Math.round(m)+" min";
+  $("#rTable").innerHTML=`
+  <div class="card" style="border-left:6px solid ${verdict[1]}">
+    <h2 style="color:${verdict[1]}">${verdict[0]}</h2>
+    <div class="line" style="grid-template-columns:1fr auto;padding:8px 0"><div class="lbl">Il te rapporte, par passage<small>${eur(here.gross)} facturés − ${eur(here.gross-here.net)} de voiture</small></div><b class="amt" style="font-size:18px">${eur(here.net)}</b></div>
+    <div class="line" style="grid-template-columns:1fr auto;padding:8px 0"><div class="lbl">Il te prend, par passage<small>${h(rMin[pr.id])} de soin + ${h(here.mins-rMin[pr.id])} de route${tour?" (partagée)":""}</small></div><b class="amt" style="font-size:18px">${h(here.mins)}</b></div>
+    <div class="line" style="grid-template-columns:1fr auto;padding:8px 0"><div class="lbl">Soit, pour ton temps<small>le même soin à Villeneuve sur ta tournée : ${refr.perH.toFixed(0)} €/h</small></div><b class="amt" style="font-size:18px;color:${verdict[1]}">${here.perH.toFixed(0)} €/h</b></div>
+    <div class="line" style="grid-template-columns:1fr auto;padding:8px 0;border:0"><div class="lbl">Sur un mois (${freq}×/semaine)<small>${h(monthH)} de ton temps${lossMonth>0.5?" · "+eur(lossMonth)+" de moins qu'un patient équivalent à Villeneuve":""}</small></div><b class="amt" style="font-size:18px">${eur(month)}</b></div>
+  </div>
+  <p class="muted">Rentable = il te rapporte au moins 80 % de ce que te rapporte le même soin chez un patient de Villeneuve intégré à ta tournée. Entre 50 et 80 % : acceptable si d'autres patients sont près de chez lui. En dessous : chaque passage te coûte du temps que tu vendrais mieux ailleurs.</p>`;
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  $("#date").addEventListener("input",e=>{day.date=e.target.value;render()});$("#km").addEventListener("input",e=>{day.km=e.target.value;render()});
+  document.querySelectorAll("#ctx .chip").forEach(b=>b.onclick=()=>{day.ctx[b.dataset.ctx]=!day.ctx[b.dataset.ctx];render()});
+  $("#dayLedger").addEventListener("click",e=>{const b=e.target.closest("[data-p]");if(b){cur=+b.dataset.p;render();document.getElementById("q").scrollIntoView({block:"start"});}});
+  $("#addP").onclick=()=>{const n=day.passages.length;const def=[["Matin","08:00"],["Midi","12:00"],["Soir","19:00"],["Nuit","21:00"]][n]||["Passage "+(n+1),""];day.passages.push({label:def[0],heure:def[1],acts:[]});cur=n;render();document.getElementById("q").scrollIntoView({block:"start"});};
+  $("#ptabs").addEventListener("click",e=>{const b=e.target.closest("[data-p]");if(!b)return;if(b.dataset.p==="new"){const n=day.passages.length;const def=[["Matin","08:00"],["Midi","12:00"],["Soir","19:00"],["Nuit","21:00"]][n]||["Passage "+(n+1),""];day.passages.push({label:def[0],heure:def[1],acts:[]});cur=n;}else cur=+b.dataset.p;render();});
+  $("#pheure").addEventListener("input",e=>{day.passages[cur].heure=e.target.value;render()});$("#plabel").addEventListener("input",e=>{day.passages[cur].label=e.target.value;render()});
+  $("#q").addEventListener("input",e=>search(e.target.value));
+  $("#quick").addEventListener("click",e=>{const b=e.target.closest("[data-q]");if(b){addAct(b.dataset.q);toast("Acte ajouté");}});
+  $("#results").addEventListener("click",e=>{const b=e.target.closest("[data-id]");if(b){addAct(b.dataset.id);$("#q").value="";$("#results").innerHTML="";$("#q").focus();toast("Acte ajouté");}});
+  $("#lines").addEventListener("click",e=>{const b=e.target.closest("[data-rm]");if(b){const rm=day.passages[cur].acts.splice(+b.dataset.rm,1)[0];if(rm?.tags?.perfL)day.passages.forEach(q=>{q.acts=q.acts.filter(a=>a.auto!==rm.id)});render();}});
+  document.body.addEventListener("click",e=>{const b=e.target.closest("[data-add]");if(b)addAct(b.dataset.add);
+    const pb=e.target.closest("[data-plan]");if(pb){const act=day.passages[cur].acts[+pb.dataset.pi];act.fin=pb.dataset.plan;
+      if(pb.dataset.plan==="jour"){let last=day.passages.length-1;if(last===cur){const h=(+(day.passages[cur].heure||"08:00").slice(0,2)+8)%24;day.passages.push({label:"Soir",heure:String(h).padStart(2,"0")+":00",acts:[]});last=day.passages.length-1;}
+        if(!day.passages[last].acts.some(a=>a.id==="perf41")){const r=JSON.parse(JSON.stringify(byId("perf41")));r.auto=act.id;day.passages[last].acts.push(r);}toast("AMI 4,1 ajouté au passage "+day.passages[last].label);}
+      render();}
+    const ub=e.target.closest("[data-unplan]");if(ub){const act=day.passages[cur].acts[+ub.dataset.pi];delete act.fin;day.passages.forEach(q=>{q.acts=q.acts.filter(a=>a.auto!==act.id)});render();}});
+  $("#clearP").onclick=()=>{if(!day.passages[cur].acts.length||confirm("Vider ce passage ?")){day.passages[cur].acts=[];render();}};
+  $("#delP").onclick=()=>{if(!confirm("Supprimer ce passage ?"))return;if(day.passages.length>1){day.passages.splice(cur,1);cur=0;}else day.passages[0].acts=[];render();};
+  $("#clearDay").onclick=()=>{if(confirm("Effacer toute la journée en cours ?")){day=newDay();cur=0;render();}};
+  $("#copy").onclick=()=>{const D=computeDay();const txt=[`LIDIA Cotation — ${day.date}`,...day.passages.flatMap((p,i)=>[`— ${p.label} ${p.heure}`,...D.res[i].lines.map(l=>`${l.code} ${l.taux}% ${eur(l.amt)} — ${l.a.l}`),...D.res[i].majs.map(m=>`${m.code} ${eur(m.amt)}`),`Sous-total ${eur(D.res[i].total)}`]),`TOTAL JOURNÉE ${eur(D.total)}`].join("\n");navigator.clipboard?.writeText(txt).then(()=>toast("Journée copiée")).catch(()=>toast("Copie impossible"));};
+  document.querySelectorAll("nav [data-tab]").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+  renderRef();$("#refTable").addEventListener("input",e=>{const k=e.target.dataset.ref;if(k){ref[k]=parseFloat(e.target.value)||0;render()}});$("#refReset").onclick=()=>{ref={...DEFAULT_REF};renderRef();render();toast("Valeurs par défaut")};
+  $("#apiKey").value=ai.key;$("#webhook").value=ai.webhook;$("#whToken").value=ai.token||"";
+  $("#saveAI").onclick=()=>{ai={key:$("#apiKey").value.trim(),webhook:$("#webhook").value.trim(),token:$("#whToken").value.trim()};save();toast("Réglages IA enregistrés")};
+  $("#testAI").onclick=async()=>{ai={key:$("#apiKey").value.trim(),webhook:$("#webhook").value.trim(),token:$("#whToken").value.trim()};save();$("#aiStatus").textContent="Test…";try{const r=await aiParse("injection d'insuline matin et soir",null);$("#aiStatus").textContent=`OK — ${(r.actes||[]).length} acte(s) reconnus.`}catch(e){$("#aiStatus").textContent="Échec : "+e.message+" (clé invalide, CORS, ou webhook injoignable)."}};
+  $("#ordoImg").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{ordoImage={type:f.type,data:r.result.split(",")[1]};$("#ordoStatus").textContent=`${f.type==="application/pdf"?"PDF":"Image"} chargé : ${f.name} — appuyez sur Analyser`};r.readAsDataURL(f);});
+  $("#analyse").onclick=async()=>{const txt=$("#ordoTxt").value.trim();if(!txt&&!ordoImage){toast("Texte ou photo requis");return}day.note=txt;$("#analyse").disabled=true;$("#ordoStatus").textContent="Analyse…";
+    try{const res=await aiParse(txt,ordoImage);renderOrdo(res);$("#ordoStatus").textContent="Analyse IA terminée — vérifiez avant de construire la journée."}
+    catch(err){if(!txt)$("#ordoStatus").textContent="IA indisponible ("+err.message+") et pas de texte : réglez l'onglet IA ou saisissez le texte.";else{renderOrdo(offlineParse(txt));$("#ordoStatus").textContent="IA indisponible ("+err.message+") : analyse hors-ligne. Réglez l'onglet IA pour la photo.";}}
+    $("#analyse").disabled=false;};
+  $("#ordoAdd").onclick=buildDayFromOrdo;
+  ["rKm","rV","rCost","rFreq","rMinSoin"].forEach(id=>$("#"+id).addEventListener("input",renderRenta));$("#rSoin").addEventListener("change",renderRenta);
+  ["rTour","rMont"].forEach(id=>$("#"+id).onclick=()=>{const b=$("#"+id);b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true");renderRenta();});
+  renderRenta();
+  $("#tDate").value=new Date().toISOString().slice(0,10);migratePatients();renderPatients();fillForm(null);
+  $("#pAddSoin").onclick=()=>{const v=$("#pSoin").value;if(!v)return;
+    if(v.startsWith("P:")){const pr=PROFILES.find(x=>x.id===v.slice(2));(pr?.acts||[]).forEach(id=>formActs.push(id));}
+    else formActs.push(v.slice(2));
+    $("#pDur").value=actsMinutes(formActs);renderFormActs();};
+  $("#pActs").addEventListener("click",()=>{setTimeout(()=>{$("#pDur").value=actsMinutes(formActs)},0)});
+  $("#pActs").addEventListener("click",e=>{const b=e.target.closest("[data-fa]");if(b){formActs.splice(+b.dataset.fa,1);renderFormActs();}});
+  ["pPal","pK","pNuit"].forEach(id=>$("#"+id).onclick=()=>{const b=$("#"+id);b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true");});
+  showTab("tour");
+  $("#pSave").onclick=savePatient;$("#pCancel").onclick=()=>{editIdx=null;fillForm(null)};$("#pGPS").onclick=useGPS;
+  let sugT=null;
+  $("#pAddr").addEventListener("input",()=>{delete $("#pAddr").dataset.gps;gpsGeo=null;
+    clearTimeout(sugT);const q=$("#pAddr").value.trim();if(q.length<4){$("#pSug").innerHTML="";return}
+    sugT=setTimeout(async()=>{try{
+      const vb="1.20,43.45,1.55,43.62"; // Muretain / sud-ouest toulousain
+      const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=fr&viewbox=${vb}&q=`+encodeURIComponent(q));
+      const j=await r.json();
+      $("#pSug").innerHTML=j.map(x=>`<button type="button" class="act" data-lat="${esc(x.lat)}" data-lon="${esc(x.lon)}" data-lbl="${esc(x.display_name)}"><span>${esc(x.display_name.split(",").slice(0,3).join(","))}<small>${esc(x.display_name.split(",").slice(3,6).join(","))}</small></span></button>`).join("");
+    }catch(e){}},450);});
+  $("#pSug").addEventListener("click",e=>{const b=e.target.closest("[data-lat]");if(!b)return;
+    gpsGeo={lat:+b.dataset.lat,lon:+b.dataset.lon,label:b.dataset.lbl};$("#pAddr").value=b.dataset.lbl.split(",").slice(0,3).join(",");$("#pAddr").dataset.gps="1";$("#pSug").innerHTML="";$("#pGeoStatus").textContent="Adresse localisée ✓";});
+  document.addEventListener("click",e=>{if(!e.target.closest("#pSug")&&e.target.id!=="pAddr")$("#pSug").innerHTML="";});
+  document.querySelectorAll("#pDays .chip").forEach(b=>b.onclick=()=>b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true"));
+  $("#pList").addEventListener("click",e=>{
+    const more=e.target.closest("[data-more]");
+    if(more){const sp=more.parentElement.querySelector(".more");sp.hidden=!sp.hidden;return}
+    const body=e.target.closest(".pt-body");
+    const b=e.target.closest("button");
+    if(body&&!b){const i=+body.dataset.pe;editIdx=i;fillForm(patients[i]);$("#pName").scrollIntoView({block:"start"});toast("Modification de "+patients[i].name);return}
+    if(!b)return;const i=+(b.dataset.pe??b.dataset.pd??b.dataset.pt??b.dataset.px);
+    if(b.dataset.pe!=null){editIdx=i;fillForm(patients[i]);$("#pName").scrollIntoView({block:"start"});}
+    else if(b.dataset.pd!=null){const c=JSON.parse(JSON.stringify(patients[i]));c.w1="17:00";c.w2="20:00";patients.splice(i+1,0,c);savePatients();renderPatients();editIdx=i+1;fillForm(c);$("#pName").scrollIntoView({block:"start"});toast("Passage du soir créé — adaptez les soins du soir puis Enregistrer");}
+    else if(b.dataset.pt!=null){patients[i].active=!patients[i].active;if(!patients[i].active)patients[i].to=patients[i].to||new Date().toISOString().slice(0,10);savePatients();renderPatients();}
+    else if(b.dataset.px!=null){if(confirm("Supprimer "+patients[i].name+" ?")){patients.splice(i,1);savePatients();renderPatients();}}});
+  $("#tGo").onclick=planRoute;$("#tMaps").onclick=openMaps;
+  $("#tSheet").onclick=()=>{
+    if(!Object.keys(lastRoutes).length){toast("Calculez d'abord la tournée");return}
+    const date=$("#tDate").value;let txt=[],html=`<h1>Tournée du ${date} — Cabinet du Blanquet</h1>`;
+    for(const k of ["matin","soir"]){const rt=lastRoutes[k];if(!rt||!rt.length)continue;
+      html+=`<h2>${k==="matin"?"Matin":"Soir"}</h2>`;txt.push((k==="matin"?"MATIN":"SOIR"));
+      rt.forEach((r,i)=>{const soins=(r.c.actIds||[]).map(id=>byId(id)?byId(id).k+" "+byId(id).c:"").join(" + ");
+        html+=`<div class="sl"><b>${fmt(r.st)}</b><span><b>${esc(r.c.name)}</b> — ${esc(r.c.addr||"adresse ?")}<small>${soins} · ${r.c.dur}′${r.c.note?" · ⚠ "+esc(r.c.note):""}</small></span></div>`;
+        txt.push(`${fmt(r.st)}  ${r.c.name} — ${r.c.addr||"?"} — ${soins} (${r.c.dur}′)${r.c.note?" ⚠ "+r.c.note:""}`);});
+    }
+    $("#sheet").innerHTML=html;$("#sheet").hidden=false;
+    navigator.clipboard?.writeText(txt.join("\n")).then(()=>toast("Feuille copiée — impression…")).catch(()=>{});
+    setTimeout(()=>{window.print();$("#sheet").hidden=true;},150);
+  };
+  $("#goPat").onclick=()=>{showTab("pat");setTimeout(()=>$("#pName").focus(),80);};
+  $("#tFerie").onclick=()=>{const b=$("#tFerie");b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true");planRoute();};
+  document.querySelectorAll("#tab-plus [data-go]").forEach(b=>b.onclick=()=>showTab(b.dataset.go));
+  $("#mapM").onclick=()=>{mapSlot="matin";renderMap();};$("#mapS").onclick=()=>{mapSlot="soir";renderMap();};
+  render();
+});
+function showTab(t){document.querySelectorAll("main > section").forEach(s=>s.hidden=(s.id!=="tab-"+t));
+  const navFor=t==="tour"?"tour":t==="pat"?"pat":"plus";
+  document.querySelectorAll("nav [data-tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===navFor));
+  window.scrollTo({top:0});if(t==="tour")initMapArea();}
+async function initMapArea(){if(!cabinet){try{cabinet=await geocode(CAB_ADDR);savePatients();}catch(e){}}setTimeout(renderMap,60);if(patients.some(p=>p.active)&&!Object.keys(lastRoutes).length)planRoute();}
+</script>
+</body>
+</html>
