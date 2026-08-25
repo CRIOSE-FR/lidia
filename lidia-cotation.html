@@ -114,7 +114,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.1.2</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.2.0</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -383,6 +383,7 @@ ol{padding-left:18px;font-size:14px}
     </div>
   </div>
   <div id="epTriggers"></div>
+  <div id="epPlaies"></div>
   <div class="row" style="margin:12px 0 34px">
     <button class="btn" id="epValider" style="flex:2">Valider le passage</button>
     <button class="btn sec" id="epRetour" type="button">Retour</button>
@@ -394,6 +395,7 @@ ol{padding-left:18px;font-size:14px}
   <div class="card"><h2>Suivi du recueil</h2><div id="dashKpi"></div></div>
   <div class="card"><h2>À compléter en tournée</h2><div id="dashLate"></div></div>
   <div class="card"><h2>Alertes à transmettre</h2><div id="dashAlertes"></div></div>
+  <div class="card"><h2>Plaies en suivi</h2><div id="dashPlaies"></div></div>
   <div class="card"><h2>Événements — 30 derniers jours</h2><div id="dashEvts"></div></div>
   <div class="card"><h2>Propositions refusées</h2><p class="muted">Le refus est un signal d'organisation, pas une faute : il indique ce qui ne passe pas en tournée.</p><div id="dashRefus"></div></div>
 </section>
@@ -414,8 +416,8 @@ ol{padding-left:18px;font-size:14px}
   </div>
   <div class="card">
     <h2>Export pseudonymisé</h2>
-    <p class="muted">Codes P001, P002… Socle + agrégats de transmissions + événements datés + dernières constantes + dernier ICOPE + compteurs. Les post-its RELEVE/ALERTE sortent en compteurs uniquement, les PERSO jamais. Aucun nom, aucune adresse.</p>
-    <div class="row"><button class="btn" id="expPat">⬇ Patients (CSV)</button><button class="btn sec" id="expEvt">⬇ Événements (CSV)</button></div>
+    <p class="muted">Codes P001, P002… Socle + agrégats de transmissions + événements datés + dernières constantes + dernier ICOPE + compteurs. Plaies et réfections dans leurs propres CSV (identifiants P001-1…, listes fermées, délai de cicatrisation calculé). Les post-its RELEVE/ALERTE sortent en compteurs uniquement, les PERSO jamais. Aucun nom, aucune adresse.</p>
+    <div class="row"><button class="btn" id="expPat">⬇ Patients (CSV)</button><button class="btn sec" id="expEvt">⬇ Événements (CSV)</button><button class="btn sec" id="expPlaies">⬇ Plaies (CSV)</button><button class="btn sec" id="expRef">⬇ Réfections (CSV)</button></div>
     <details style="margin-top:10px"><summary style="font-size:13px;cursor:pointer">Table de correspondance code ↔ patient (affichée ici, jamais exportée)</summary><div id="expMap" style="font-size:13px;margin-top:6px"></div></details>
     <p class="muted" id="expStatus"></p>
   </div>
@@ -646,7 +648,9 @@ function computeTriggers(p,actIds,f,today){
 function buildPassageRecord(p,draft,iso,auteur){
   const A=auteur||"??",trs=[],t=draft.trans||{};
   if(t.icope){const manq=ICOPE_DOMS.filter(k=>!t.icope[k]);if(manq.length)return {error:"ICOPE incomplet : les 6 domaines sont requis ("+manq.join(", ")+" manquant·s)"};}
-  if(t.evt&&(t.evt.mot||((t.evt.texte||"").trim())))trs.push({id:uid("tr"),date:iso,auteur:A,type:"EVENEMENT",texte:(t.evt.texte||"").trim(),mot:MOTS_EVT.includes(t.evt.mot)?t.evt.mot:undefined});
+  /* liee_plaie (spec module plaies) : lien hospitalisation ↔ plaie confirmé en 1 tap par l'IDEL, porté seulement s'il pointe une plaie du dossier */
+  if(t.evt&&(t.evt.mot||((t.evt.texte||"").trim())))trs.push({id:uid("tr"),date:iso,auteur:A,type:"EVENEMENT",texte:(t.evt.texte||"").trim(),mot:MOTS_EVT.includes(t.evt.mot)?t.evt.mot:undefined,
+    liee_plaie:(t.evt.mot==="HOSPIT"&&(p.plaies||[]).some(x=>x.id===t.evt.liee_plaie))?t.evt.liee_plaie:undefined});
   if(t.cst&&CST_KEYS.some(k=>(t.cst[k]||"").trim())){const cst={};CST_KEYS.forEach(k=>cst[k]=(t.cst[k]||"").trim());trs.push({id:uid("tr"),date:iso,auteur:A,type:"CONSTANTES",texte:(t.cstNote||"").trim(),cst});}
   if(t.obs&&OBS_KEYS.some(k=>(t.obs[k]||"").trim())){const obs={};OBS_KEYS.forEach(k=>obs[k]=(t.obs[k]||"").trim());trs.push({id:uid("tr"),date:iso,auteur:A,type:"OBS",texte:(t.obsNote||"").trim(),obs});}
   if(t.icope){const ic={};ICOPE_DOMS.forEach(k=>ic[k]=t.icope[k]);const nbAlerts=ICOPE_DOMS.filter(k=>ic[k]==="alerte").length;trs.push({id:uid("tr"),date:iso,auteur:A,type:"ICOPE",texte:(t.icopeNote||"").trim(),icope:ic,nbAlerts});}
@@ -797,12 +801,16 @@ function buildExport(pats,passList,today,codeMap){
   const dejaVu=new Set();
   pats=pats.filter(p=>{const k=p.id||JSON.stringify(p);if(dejaVu.has(k))return false;dejaVu.add(k);return true});
   pats.forEach(p=>{if(p.id&&!codeMap[p.id]){next++;codeMap[p.id]="P"+String(next).padStart(3,"0")}});
-  const head=["code","annee","sexe","commune","vitSeul","aidant","institution","pathos","nbMed","autonomie","bsi","palliatif","adresse_par","plaie","socleDate",
+  const head=["code","annee","sexe","commune","vitSeul","aidant","institution","pathos","nbMed","autonomie","bsi","palliatif","adresse_par","plaie","nb_plaies_actives","socleDate",
     "nbPassages","nbTransmissions","nbLibre","nbEvenements","nbConstantes","nbObs","nbIcope","nbPhotos",
     "der_ta","der_fc","der_spo2","der_temp","der_gly","der_poids","der_cst_date",
     "icope_mobilite","icope_cognition","icope_nutrition","icope_humeur","icope_vision","icope_audition","icope_nbAlerts","icope_date",
     "postits_releve","postits_alerte","alertes_traitees","refus_propositions"];
-  const rows=[],events=[],mapping=[];
+  /* dictionnaire v1.1 : exports plaies (une ligne par plaie) et réfections (une ligne par réfection),
+     identifiant de plaie pseudonymisé Pnnn-k (rang d'ouverture dans le dossier, stable) */
+  const plaiesHead=["code","plaie","date_debut","localisation","lateralite","etiologie","stade_initial","type_intervention","date_operatoire","adresseur","ips_connu","ips_valeur","suivi_specialise","nb_refections","cloture_date","issue","delai_cicatrisation"];
+  const refHead=["code","plaie","date","lit","exsudat","iso_aucun","iso_rougeur","iso_ecoulement","iso_dehiscence","iso_fievre","peri_lesionnelle","pansement","surface_cm2","orientation"];
+  const rows=[],events=[],mapping=[],plaiesRows=[],refRows=[];
   pats.forEach((p,i)=>{
     const code=p.id&&codeMap[p.id]?codeMap[p.id]:"P"+String(++next).padStart(3,"0");mapping.push({code,nom:p.name});
     const tr=(p.transmissions||[]);
@@ -812,22 +820,172 @@ function buildExport(pats,passList,today,codeMap){
     const myPass=(passList||[]).filter(x=>x.patientId===p.id);
     const refus=myPass.reduce((s,x)=>s+((x.propositions||[]).filter(pr=>pr.declined).length),0);
     const pi=(p.postits||[]);
-    of("EVENEMENT").forEach(t=>events.push({code,date:String(t.date).slice(0,10),mot:t.mot||""}));
+    of("EVENEMENT").forEach(t=>{const kPl=t.liee_plaie?(p.plaies||[]).findIndex(x=>x.id===t.liee_plaie):-1;
+      events.push({code,date:String(t.date).slice(0,10),mot:t.mot||"",liee_plaie:kPl>-1?code+"-"+(kPl+1):""})});
+    (p.plaies||[]).forEach((pl,k)=>{
+      const pid=code+"-"+(k+1);
+      plaiesRows.push({code,plaie:pid,date_debut:pl.date_debut||"",localisation:pl.localisation||"",lateralite:pl.lateralite||"",etiologie:pl.etiologie||"",
+        stade_initial:pl.stade_initial||"",type_intervention:pl.type_intervention||"",date_operatoire:pl.date_operatoire||"",adresseur:pl.adresseur||"",
+        ips_connu:pl.ips_connu||"",ips_valeur:pl.ips_valeur??"",suivi_specialise:pl.suivi_specialise||"",nb_refections:(pl.refections||[]).length,
+        cloture_date:pl.cloture?String(pl.cloture.date).slice(0,10):"",issue:pl.cloture?pl.cloture.issue:"",delai_cicatrisation:delaiCicatrisation(pl)??""});
+      (pl.refections||[]).forEach(r=>{const det=r.iso&&r.iso!=="Aucun signe"?r.iso:null;
+        refRows.push({code,plaie:pid,date:String(r.date||"").slice(0,10),lit:r.lit||"",exsudat:r.exsudat||"",
+          iso_aucun:r.iso==="Aucun signe"?1:0,iso_rougeur:det&&det.rougeur_extensive?1:0,iso_ecoulement:det&&det.ecoulement_purulent?1:0,
+          iso_dehiscence:det&&det.dehiscence?1:0,iso_fievre:det&&det.fievre_rapportee?1:0,
+          peri_lesionnelle:r.peri_lesionnelle||"",pansement:r.pansement||"",surface_cm2:r.surface_cm2??"",orientation:r.orientation||""});});
+    });
     rows.push({code,annee:p.annee||"",sexe:p.sexe||"",commune:p.commune||"",vitSeul:p.vitSeul?1:0,aidant:p.aidant?1:0,institution:p.institution?1:0,
-      pathos:(p.pathos||[]).join("|"),nbMed:p.nbMed??"",autonomie:p.autonomie||"",bsi:p.bsi?1:0,palliatif:p.pal?1:0,adresse_par:p.adresse_par||"",plaie:p.plaie?1:0,socleDate:p.socleDate||"",
+      pathos:(p.pathos||[]).join("|"),nbMed:p.nbMed??"",autonomie:p.autonomie||"",bsi:p.bsi?1:0,palliatif:p.pal?1:0,adresse_par:p.adresse_par||"",plaie:p.plaie?1:0,nb_plaies_actives:plaiesActives(p).length,socleDate:p.socleDate||"",
       nbPassages:myPass.length,nbTransmissions:tr.length,nbLibre:of("LIBRE").length,nbEvenements:of("EVENEMENT").length,nbConstantes:of("CONSTANTES").length,nbObs:of("OBS").length,nbIcope:of("ICOPE").length,nbPhotos:of("PHOTO").length,
       der_ta:lastC?.cst?.ta||"",der_fc:lastC?.cst?.fc||"",der_spo2:lastC?.cst?.spo2||"",der_temp:lastC?.cst?.temp||"",der_gly:lastC?.cst?.gly||"",der_poids:lastC?.cst?.poids||"",der_cst_date:lastC?String(lastC.date).slice(0,10):"",
       icope_mobilite:lastI?.icope?.mobilite||"",icope_cognition:lastI?.icope?.cognition||"",icope_nutrition:lastI?.icope?.nutrition||"",icope_humeur:lastI?.icope?.humeur||"",icope_vision:lastI?.icope?.vision||"",icope_audition:lastI?.icope?.audition||"",icope_nbAlerts:lastI?(lastI.nbAlerts??""):"",icope_date:lastI?String(lastI.date).slice(0,10):"",
       postits_releve:pi.filter(x=>x.type==="RELEVE").length,postits_alerte:pi.filter(x=>x.type==="ALERTE").length,alertes_traitees:pi.filter(x=>x.type==="ALERTE"&&x.traite).length,
       refus_propositions:refus});
   });
-  return {head,rows,events,mapping,codeMap};
+  return {head,rows,events,mapping,codeMap,plaiesHead,plaiesRows,refHead,refRows};
 }
 function toCSV(head,rows){
   const q=v=>{v=String(v??"");if(/^[=+\-@\t\r]/.test(v))v="'"+v; /* neutralise l'injection de formule tableur */
     return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   return head.join(";")+"\n"+rows.map(r=>head.map(h=>q(r[h])).join(";")).join("\n");
 }
+
+/* ---- Module 7 : plaies (spec Module Plaies v5.0 — dictionnaire v1.1) ----
+   Anti-redondance (bloquant) : ce module ne capte NI douleur, NI pathologies, NI signes généraux,
+   NI la photo (transmission PHOTO au niveau passage), NI date/auteur (hérités du Passage),
+   NI hospitalisation (mot-clé EVENEMENT), NI la cotation. Listes fermées ou nombres uniquement,
+   null ≠ valeur, aucun pré-cochage. */
+const SURFACE_J=15,BILAN_CHIR_J=30;
+const PLAIE_LOC=["Jambe","Pied","Talon","Sacrum","Ischion","Trochanter","Abdomen","Thorax","Membre sup","Tête-face","Autre"];
+const PLAIE_LAT=["D","G","Médian","NA"];
+const PLAIE_ETIO=["Ulcère veineux","Ulcère artériel","Ulcère mixte","Escarre","Pied diabétique","Plaie chirurgicale","Traumatique","Brûlure","Tumorale","Autre"];
+const PLAIE_STADES=["1","2","3","4","Non stadable"];
+const PLAIE_INTERV=["Orthopédie","Digestif","Vasculaire","Cardio-thoracique","Cutané-parties molles","Gynéco-uro","Autre"];
+const PLAIE_ADR=["CHU","Clinique","HAD","Médecin traitant","Autre"];
+const PLAIE_IPS=["Oui mesuré","Non"];
+const PLAIE_SUIVI=["Non","Consultation plaies","HAD","Autre"];
+const REF_LIT=["Épidermisé","Bourgeonnant","Fibrineux","Nécrotique"];
+const REF_EXSUDAT=["Absent","Modéré","Abondant"];
+const REF_ISO=["rougeur_extensive","ecoulement_purulent","dehiscence","fievre_rapportee"];
+const REF_ISO_LBL={rougeur_extensive:"Rougeur extensive",ecoulement_purulent:"Écoulement purulent",dehiscence:"Déhiscence",fievre_rapportee:"Fièvre rapportée"};
+const REF_PERI=["Saine","Macérée","Eczéma-rougeur"];
+const REF_PANS=["Hydrocellulaire","Hydrogel","Alginate","Hydrofibre","Interface","Pansement argent","Charbon","TPN","Compression associée","Autre"];
+const REF_ORIENT=["Médecin traitant","Consultation plaies","Urgences"];
+const CLOTURE_ISSUES=["Cicatrisée","Transférée (hospitalisation)","Transférée (consultation/HAD)","Amputation","Décès","Perdu de vue","Fin de prise en charge autre"];
+function plaiesActives(p){return ((p&&p.plaies)||[]).filter(x=>!x.cloture)}
+function estUlcere(etio){return etio==="Ulcère veineux"||etio==="Ulcère artériel"||etio==="Ulcère mixte"}
+const isoDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||""));
+/* validation contre listes fermées — tout champ hors schéma est ignoré, jamais enregistré */
+function validerPlaie(o){
+  const err=[],d={};o=o||{};
+  if(!isoDate(o.date_debut))err.push("date de début requise");else d.date_debut=o.date_debut;
+  if(!PLAIE_LOC.includes(o.localisation))err.push("localisation requise (liste fermée)");else d.localisation=o.localisation;
+  if(!PLAIE_LAT.includes(o.lateralite))err.push("latéralité requise (D/G/Médian/NA)");else d.lateralite=o.lateralite;
+  if(!PLAIE_ETIO.includes(o.etiologie))err.push("étiologie requise (liste fermée)");else d.etiologie=o.etiologie;
+  if(!PLAIE_SUIVI.includes(o.suivi_specialise))err.push("suivi spécialisé requis (Non / Consultation plaies / HAD / Autre)");else d.suivi_specialise=o.suivi_specialise;
+  if(o.etiologie==="Escarre"){if(!PLAIE_STADES.includes(String(o.stade_initial||"")))err.push("escarre : stade initial requis");else d.stade_initial=String(o.stade_initial);}
+  if(o.etiologie==="Plaie chirurgicale"){
+    if(!PLAIE_INTERV.includes(o.type_intervention))err.push("plaie chirurgicale : type d'intervention requis");else d.type_intervention=o.type_intervention;
+    if(!isoDate(o.date_operatoire))err.push("plaie chirurgicale : date opératoire requise");else d.date_operatoire=o.date_operatoire;
+    if(!PLAIE_ADR.includes(o.adresseur))err.push("plaie chirurgicale : adresseur requis");else d.adresseur=o.adresseur;}
+  if(estUlcere(o.etiologie)){
+    if(!PLAIE_IPS.includes(o.ips_connu))err.push("ulcère : IPS mesuré ? (Oui mesuré / Non)");else d.ips_connu=o.ips_connu;
+    if(o.ips_connu==="Oui mesuré"&&o.ips_valeur!=null&&o.ips_valeur!==""){
+      const v=parseFloat(String(o.ips_valeur).replace(",",".").trim());
+      if(isFinite(v)&&v>0&&v<3)d.ips_valeur=v;else err.push("IPS : valeur numérique attendue (ex. 0,75)");}}
+  return {ok:!err.length,erreurs:err,data:d};
+}
+function validerRefection(o){
+  const err=[],d={};o=o||{};
+  if(!REF_LIT.includes(o.lit))err.push("lit de la plaie requis (aspect dominant)");else d.lit=o.lit;
+  if(!REF_EXSUDAT.includes(o.exsudat))err.push("exsudat requis");else d.exsudat=o.exsudat;
+  if(o.iso==="Aucun signe")d.iso="Aucun signe";
+  else if(o.iso&&typeof o.iso==="object"){const s={};let any=false;REF_ISO.forEach(k=>{s[k]=!!o.iso[k];if(s[k])any=true});
+    if(any)d.iso=s;else err.push("signes locaux : « Aucun signe » ou au moins un signe coché");}
+  else err.push("signes locaux requis (« Aucun signe » ou détail)");
+  if(o.peri_lesionnelle!=null&&o.peri_lesionnelle!==""){if(REF_PERI.includes(o.peri_lesionnelle))d.peri_lesionnelle=o.peri_lesionnelle;else err.push("peau péri-lésionnelle hors liste");}
+  if(o.pansement!=null&&o.pansement!==""){if(o.pansement==="Inchangé"||REF_PANS.includes(o.pansement))d.pansement=o.pansement;else err.push("pansement hors liste");}
+  if(o.surface_cm2!=null&&o.surface_cm2!==""){const v=parseFloat(String(o.surface_cm2).replace(",",".").trim());
+    if(isFinite(v)&&v>=0&&v<10000)d.surface_cm2=v;else err.push("surface : nombre en cm² attendu");}
+  if(o.orientation!=null&&o.orientation!==""){if(REF_ORIENT.includes(o.orientation))d.orientation=o.orientation;else err.push("orientation hors liste");}
+  return {ok:!err.length,erreurs:err,data:d};
+}
+function validerCloture(o){o=o||{};
+  if(!CLOTURE_ISSUES.includes(o.issue))return {ok:false,erreurs:["issue de clôture requise (liste fermée)"],data:{}};
+  return {ok:true,erreurs:[],data:{issue:o.issue}};
+}
+/* fraîcheur par plaie active : surface attendue par quinzaine ; bandeau « Bilan J30 » chirurgical.
+   Le bandeau J30 s'éteint à la première réfection portant une surface (lecture littérale de la spec). */
+function plaieFraicheur(pl,today){
+  today=today||todayISO();
+  const dJ=iso=>{if(!iso)return null;const j=Math.floor((Date.parse(today)-Date.parse(String(iso).slice(0,10)))/86400000);return isFinite(j)?j:null};
+  const refs=(pl.refections||[]);
+  const lastSurf=refs.filter(r=>r.surface_cm2!=null&&r.date).map(r=>String(r.date).slice(0,10)).sort().pop()||null;
+  const jS=dJ(lastSurf);
+  const surface=pl.cloture?{etat:"na",jours:null,date:null}
+    :(jS==null?{etat:"missing",jours:null,date:null}:{etat:jS>SURFACE_J?"late":"ok",jours:jS,date:lastSurf});
+  const debut=pl.etiologie==="Plaie chirurgicale"?(pl.date_operatoire||pl.date_debut):pl.date_debut;
+  const age=dJ(debut);
+  const bilanJ30=!pl.cloture&&pl.etiologie==="Plaie chirurgicale"&&age!=null&&age>=BILAN_CHIR_J&&!refs.some(r=>r.surface_cm2!=null);
+  return {surface,age,bilanJ30};
+}
+/* délai calculé, jamais saisi : clôture − début (chronique) ou clôture − date opératoire (chirurgicale) */
+function delaiCicatrisation(pl){
+  if(!pl||!pl.cloture||!pl.cloture.date)return null;
+  const debut=pl.etiologie==="Plaie chirurgicale"?(pl.date_operatoire||pl.date_debut):pl.date_debut;
+  if(!debut)return null;
+  const j=Math.floor((Date.parse(String(pl.cloture.date).slice(0,10))-Date.parse(String(debut).slice(0,10)))/86400000);
+  return isFinite(j)?j:null;
+}
+function dernRefection(pl){return ((pl&&pl.refections)||[]).slice().sort((a,b)=>String(a.date)<String(b.date)?-1:1).pop()||null}
+/* libellé du délai depuis une réfection — un rattrapage antidaté peut rendre le delta négatif */
+function refDelaiLbl(der,dateRef){const j=Math.floor((Date.parse(dateRef)-Date.parse(String(der.date).slice(0,10)))/86400000);
+  return isFinite(j)&&j>=0?"il y a "+j+" j":"réfection du "+String(der.date).slice(0,10)}
+/* cotation pansement validée sans réfection liée alors qu'une plaie était ouverte ce jour-là :
+   compte en incomplétude au tableau de bord — jamais bloquant. Borne basse = ouverture_date
+   (date d'enregistrement de la plaie) : les passages historiques antérieurs à l'enregistrement
+   d'une plaie ancienne (date_debut estimée) ne sont pas des oublis. */
+function refectionsOrphelines(pats,passList){
+  const out=[];
+  (passList||[]).forEach(x=>{
+    if(!(x.actes||[]).some(a=>PLAIE_ACTS.includes(a.id)))return;
+    const p=(pats||[]).find(q=>q.id===x.patientId);if(!p)return;
+    const d=String(x.date).slice(0,10);
+    const ouvertes=(p.plaies||[]).filter(pl=>{const debut=pl.ouverture_date||pl.date_debut;
+      return debut&&debut<=d&&(!pl.cloture||String(pl.cloture.date).slice(0,10)>=d)});
+    if(!ouvertes.length)return;
+    if(ouvertes.some(pl=>(pl.refections||[]).some(r=>r.passageId===x.id)))return;
+    out.push({patientId:x.patientId,passageId:x.id,date:d});
+  });
+  return out;
+}
+/* application pure des actions plaies d'un passage (tout-ou-rien) : date et passageId hérités du
+   Passage — jamais saisis. Retourne le nouveau tableau sans muter l'entrée. */
+function appliquerPlaiesActions(plaies,actions,passageId,date,patientId){
+  const out=JSON.parse(JSON.stringify(plaies||[])),err=[];
+  (actions||[]).forEach(a=>{
+    if(a.mode==="ouverture"){const v=validerPlaie(a.data);if(!v.ok){err.push(...v.erreurs);return}
+      out.push(Object.assign({id:a.id||uid("pl"),patientId,ouverture_date:date,refections:[],cloture:null},v.data));}
+    else if(a.mode==="refection"){const pl=out.find(x=>x.id===a.plaieId);
+      if(!pl){err.push("réfection : plaie introuvable");return}
+      const v=validerRefection(a.data);if(!v.ok){err.push(...v.erreurs);return}
+      pl.refections=pl.refections||[];pl.refections.push(Object.assign({passageId,date},v.data));}
+    else if(a.mode==="cloture"){const pl=out.find(x=>x.id===a.plaieId);
+      if(!pl){err.push("clôture : plaie introuvable");return}
+      if(pl.cloture){err.push("plaie déjà clôturée");return}
+      const v=validerCloture(a.data);if(!v.ok){err.push(...v.erreurs);return}
+      pl.cloture={date,issue:v.data.issue};}
+    else if(a.mode==="reouverture"){const pl=out.find(x=>x.id===a.plaieId);
+      if(!pl){err.push("réouverture : plaie introuvable");return}
+      if(!pl.cloture){err.push("réouverture : plaie non clôturée");return}
+      /* la clôture annulée est tracée — jamais de modification silencieuse */
+      (pl.reouvertures=pl.reouvertures||[]).push({passageId,date,annulee:pl.cloture});
+      pl.cloture=null;}
+    else err.push("action plaie inconnue : "+a.mode);
+  });
+  return {ok:!err.length,erreurs:err,plaies:out};
+}
+function plaieLabel(pl){return (pl.localisation||"?")+(pl.lateralite&&pl.lateralite!=="NA"?" "+pl.lateralite:"")+" · "+(pl.etiologie||"?")}
 
 /* ================= MOTEUR — un passage ================= */
 function computePassage(p,dayInfo){
@@ -1005,7 +1163,7 @@ const tmin=t=>{const [h,m]=(t||"00:00").split(":").map(Number);return h*60+m};co
 const ACT_MIN={bsc:45,bsb:35,bsa:25,perf14:30,perf9:50,k_perf15:30,k_perf10:50,pans4:25,ulc:30,pico:30,bilan_plaie:40,pans1:15,pans1c:15,stomie:15,trach:20,fils:10,fils2:15,prelev:8,insu:5,dextro:5,inj:7,inj_iv:10,inj_pac:15,medic:10,vacc:8,post_hosp:30,dep_hosp:25,sng:15,enteral:20,sondeF:15,sondeH:15,lavement:20,k_ret:15,kt_entretien:15,perf41:10,perf5:15,accomp1:30,accomp2:25};
 const actsMinutes=ids=>Math.max(8,(ids||[]).reduce((s,id)=>s+(ACT_MIN[id]??8),0));
 let formActs=[];
-function migratePatients(){let ch=false;patients.forEach(p=>{
+function migratePatients(){let ch=false;const dossiersVus=new Set();patients.forEach(p=>{
   if(!p.actIds){const pr=PROFILES.find(x=>x.id===p.soin);p.actIds=pr?.acts?.slice()||[];ch=true;}
   if(!p.dur){p.dur=actsMinutes(p.actIds);ch=true;}
   /* migration v5 : socle recherche + transmissions + post-its (spec v5.0) */
@@ -1017,6 +1175,13 @@ function migratePatients(){let ch=false;patients.forEach(p=>{
   if(p.socleDate===undefined){p.socleDate=null;ch=true;}
   if(!p.transmissions){p.transmissions=[];ch=true;}
   if(!p.postits){p.postits=[];ch=true;}
+  /* migration v5.2 : module plaies (spec Module Plaies, dictionnaire v1.1) */
+  if(!p.plaies){p.plaies=[];ch=true;}
+  /* v5.2.1 : ouverture_date = borne basse des réfections orphelines (dictionnaire v1.2) — backfill :
+     première réfection connue, sinon aujourd'hui (jamais date_debut, qui peut être une ancienneté estimée) */
+  p.plaies.forEach(pl=>{if(!pl.ouverture_date){pl.ouverture_date=String(((pl.refections||[])[0]||{}).date||"").slice(0,10)||todayISO();ch=true;}});
+  /* v5.2.1 : seules les lignes-dossiers portent les plaies — purge des instantanés copiés par « Passage soir » */
+  if(dossiersVus.has(p.id)){if((p.plaies||[]).length){p.plaies=[];ch=true;}}else dossiersVus.add(p.id);
 });if(ch)savePatients();}
 function actLabel(id){const a=byId(id);return a?`${a.k} ${a.c} · ${a.l.split("(")[0].trim().slice(0,28)}`:id;}
 function renderFormActs(){$("#pActs").innerHTML=formActs.map((id,i)=>`<button type="button" class="chip" aria-pressed="true" data-fa="${i}">${actLabel(id)} ✕</button>`).join("")||'<span class="muted">Aucun soin — ajoutez avec +</span>';}
@@ -1048,10 +1213,10 @@ async function savePatient(){
   if(!formActs.length){$("#pStatus").textContent="Ajoutez au moins un soin (+).";return}
   const p={name,addr,actIds:formActs.slice(),pal:$("#pPal").getAttribute("aria-pressed")==="true",k:$("#pK").getAttribute("aria-pressed")==="true",nuit:$("#pNuit").getAttribute("aria-pressed")==="true",dur:+$("#pDur").value||20,w1:$("#pW1").value,w2:$("#pW2").value,prio:+$("#pPrio").value,days:[...document.querySelectorAll("#pDays .chip[aria-pressed=true]")].map(b=>+b.dataset.d),from:$("#pFrom").value,to:$("#pTo").value,note:$("#pNote").value.trim(),active:true,geo:null};
   const prev=editIdx!=null?patients[editIdx]:null;
-  /* v5 : conserver dossier, transmissions et post-its lors d'une modification */
-  if(prev)["id","socleDate","transmissions","postits"].forEach(k=>{if(prev[k]!==undefined)p[k]=prev[k]});
+  /* v5 : conserver dossier, transmissions, post-its et plaies lors d'une modification */
+  if(prev)["id","socleDate","transmissions","postits","plaies"].forEach(k=>{if(prev[k]!==undefined)p[k]=prev[k]});
   Object.assign(p,readSocleFields("pSoc"));
-  if(!p.id)p.id=uid("pat");if(p.socleDate===undefined)p.socleDate=null;if(!p.transmissions)p.transmissions=[];if(!p.postits)p.postits=[];
+  if(!p.id)p.id=uid("pat");if(p.socleDate===undefined)p.socleDate=null;if(!p.transmissions)p.transmissions=[];if(!p.postits)p.postits=[];if(!p.plaies)p.plaies=[];
   if(gpsGeo&&$("#pAddr").dataset.gps==="1"){p.geo=gpsGeo;}
   else if(prev&&prev.addr===addr)p.geo=prev.geo;else{$("#pStatus").textContent="Localisation de l'adresse…";try{p.geo=await geocode(addr);}catch(e){p.geo=null;}}
   gpsGeo=null;delete $("#pAddr").dataset.gps;
@@ -1355,7 +1520,7 @@ function saveDraft(){if(epIdx==null||!epDraft)return;const p=patients[epIdx];if(
    dupliquées « Passage soir » partagent l'id : la première ligne avec cet id est le dossier unique. */
 function dossier(p){if(!p||!p.id)return p;return patients.find(x=>x.id===p.id)||p}
 function draftContenu(d){if(!d)return false;const t=d.trans||{};
-  return (d.acts||[]).length>0||!!(t.evt||t.cst||t.obs||t.icope||t.photo)||!!((t.libre||"").trim())||!!((d.dictee||"").trim())||!!d.socle}
+  return (d.acts||[]).length>0||!!(t.evt||t.cst||t.obs||t.icope||t.photo)||!!((t.libre||"").trim())||!!((d.dictee||"").trim())||!!d.socle||(d.plaies||[]).length>0}
 function epMicStop(){epRecWanted=false;if(epRec){try{epRec.stop()}catch(e){}epRec=null;}const b=$("#epMic");if(b)b.textContent="🎤 Dicter";}
 function openPassage(i){
   const p=patients[i];if(!p)return;epMicStop();epIdx=i;
@@ -1369,10 +1534,11 @@ function openPassage(i){
     if(d&&draftContenu(d))drafts["archive_"+p.id+"_"+d.date]=d; /* jamais de destruction silencieuse d'une saisie */
     const billed=new Set();passages5.filter(x=>x.patientId===p.id&&String(x.date).slice(0,10)===epDate).forEach(x=>(x.actes||[]).forEach(a=>{const c=byId(a.id);if(c&&c.tags&&(c.tags.bsi||c.tags.once))billed.add(a.id)}));
     const acts=(p.actIds||[]).map(id=>byId(id)).filter(Boolean).filter(a=>!billed.has(a.id)).map(a=>JSON.parse(JSON.stringify(a)));
-    epDraft={date:epDate,heure:nowHM(),acts,trans:{libre:"",evt:null,cst:null,obs:null,icope:null,photo:null},props:[],socle:null,socleData:null,dictee:""};
+    epDraft={date:epDate,heure:nowHM(),acts,trans:{libre:"",evt:null,cst:null,obs:null,icope:null,photo:null},props:[],socle:null,socleData:null,dictee:"",plaies:[],plaieOpen:null};
     epPanelOpen={postit:false,socle:false};epPostitDraft=null;
     }
   }
+  epDraft.plaies=epDraft.plaies||[]; /* brouillons antérieurs à v5.2 */
   epGeo=null;
   if(settings.geoloc&&navigator.geolocation)navigator.geolocation.getCurrentPosition(pos=>{epGeo={lat:pos.coords.latitude,lon:pos.coords.longitude}},()=>{},{timeout:8000,enableHighAccuracy:true});
   saveDraft();showTab("passage");
@@ -1418,7 +1584,10 @@ const CST_LBL={ta:"TA",fc:"FC",spo2:"SpO₂",temp:"T°",gly:"Glycémie",poids:"P
 const ICOPE_LBL={mobilite:"Mobilité",cognition:"Cognition",nutrition:"Nutrition",humeur:"Humeur",vision:"Vision",audition:"Audition"};
 function renderEpPanels(){
   const t=epDraft.trans,p=patients[epIdx],H=[];
-  if(t.evt)H.push(`<div class="panel"><h3>⚡ Événement <button class="x" data-close="evt">×</button></h3><div class="chips">${MOTS_EVT.map(m=>`<button type="button" class="chip" data-evtmot="${m}" aria-pressed="${t.evt.mot===m}">${m}</button>`).join("")}</div><input type="text" data-evttexte="1" placeholder="Précision (facultatif)…" value="${esc(t.evt.texte||"")}" style="margin-top:6px">`+`</div>`);
+  const plActives=plaiesActives(dossier(p));
+  if(t.evt)H.push(`<div class="panel"><h3>⚡ Événement <button class="x" data-close="evt">×</button></h3><div class="chips">${MOTS_EVT.map(m=>`<button type="button" class="chip" data-evtmot="${m}" aria-pressed="${t.evt.mot===m}">${m}</button>`).join("")}</div><input type="text" data-evttexte="1" placeholder="Précision (facultatif)…" value="${esc(t.evt.texte||"")}" style="margin-top:6px">`
+    +(t.evt.mot==="HOSPIT"&&plActives.length?`<label class="f" style="margin-top:6px">Hospitalisation liée à une plaie ? (facultatif, 1 tap)</label><div class="chips">${plActives.map(pl=>`<button type="button" class="chip" data-evtplaie="${esc(pl.id)}" aria-pressed="${t.evt.liee_plaie===pl.id}">🩹 ${esc(plaieLabel(pl))}</button>`).join("")}</div>`:"")
+    +`</div>`);
   if(t.cst)H.push(`<div class="panel"><h3>🩺 Constantes — vides si non mesurées <button class="x" data-close="cst">×</button></h3><div class="row">${CST_KEYS.map(k=>`<div style="min-width:86px"><label class="f">${CST_LBL[k]}</label><input type="text" inputmode="decimal" data-cst="${k}" value="${esc(t.cst[k]||"")}"></div>`).join("")}</div></div>`);
   if(t.obs)H.push(`<div class="panel"><h3>👁 Observations <button class="x" data-close="obs">×</button></h3><div class="row">${OBS_KEYS.map(k=>`<div style="min-width:100px"><label class="f">${OBS_LBL[k]}</label><select data-obs="${k}">${OBS_OPTS[k].map(o=>`<option value="${o}"${(t.obs[k]||"")===o?" selected":""}>${o||"—"}</option>`).join("")}</select></div>`).join("")}</div></div>`);
   if(t.icope)H.push(`<div class="panel"><h3>🧠 ICOPE — les 6 domaines requis <button class="x" data-close="icope">×</button></h3>${ICOPE_DOMS.map(k=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0"><span style="font-size:13px">${ICOPE_LBL[k]}</span><span class="chips" style="margin:0"><button type="button" class="chip" data-icope="${k}" data-val="ok" aria-pressed="${t.icope[k]==="ok"}">ok</button><button type="button" class="chip" data-icope="${k}" data-val="alerte" aria-pressed="${t.icope[k]==="alerte"}">alerte</button></span></div>`).join("")}</div>`);
@@ -1447,7 +1616,8 @@ function epPanelClick(e){if(!epDraft)return;const t=epDraft.trans;
     else if(k==="socle"){epPanelOpen.socle=false;if(!epDraft.socle)epDraft.props=(epDraft.props||[]).filter(x=>!(x.type==="socle"&&!x.declined));}
     else{t[k]=null;if(PROP[k])epDraft.props=(epDraft.props||[]).filter(x=>!(x.type===PROP[k]&&!x.declined));}
     saveDraft();renderPassage();return}
-  const em=e.target.closest("[data-evtmot]");if(em){t.evt=t.evt||{texte:""};t.evt.mot=t.evt.mot===em.dataset.evtmot?null:em.dataset.evtmot;saveDraft();renderPassage();return}
+  const em=e.target.closest("[data-evtmot]");if(em){t.evt=t.evt||{texte:""};t.evt.mot=t.evt.mot===em.dataset.evtmot?null:em.dataset.evtmot;if(t.evt.mot!=="HOSPIT")t.evt.liee_plaie=null;saveDraft();renderPassage();return}
+  const ep2=e.target.closest("[data-evtplaie]");if(ep2){t.evt=t.evt||{mot:null,texte:""};t.evt.liee_plaie=t.evt.liee_plaie===ep2.dataset.evtplaie?null:ep2.dataset.evtplaie;saveDraft();renderPassage();return}
   const ic=e.target.closest("[data-icope]");if(ic){t.icope=t.icope||{};t.icope[ic.dataset.icope]=ic.dataset.val;saveDraft();renderPassage();return}
   const pt=e.target.closest("[data-pitype]");if(pt){epPostitDraft=epPostitDraft||{texte:""};epPostitDraft.type=pt.dataset.pitype;saveDraft();renderPassage();return}
   if(e.target.closest("[data-pisave]")){epSavePostit();return}
@@ -1477,6 +1647,126 @@ function epTriggerClick(e){if(!epDraft)return;const t=epDraft.trans;
     if(ty==="socle")epPanelOpen.socle=true;
     saveDraft();renderPassage();return}
   const d=e.target.closest("[data-trdec]");if(d){epDraft.props.push({type:d.dataset.trdec,declined:true});saveDraft();renderPassage();return}}
+/* ---- module 7 : plaies — bandeaux et panneaux (ouverture ≤ 60 s, réfection ≤ 5 taps, clôture ≤ 3 taps).
+   Déclenché par la cotation du pansement, jamais par un écran dédié ; date/auteur hérités du passage. ---- */
+function refResume(r){if(!r)return "";
+  const iso=r.iso==="Aucun signe"?"Aucun signe":REF_ISO.filter(k=>r.iso&&typeof r.iso==="object"&&r.iso[k]).map(k=>REF_ISO_LBL[k]).join(", ");
+  return [r.lit,r.exsudat,iso,r.pansement?"pans. "+r.pansement:"",r.surface_cm2!=null?String(r.surface_cm2).replace(".",",")+" cm²":""].filter(Boolean).join(" · ")}
+function plChips(list,cur,key){return `<div class="chips">${list.map(v=>`<button type="button" class="chip" data-plk="${esc(key)}" data-plval="${esc(v)}" aria-pressed="${cur===v}">${esc(v)}</button>`).join("")}</div>`}
+function plaiePanelHtml(a,p){
+  const d=a.data||{};
+  if(a.mode==="ouverture")return `<div class="panel"><h3>🩹 Ouverture de plaie <button class="x" data-plclose="1">×</button></h3>
+    <p class="muted" style="margin:0 0 6px">Une seule fois par plaie. Douleur, pathologies et signes généraux se saisissent dans la transmission — la photo vit dans Healico.</p>
+    <label class="f">Début de la plaie (estimé si ancienne — jamais pré-rempli)</label>
+    <div class="row" style="align-items:center"><div style="max-width:160px"><input type="date" data-plf="date_debut" value="${esc(d.date_debut||"")}"></div>
+      <button type="button" class="chip" data-plk="date_debut" data-plval="${esc(epDate)}" aria-pressed="${d.date_debut===epDate}">Découverte ce jour</button></div>
+    <label class="f">Localisation</label>${plChips(PLAIE_LOC,d.localisation,"localisation")}
+    <label class="f">Latéralité</label>${plChips(PLAIE_LAT,d.lateralite,"lateralite")}
+    <label class="f">Étiologie</label>${plChips(PLAIE_ETIO,d.etiologie,"etiologie")}
+    ${d.etiologie==="Escarre"?`<label class="f">Stade initial</label>${plChips(PLAIE_STADES,d.stade_initial,"stade_initial")}`:""}
+    ${d.etiologie==="Plaie chirurgicale"?`<label class="f">Intervention</label>${plChips(PLAIE_INTERV,d.type_intervention,"type_intervention")}
+      <div class="row"><div style="max-width:160px"><label class="f">Date opératoire</label><input type="date" data-plf="date_operatoire" value="${esc(d.date_operatoire||"")}"></div></div>
+      <label class="f">Adressé par</label>${plChips(PLAIE_ADR,d.adresseur,"adresseur")}`:""}
+    ${estUlcere(d.etiologie)?`<label class="f">IPS (index de pression systolique)</label>${plChips(PLAIE_IPS,d.ips_connu,"ips_connu")}
+      ${d.ips_connu==="Oui mesuré"?`<div class="row"><div style="max-width:120px"><label class="f">Valeur IPS</label><input type="text" inputmode="decimal" data-plf="ips_valeur" value="${esc(d.ips_valeur??"")}" placeholder="0,75"></div></div>`:""}`:""}
+    <label class="f">Suivi spécialisé existant</label>${plChips(PLAIE_SUIVI,d.suivi_specialise,"suivi_specialise")}
+    <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-plok="1">OK</button><button type="button" class="btn sm sec" data-plcancel="1">Annuler</button></div></div>`;
+  if(a.mode==="refection"){
+    const pl=(p.plaies||[]).find(x=>x.id===a.plaieId)||{};const der=dernRefection(pl);const fr=plaieFraicheur(pl,epDate);
+    const surfDue=fr.bilanJ30||fr.surface.etat!=="ok";
+    return `<div class="panel"><h3>🩹 Réfection — ${esc(plaieLabel(pl))} <button class="x" data-plclose="1">×</button></h3>
+    ${der?`<p class="muted" style="margin:0 0 6px">Référence — ${esc(refDelaiLbl(der,epDate))} : ${esc(refResume(der))}</p>`:""}
+    ${surfDue?`<p class="muted" style="margin:0 0 6px">📐 ${fr.bilanJ30?"Bilan J30 chirurgical : surface attendue":"Surface attendue ce passage (recopie Healico, 1×/quinzaine)"}</p>`:""}
+    <label class="f">Lit de la plaie (aspect dominant)</label>${plChips(REF_LIT,d.lit,"lit")}
+    <label class="f">Exsudat</label>${plChips(REF_EXSUDAT,d.exsudat,"exsudat")}
+    <label class="f">Signes locaux</label><div class="chips"><button type="button" class="chip" data-plk="iso_none" data-plval="1" aria-pressed="${d.iso==="Aucun signe"}">Aucun signe</button>${REF_ISO.map(k=>`<button type="button" class="chip" data-plk="iso_sign" data-plval="${k}" aria-pressed="${!!(d.iso&&d.iso!=="Aucun signe"&&d.iso[k])}">${REF_ISO_LBL[k]}</button>`).join("")}</div>
+    <details${d.peri_lesionnelle||d.pansement||(d.surface_cm2!=null&&d.surface_cm2!=="")||d.orientation||surfDue?" open":""}><summary style="font-size:13px;cursor:pointer">Détails (facultatifs) — péri-lésionnelle, pansement, surface, orientation</summary>
+      <label class="f">Peau péri-lésionnelle</label>${plChips(REF_PERI,d.peri_lesionnelle,"peri_lesionnelle")}
+      <label class="f">Pansement (si changement)</label>${plChips(["Inchangé",...REF_PANS],d.pansement,"pansement")}
+      <div class="row"><div style="max-width:150px"><label class="f">Surface (cm², recopie Healico)</label><input type="text" inputmode="decimal" data-plf="surface_cm2" value="${esc(d.surface_cm2??"")}"></div></div>
+      <label class="f">Avis demandé ce jour</label>${plChips(REF_ORIENT,d.orientation,"orientation")}
+    </details>
+    <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-plok="1">OK</button><button type="button" class="btn sm sec" data-plcancel="1">Annuler</button></div></div>`;}
+  const pl=(p.plaies||[]).find(x=>x.id===a.plaieId)||{};const fr=plaieFraicheur(pl,epDate);
+  return `<div class="panel"><h3>🩹 Clôture — ${esc(plaieLabel(pl))} <button class="x" data-plclose="1">×</button></h3>
+    <label class="f">Issue</label>${plChips(CLOTURE_ISSUES,d.issue,"issue")}
+    <p class="muted">Datée au ${esc(epDate)} · délai depuis l'ouverture : ${fr.age??"?"} j (calculé, jamais saisi).</p>
+    <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-plok="1">OK</button><button type="button" class="btn sm sec" data-plcancel="1">Annuler</button></div></div>`;
+}
+function renderEpPlaies(){
+  const box=$("#epPlaies");if(!box)return;
+  if(epIdx==null||!epDraft){box.innerHTML="";return}
+  const p=dossier(patients[epIdx]),acts=(epDraft.plaies||[]);
+  const hasPans=epDraft.acts.some(a=>PLAIE_ACTS.includes(a.id));
+  const actifs=plaiesActives(p),H=[];
+  actifs.forEach(pl=>{
+    const fr=plaieFraicheur(pl,epDate);
+    const iRef=acts.findIndex(a=>a.mode==="refection"&&a.plaieId===pl.id);
+    const iClo=acts.findIndex(a=>a.mode==="cloture"&&a.plaieId===pl.id);
+    const der=dernRefection(pl);
+    const badges=[fr.bilanJ30?' <span class="verif">Bilan J30</span>':"",!fr.bilanJ30&&fr.surface.etat!=="ok"&&hasPans?' <span class="verif">surface à recopier</span>':""].join("");
+    let right; /* ✓ seulement si l'action tiendra la validation — sinon ⚠ à compléter */
+    if(iClo>-1){const okC=validerCloture(acts[iClo].data).ok;
+      right=`<span style="font-size:13px">${okC?"✓":"⚠"} clôture : ${esc(acts[iClo].data.issue||"à compléter")}</span><button class="btn sm sec" data-pled="${iClo}">✎</button><button class="btn sm sec" data-plrm="${iClo}">×</button>`;}
+    else if(iRef>-1){const okR=validerRefection(acts[iRef].data).ok;
+      right=`<span style="font-size:13px">${okR?"✓":"⚠"} réfection : ${esc((okR?refResume(acts[iRef].data):"")||"à compléter")}</span><button class="btn sm sec" data-pled="${iRef}">✎</button><button class="btn sm sec" data-plrm="${iRef}">×</button>`;}
+    else right=`${hasPans?`<button class="btn sm" data-plref="${esc(pl.id)}">Réfection</button>`:""}<button class="btn sm sec" data-plclo="${esc(pl.id)}">Clôturer</button>`;
+    H.push(`<div class="trigband"><span style="flex:1">🩹 <b>${esc(plaieLabel(pl))}</b> · J${fr.age??"?"}${badges}${der?`<small style="display:block;color:var(--ink2)">${esc(refDelaiLbl(der,epDate))} : ${esc(refResume(der))}</small>`:""}</span>${right}</div>`);
+  });
+  /* plaies clôturées depuis ≤ 7 j : réouverture possible (clôture annulée tracée à la validation) */
+  ((p.plaies)||[]).filter(pl=>pl.cloture&&(()=>{const j=Math.floor((Date.parse(epDate)-Date.parse(String(pl.cloture.date).slice(0,10)))/86400000);return isFinite(j)&&j>=0&&j<=7})()).forEach(pl=>{
+    const iRo=acts.findIndex(a=>a.mode==="reouverture"&&a.plaieId===pl.id);
+    H.push(`<div class="trigband done"><span style="flex:1">🩹 ${esc(plaieLabel(pl))} — clôturée le ${esc(String(pl.cloture.date).slice(0,10))} (${esc(pl.cloture.issue)})</span>${iRo>-1?`<span style="font-size:13px">✓ réouverture à la validation</span><button class="btn sm sec" data-plrm="${iRo}">×</button>`:`<button class="btn sm sec" data-plro="${esc(pl.id)}">Rouvrir</button>`}</div>`);
+  });
+  const ouvs=acts.map((a,i)=>({a,i})).filter(x=>x.a.mode==="ouverture");
+  const decl=(epDraft.props||[]).some(x=>x.type==="plaie"&&x.declined);
+  ouvs.forEach(({a,i})=>{const okO=validerPlaie(a.data).ok;
+    H.push(`<div class="trigband"><span style="flex:1">🩹 ${okO?"✓":"⚠"} <b>Nouvelle plaie</b> : ${esc([a.data.localisation,a.data.etiologie].filter(Boolean).join(" · ")||"à compléter")}</span><button class="btn sm sec" data-pled="${i}">✎</button><button class="btn sm sec" data-plrm="${i}">×</button></div>`);});
+  if(hasPans&&!actifs.length&&!ouvs.length){
+    if(decl)H.push(`<div class="trigband done"><span>✕ Suivi de plaie — pas ce passage (tracé)</span></div>`);
+    else H.push(`<div class="trigband"><span style="flex:1"><b>Suivi de plaie</b> · Pansement coté : ouvrir le dossier de cette plaie ?</span><button class="btn sm" data-plouv="1">Ouvrir la plaie</button><button class="btn sm sec" data-pldec="1">Pas ce passage</button></div>`);}
+  else if(hasPans)H.push(`<div style="text-align:right;margin:4px 0"><button class="btn sm sec" data-plouv="1">+ Autre plaie</button></div>`);
+  if(epDraft.plaieOpen!=null&&acts[epDraft.plaieOpen])H.push(plaiePanelHtml(acts[epDraft.plaieOpen],p));
+  box.innerHTML=H.join("");
+}
+function epPlaiesClick(e){
+  if(!epDraft)return;epDraft.plaies=epDraft.plaies||[];
+  const acts=epDraft.plaies;
+  /* neuve : Annuler supprime l'action ; ré-édition (✎) : instantané pris, Annuler y revient */
+  const open=(i,neuve)=>{epDraft.plaieOpen=i;epDraft.plaieBak=neuve?null:JSON.stringify(acts[i].data);saveDraft();renderEpPlaies();};
+  let b;
+  if(b=e.target.closest("[data-plouv]")){acts.push({mode:"ouverture",id:uid("pl"),data:{}});open(acts.length-1,true);return}
+  if(e.target.closest("[data-pldec]")){epDraft.props=epDraft.props||[];epDraft.props.push({type:"plaie",declined:true});saveDraft();renderEpPlaies();return}
+  if(b=e.target.closest("[data-plref]")){acts.push({mode:"refection",plaieId:b.dataset.plref,data:{}});open(acts.length-1,true);return}
+  if(b=e.target.closest("[data-plclo]")){acts.push({mode:"cloture",plaieId:b.dataset.plclo,data:{}});open(acts.length-1,true);return}
+  if(b=e.target.closest("[data-plro]")){acts.push({mode:"reouverture",plaieId:b.dataset.plro,data:{}});saveDraft();renderEpPlaies();toast("Réouverture préparée — la clôture sera annulée (et tracée) à la validation");return}
+  if(b=e.target.closest("[data-pled]")){open(+b.dataset.pled,false);return}
+  if(b=e.target.closest("[data-plrm]")){if(!confirm("Retirer cette saisie plaie du passage ? (rien n'est encore enregistré)"))return;
+    acts.splice(+b.dataset.plrm,1);epDraft.plaieOpen=null;epDraft.plaieBak=null;saveDraft();renderEpPlaies();return}
+  if(e.target.closest("[data-plcancel]")){
+    if(epDraft.plaieOpen!=null){
+      if(epDraft.plaieBak)acts[epDraft.plaieOpen].data=JSON.parse(epDraft.plaieBak); /* ré-édition : retour à l'état confirmé */
+      else acts.splice(epDraft.plaieOpen,1);} /* création : abandon */
+    epDraft.plaieOpen=null;epDraft.plaieBak=null;saveDraft();renderEpPlaies();return}
+  if(e.target.closest("[data-plclose]")){epDraft.plaieOpen=null;epDraft.plaieBak=null;saveDraft();renderEpPlaies();return}
+  if(e.target.closest("[data-plok]")){
+    const a=acts[epDraft.plaieOpen];if(!a)return;
+    const v=a.mode==="ouverture"?validerPlaie(a.data):a.mode==="refection"?validerRefection(a.data):validerCloture(a.data);
+    if(!v.ok){toast(v.erreurs[0]);return}
+    epDraft.plaieOpen=null;epDraft.plaieBak=null;saveDraft();renderEpPlaies();
+    toast(a.mode==="ouverture"?"Plaie prête — enregistrée à la validation du passage":a.mode==="refection"?"Réfection prête":"Clôture prête");return}
+  const c=e.target.closest("[data-plk]");
+  if(c){const a=acts[epDraft.plaieOpen];if(!a)return;const d=a.data,k=c.dataset.plk,val=c.dataset.plval;
+    if(k==="iso_none")d.iso=d.iso==="Aucun signe"?null:"Aucun signe";
+    else if(k==="iso_sign"){if(!d.iso||d.iso==="Aucun signe")d.iso={};d.iso[val]=!d.iso[val];if(!REF_ISO.some(s=>d.iso[s]))d.iso=null;}
+    else{const old=d[k];d[k]=old===val?null:val; /* re-tap = désélection : null ≠ valeur, aucun pré-cochage */
+      /* purge des champs conditionnels seulement sur vrai changement A→B — une désélection
+         accidentelle puis resélection ne détruit pas stade/intervention/IPS déjà saisis */
+      if(k==="etiologie"&&old&&d[k]&&old!==d[k]){delete d.stade_initial;delete d.type_intervention;delete d.date_operatoire;delete d.adresseur;delete d.ips_connu;delete d.ips_valeur;}}
+    saveDraft();renderEpPlaies();return}
+}
+function epPlaiesInput(e){if(!epDraft)return;const el=e.target;if(!el.dataset.plf)return;
+  const a=(epDraft.plaies||[])[epDraft.plaieOpen];if(!a)return;a.data[el.dataset.plf]=el.value;saveDraft();}
 /* ---- dictée IA (module 5) ----
    Le navigateur coupe la reconnaissance après quelques secondes de silence : on relance
    automatiquement tant que Stop n'est pas pressé, et Stop déclenche l'analyse. */
@@ -1549,7 +1839,7 @@ function renderPassage(){
   $("#epCardCot").classList.toggle("closed",!!epFoldState.cot);
   $("#epCardTrans").classList.toggle("closed",!!epFoldState.trans);
   const ts=$("#epTransSum");if(ts)ts.textContent=epTransResume();
-  renderEpTicket();renderEpPanels();renderEpTriggers();renderEpPostits();
+  renderEpTicket();renderEpPanels();renderEpTriggers();renderEpPlaies();renderEpPostits();
 }
 function renderEpPostits(){const p=epIdx!=null?dossier(patients[epIdx]):null;if(!p)return;
   const vis=(p.postits||[]).filter(x=>!x.archive&&(x.type==="RELEVE"||(x.type==="ALERTE")||x.type==="PERSO"));
@@ -1563,13 +1853,24 @@ function validerPassage(){
   const iso=epDate+"T"+(epDraft.heure||nowHM())+":00";
   const rec=buildPassageRecord(p,epDraft,iso,settings.auteur||"??");
   if(rec.error){toast(rec.error);return}
-  if(!rec.pass.actes.length&&!rec.transmissions.length&&!rec.socle){toast("Passage vide : ajoutez un acte ou une transmission");return}
-  if(rec.pass.actes.length&&!rec.transmissions.length&&!confirm("Valider sans transmission ? (tracé « transmission : aucune »)"))return;
+  const actionsPl=(epDraft.plaies||[]);
+  if(actionsPl.length){ /* pré-validation pure avant toute écriture (le passageId définitif est appliqué plus bas) */
+    const test=appliquerPlaiesActions(p.plaies||[],actionsPl,"__test__",epDate,p.id);
+    if(!test.ok){toast("Plaies : "+test.erreurs[0]);return}
+  }
+  if(!rec.pass.actes.length&&!rec.transmissions.length&&!rec.socle&&!actionsPl.length){toast("Passage vide : ajoutez un acte ou une transmission");return}
+  if(rec.pass.actes.length&&!rec.transmissions.length&&!actionsPl.length&&!confirm("Valider sans transmission ? (tracé « transmission : aucune »)"))return;
   if(settings.geoloc&&epGeo)rec.pass.geoloc={lat:epGeo.lat,lng:epGeo.lon};
   const bakP=JSON.stringify(patients),bakS=JSON.stringify(passages5),bakD=JSON.stringify(drafts);
   try{
     rec.transmissions.forEach(t=>p.transmissions.push(t));
     if(rec.setPlaie)p.plaie=true;
+    if(actionsPl.length){
+      const vp=appliquerPlaiesActions(p.plaies||[],actionsPl,rec.pass.id,epDate,p.id);
+      p.plaies=vp.plaies;
+      /* le flag patient.plaie suit les plaies enregistrées ; il n'est écrasé que si le dossier en a */
+      p.plaie=plaiesActives(p).length>0?true:(p.plaies.length?false:p.plaie);
+    }
     if(rec.socle){if(rec.socle==="edite"&&epDraft.socleData)Object.assign(p,epDraft.socleData);p.socleDate=epDate;}
     passages5.push(rec.pass);delete drafts[p.id];
     /* la clé la plus volumineuse d'abord ; en cas d'échec, le catch restaure AUSSI le stockage (tout-ou-rien) */
@@ -1583,7 +1884,7 @@ function validerPassage(){
     patients=JSON.parse(bakP);passages5=JSON.parse(bakS);drafts=JSON.parse(bakD);
     migratePatients();renderPatients();toast("Stockage plein — passage NON enregistré");return}
   epMicStop();epDraft=null;epIdx=null;epGeo=null;
-  toast("Passage validé — "+rec.transmissions.length+" transmission(s)");
+  toast("Passage validé — "+rec.transmissions.length+" transmission(s)"+(actionsPl.length?" · plaies à jour":""));
   showTab("tour");if(Object.keys(lastRoutes).length)planRoute();renderReleves();
 }
 /* ---- post-its : rendu & actions partagés (module 4) ---- */
@@ -1670,13 +1971,25 @@ function renderDash(){
   const late48=alertesEnRetard(patients).map(x=>x.pi.id);
   const alr=alertesOuvertes(patients);
   $("#dashAlertes").innerHTML=alr.length?alr.map(x=>postitHtml(x.p,x.pi)).join("")+(late48.length?`<p class="muted">⏰ ${late48.length} alerte(s) en attente depuis plus de 48 h.</p>`:""):`<p class="muted">Aucune alerte en attente.</p>`;
+  /* module 7 : suivi des plaies — fraîcheur par plaie active + réfections orphelines (incomplétude, jamais bloquant) */
+  const pls=[];act.forEach(p=>{(dossier(p).plaies||[]).forEach(pl=>pls.push({p:dossier(p),pl}))});
+  const actifsW=pls.filter(x=>!x.pl.cloture).map(x=>({p:x.p,pl:x.pl,fr:plaieFraicheur(x.pl,today)}));
+  const wLate=actifsW.filter(x=>x.fr.surface.etat!=="ok"||x.fr.bilanJ30);
+  const orph=refectionsOrphelines(patients,passages5);
+  $("#dashPlaies").innerHTML=(actifsW.length||orph.length)?
+    `<div class="kpi"><div><b>${actifsW.length}</b><small>plaie(s) active(s)</small></div>
+      <div><b>${wLate.length}</b><small>surface à mettre à jour (15 j)</small></div>
+      <div><b>${actifsW.filter(x=>x.fr.bilanJ30).length}</b><small>bilan J30 chirurgical attendu</small></div>
+      <div><b>${orph.length}</b><small>pansement(s) cotés sans réfection</small></div></div>`
+    +wLate.map(x=>`<div class="pt"><div style="flex:1"><b>${esc(x.p.name)}</b> — ${esc(plaieLabel(x.pl))} · J${x.fr.age??"?"}<small>${[x.fr.bilanJ30?"Bilan J30 attendu":"",x.fr.surface.etat==="missing"?"surface jamais recopiée":x.fr.surface.etat==="late"?"dernière surface : "+x.fr.surface.jours+" j":""].filter(Boolean).join(" · ")}</small></div><button class="btn sm sec" data-dashp="${patients.indexOf(x.p)}">Passage</button></div>`).join("")
+    :`<p class="muted">Aucune plaie en suivi.</p>`;
   const evts=[];patients.forEach(p=>(p.transmissions||[]).forEach(t=>{if(t.type==="EVENEMENT"&&(Date.parse(today)-Date.parse(String(t.date).slice(0,10)))<=30*86400000)evts.push({p,t})}));
   evts.sort((a,b)=>a.t.date<b.t.date?1:-1);
   $("#dashEvts").innerHTML=evts.map(x=>`<div class="day"><span><b>${esc(x.t.mot||"—")}</b> · ${esc(x.p.name)}${x.t.texte?" — "+esc(x.t.texte):""}</span><b>${esc(String(x.t.date).slice(0,10))}</b></div>`).join("")||`<p class="muted">Aucun événement sur 30 jours.</p>`;
-  const refC={photo:0,icope:0,constantes:0,socle:0};
+  const refC={photo:0,icope:0,constantes:0,socle:0,plaie:0};
   passages5.forEach(x=>(x.propositions||[]).forEach(pr=>{if(pr.declined&&refC[pr.type]!=null)refC[pr.type]++}));
   const totR=Object.values(refC).reduce((a,b)=>a+b,0);
-  $("#dashRefus").innerHTML=totR?Object.entries(refC).filter(([,n])=>n).map(([k,n])=>`<div class="day"><span>${FRESH_LBL[k]||k}</span><b>${n} refus</b></div>`).join(""):`<p class="muted">Aucun refus tracé.</p>`;
+  $("#dashRefus").innerHTML=totR?Object.entries(refC).filter(([,n])=>n).map(([k,n])=>`<div class="day"><span>${FRESH_LBL[k]||(k==="plaie"?"Ouverture de plaie":k)}</span><b>${n} refus</b></div>`).join(""):`<p class="muted">Aucun refus tracé.</p>`;
 }
 /* ---- conformité & export (module 6) ---- */
 function downloadCSV(name,txt){const b=new Blob(["﻿"+txt],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);}
@@ -1759,7 +2072,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(body&&!b){const i=+body.dataset.pe;editIdx=i;fillForm(patients[i]);$("#pName").scrollIntoView({block:"start"});toast("Modification de "+patients[i].name);return}
     if(!b)return;const i=+(b.dataset.pe??b.dataset.pd??b.dataset.pt??b.dataset.px);
     if(b.dataset.pe!=null){editIdx=i;fillForm(patients[i]);$("#pName").scrollIntoView({block:"start"});}
-    else if(b.dataset.pd!=null){const c=JSON.parse(JSON.stringify(patients[i]));c.w1="17:00";c.w2="20:00";c.transmissions=[];c.postits=[];patients.splice(i+1,0,c);savePatients();renderPatients();editIdx=i+1;fillForm(c);$("#pName").scrollIntoView({block:"start"});toast("Passage du soir créé — adaptez les soins du soir puis Enregistrer");}
+    else if(b.dataset.pd!=null){const c=JSON.parse(JSON.stringify(patients[i]));c.w1="17:00";c.w2="20:00";c.transmissions=[];c.postits=[];c.plaies=[];patients.splice(i+1,0,c);savePatients();renderPatients();editIdx=i+1;fillForm(c);$("#pName").scrollIntoView({block:"start"});toast("Passage du soir créé — adaptez les soins du soir puis Enregistrer");}
     else if(b.dataset.pt!=null){patients[i].active=!patients[i].active;if(!patients[i].active)patients[i].to=patients[i].to||new Date().toISOString().slice(0,10);savePatients();renderPatients();}
     else if(b.dataset.px!=null){if(confirm("Supprimer "+patients[i].name+" ?")){patients.splice(i,1);savePatients();renderPatients();}}});
   $("#tGo").onclick=planRoute;$("#tMaps").onclick=openMaps;
@@ -1806,6 +2119,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#epPanels").addEventListener("input",epPanelInput);
   $("#epPanels").addEventListener("click",epPanelClick);
   $("#epTriggers").addEventListener("click",epTriggerClick);
+  $("#epPlaies").addEventListener("click",epPlaiesClick);
+  $("#epPlaies").addEventListener("input",epPlaiesInput);
+  $("#dashPlaies").addEventListener("click",e=>{const b=e.target.closest("[data-dashp]");if(b)openPassage(+b.dataset.dashp)});
   $("#epHead").addEventListener("click",e=>{if(e.target.closest("[data-epfiche]")&&epIdx!=null){editIdx=epIdx;fillForm(patients[epIdx]);showTab("pat");setTimeout(()=>$("#pName").scrollIntoView({block:"start"}),60);}});
   $("#epValider").onclick=validerPassage;
   $("#epRetour").onclick=()=>{epMicStop();showTab("tour")};
@@ -1833,7 +2149,11 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#expPat").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
     downloadCSV("lidia_patients_"+todayISO()+".csv",toCSV(E.head,E.rows));$("#expStatus").textContent=E.rows.length+" patient(s) exporté(s), pseudonymisés (codes stables P001…)."};
   $("#expEvt").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
-    downloadCSV("lidia_evenements_"+todayISO()+".csv",toCSV(["code","date","mot"],E.events));$("#expStatus").textContent=E.events.length+" événement(s) exporté(s) (code, date, mot — sans texte libre)."};
+    downloadCSV("lidia_evenements_"+todayISO()+".csv",toCSV(["code","date","mot","liee_plaie"],E.events));$("#expStatus").textContent=E.events.length+" événement(s) exporté(s) (code, date, mot, plaie liée — sans texte libre)."};
+  $("#expPlaies").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
+    downloadCSV("lidia_plaies_"+todayISO()+".csv",toCSV(E.plaiesHead,E.plaiesRows));$("#expStatus").textContent=E.plaiesRows.length+" plaie(s) exportée(s) (identifiants P001-1…, délai de cicatrisation calculé)."};
+  $("#expRef").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
+    downloadCSV("lidia_refections_"+todayISO()+".csv",toCSV(E.refHead,E.refRows));$("#expStatus").textContent=E.refRows.length+" réfection(s) exportée(s) (lit, exsudat, signes ISO, pansement, surface)."};
   ["setGeo","setRattr"].forEach(id=>$("#"+id).onclick=()=>{const b=$("#"+id);b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true")});
   $("#setSave").onclick=()=>{const a=$("#setAuteur").value.trim().toUpperCase();if(!a){toast("Initiales requises");return}
     settings.auteur=a;settings.geoloc=$("#setGeo").getAttribute("aria-pressed")==="true";settings.rattrapage=$("#setRattr").getAttribute("aria-pressed")==="true";settings.iaProvider=$("#setProv").value;saveSettings();renderReleves();toast("Réglages enregistrés")};

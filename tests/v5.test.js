@@ -3,7 +3,9 @@
 const fs=require('fs');
 let js=fs.readFileSync(__dirname+'/../lidia-cotation.html','utf8').split('<script>')[1].split('</script>')[0];
 js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
-  +'globalThis.__x5={freshness,nbRetards,computeTriggers,buildPassageRecord,makePostit,relevesAVoir,alertesOuvertes,alertesEnRetard,validerExtraction,extraireLocal,anonymiserDictee,buildExport,toCSV,byId,SOCLE_J,CONSTANTES_J,PHOTO_PLAIE_J,ICOPE_J};';
+  +'globalThis.__x5={freshness,nbRetards,computeTriggers,buildPassageRecord,makePostit,relevesAVoir,alertesOuvertes,alertesEnRetard,validerExtraction,extraireLocal,anonymiserDictee,buildExport,toCSV,byId,SOCLE_J,CONSTANTES_J,PHOTO_PLAIE_J,ICOPE_J,'
+  +'SURFACE_J,BILAN_CHIR_J,PLAIE_LOC,PLAIE_LAT,PLAIE_ETIO,PLAIE_STADES,PLAIE_INTERV,PLAIE_ADR,PLAIE_IPS,PLAIE_SUIVI,REF_LIT,REF_EXSUDAT,REF_ISO,REF_PERI,REF_PANS,REF_ORIENT,CLOTURE_ISSUES,'
+  +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -178,7 +180,7 @@ T('export — pseudonymisé : aucun nom, PERSO jamais exporté, compteurs post-i
   eq(csv.includes('chute nocturne'),false,'texte événement dans le CSV patients');
   eq(E.rows[0].code,'P001');eq(E.rows[0].postits_releve,1);eq(E.rows[0].postits_alerte,1);
   eq(E.rows[0].der_ta,'14/8');eq(E.rows[0].refus_propositions,1);eq(E.rows[0].pathos,'Diabète');
-  eq(E.events,[{code:'P001',date:dMoins(3),mot:'CHUTE'}]);
+  eq(E.events,[{code:'P001',date:dMoins(3),mot:'CHUTE',liee_plaie:''}]);
   eq(E.mapping[0].nom,'Mme Kelloud');
   const evCsv=X.toCSV(['code','date','mot'],E.events);
   eq(evCsv.includes('chute nocturne'),false,'texte libre dans CSV événements');});
@@ -209,6 +211,145 @@ T('export — lignes dupliquées (même id, « Passage soir ») exportées une s
 T('extraction — valeur d observation hors liste fermée rejetée',()=>{
   const v=X.validerExtraction({obs:{douleur:'insupportable',chute:'oui'}});
   eq(v.ok,false);eq(v.data.obs.douleur,'');eq(v.data.obs.chute,'oui');});
+
+/* ---------- Module 7 : plaies (spec Module Plaies v5.0) ---------- */
+const PL=o=>Object.assign({id:'pl1',patientId:'pa',date_debut:dMoins(40),localisation:'Jambe',lateralite:'D',etiologie:'Traumatique',suivi_specialise:'Non',refections:[],cloture:null},o);
+const RF=o=>Object.assign({lit:'Fibrineux',exsudat:'Modéré',iso:'Aucun signe'},o);
+T('plaies — listes fermées conformes à la spec (tailles exactes)',()=>{
+  eq(X.PLAIE_LOC.length,11);eq(X.PLAIE_ETIO.length,10);eq(X.PLAIE_LAT,['D','G','Médian','NA']);
+  eq(X.PLAIE_STADES,['1','2','3','4','Non stadable']);eq(X.PLAIE_INTERV.length,7);eq(X.PLAIE_ADR.length,5);
+  eq(X.PLAIE_SUIVI.length,4);eq(X.REF_LIT,['Épidermisé','Bourgeonnant','Fibrineux','Nécrotique']);
+  eq(X.REF_EXSUDAT,['Absent','Modéré','Abondant']);eq(X.REF_ISO.length,4);eq(X.REF_PERI.length,3);
+  eq(X.REF_PANS.length,10);eq(X.REF_ORIENT.length,3);eq(X.CLOTURE_ISSUES.length,7);
+  eq(X.SURFACE_J,15);eq(X.BILAN_CHIR_J,30);});
+T('validerPlaie — minimal valide, champs hors schéma ignorés',()=>{
+  const v=X.validerPlaie({date_debut:dMoins(10),localisation:'Sacrum',lateralite:'NA',etiologie:'Traumatique',suivi_specialise:'Non',douleur:'8',invente:'x'});
+  eq(v.ok,true);eq(v.data.localisation,'Sacrum');eq(v.data.douleur,undefined,'champ interdit capté');eq(v.data.invente,undefined);});
+T('validerPlaie — requis manquants et valeurs hors liste rejetés',()=>{
+  eq(X.validerPlaie({}).ok,false);
+  eq(X.validerPlaie({date_debut:dMoins(1),localisation:'Nez',lateralite:'D',etiologie:'Traumatique',suivi_specialise:'Non'}).ok,false);});
+T('validerPlaie — escarre : stade initial requis (1|2|3|4|Non stadable)',()=>{
+  const base={date_debut:dMoins(5),localisation:'Sacrum',lateralite:'NA',etiologie:'Escarre',suivi_specialise:'Non'};
+  eq(X.validerPlaie(base).ok,false);
+  const v=X.validerPlaie(Object.assign({stade_initial:'3'},base));eq(v.ok,true);eq(v.data.stade_initial,'3');});
+T('validerPlaie — chirurgicale : intervention + date opératoire + adresseur requis',()=>{
+  const base={date_debut:dMoins(5),localisation:'Abdomen',lateralite:'NA',etiologie:'Plaie chirurgicale',suivi_specialise:'Non'};
+  eq(X.validerPlaie(base).ok,false);
+  const v=X.validerPlaie(Object.assign({type_intervention:'Digestif',date_operatoire:dMoins(6),adresseur:'CHU'},base));
+  eq(v.ok,true);eq(v.data.date_operatoire,dMoins(6));});
+T('validerPlaie — ulcères : ips_connu requis, ips_valeur "0,75" parsée, invalide rejetée',()=>{
+  const base={date_debut:dMoins(90),localisation:'Jambe',lateralite:'G',etiologie:'Ulcère veineux',suivi_specialise:'Consultation plaies'};
+  eq(X.validerPlaie(base).ok,false);
+  const v=X.validerPlaie(Object.assign({ips_connu:'Oui mesuré',ips_valeur:'0,75'},base));
+  eq(v.ok,true);eq(v.data.ips_valeur,0.75);
+  eq(X.validerPlaie(Object.assign({ips_connu:'Oui mesuré',ips_valeur:'haut'},base)).ok,false);
+  eq(X.validerPlaie(Object.assign({ips_connu:'Non'},base)).ok,true);});
+T('validerRefection — chemin 3 taps (lit, exsudat, Aucun signe) ; pansement absent = non renseigné',()=>{
+  const v=X.validerRefection(RF({}));
+  eq(v.ok,true);eq(v.data.iso,'Aucun signe');eq('pansement' in v.data,false,'pansement pré-rempli');});
+T('validerRefection — lit/exsudat requis, valeurs hors liste rejetées',()=>{
+  eq(X.validerRefection({exsudat:'Modéré',iso:'Aucun signe'}).ok,false);
+  eq(X.validerRefection(RF({lit:'Sale'})).ok,false);
+  eq(X.validerRefection(RF({exsudat:'Énorme'})).ok,false);});
+T('validerRefection — ISO : détail avec ≥ 1 signe ok, aucun signe coché rejeté',()=>{
+  const v=X.validerRefection(RF({iso:{ecoulement_purulent:true}}));
+  eq(v.ok,true);eq(v.data.iso.ecoulement_purulent,true);eq(v.data.iso.dehiscence,false);
+  eq(X.validerRefection(RF({iso:{}})).ok,false);
+  eq(X.validerRefection(RF({iso:null})).ok,false);});
+T('validerRefection — surface "12,5" → 12.5, texte rejeté ; pansement/orientation listes fermées',()=>{
+  eq(X.validerRefection(RF({surface_cm2:'12,5'})).data.surface_cm2,12.5);
+  eq(X.validerRefection(RF({surface_cm2:'grande'})).ok,false);
+  eq(X.validerRefection(RF({pansement:'Inchangé'})).data.pansement,'Inchangé');
+  eq(X.validerRefection(RF({pansement:'Sparadrap'})).ok,false);
+  eq(X.validerRefection(RF({orientation:'Urgences'})).data.orientation,'Urgences');
+  eq(X.validerRefection(RF({orientation:'Pharmacie'})).ok,false);});
+T('validerCloture — issue liste fermée',()=>{
+  eq(X.validerCloture({issue:'Cicatrisée'}).ok,true);
+  eq(X.validerCloture({issue:'Guérie'}).ok,false);eq(X.validerCloture({}).ok,false);});
+T('plaieFraicheur — surface : missing sans réfection, ok 15 j, late 16 j, na si clôturée',()=>{
+  eq(X.plaieFraicheur(PL({}),TODAY).surface.etat,'missing');
+  eq(X.plaieFraicheur(PL({refections:[{passageId:'x',date:dMoins(15),lit:'Fibrineux',exsudat:'Modéré',iso:'Aucun signe',surface_cm2:8}]}),TODAY).surface.etat,'ok');
+  eq(X.plaieFraicheur(PL({refections:[{passageId:'x',date:dMoins(16),lit:'Fibrineux',exsudat:'Modéré',iso:'Aucun signe',surface_cm2:8}]}),TODAY).surface.etat,'late');
+  eq(X.plaieFraicheur(PL({refections:[{passageId:'x',date:dMoins(2),lit:'Fibrineux',exsudat:'Modéré',iso:'Aucun signe'}]}),TODAY).surface.etat,'missing','réfection sans surface comptée');
+  eq(X.plaieFraicheur(PL({cloture:{date:dMoins(1),issue:'Cicatrisée'}}),TODAY).surface.etat,'na');});
+T('plaieFraicheur — bilan J30 chirurgical : ≥ 30 j sans clôture ni réfection avec surface',()=>{
+  const chir=o=>PL(Object.assign({etiologie:'Plaie chirurgicale',type_intervention:'Orthopédie',date_operatoire:dMoins(30),adresseur:'Clinique',date_debut:dMoins(28)},o));
+  eq(X.plaieFraicheur(chir({}),TODAY).bilanJ30,true);
+  eq(X.plaieFraicheur(chir({date_operatoire:dMoins(29)}),TODAY).bilanJ30,false);
+  eq(X.plaieFraicheur(chir({refections:[{passageId:'x',date:dMoins(3),lit:'Épidermisé',exsudat:'Absent',iso:'Aucun signe',surface_cm2:2}]}),TODAY).bilanJ30,false);
+  eq(X.plaieFraicheur(chir({cloture:{date:dMoins(1),issue:'Cicatrisée'}}),TODAY).bilanJ30,false);
+  eq(X.plaieFraicheur(PL({date_debut:dMoins(60)}),TODAY).bilanJ30,false,'non chirurgicale');});
+T('delaiCicatrisation — chronique depuis date_debut, chirurgicale depuis date opératoire, null si ouverte',()=>{
+  eq(X.delaiCicatrisation(PL({date_debut:dMoins(50),cloture:{date:dMoins(5),issue:'Cicatrisée'}})),45);
+  eq(X.delaiCicatrisation(PL({etiologie:'Plaie chirurgicale',date_debut:dMoins(20),date_operatoire:dMoins(25),cloture:{date:dMoins(5),issue:'Cicatrisée'}})),20);
+  eq(X.delaiCicatrisation(PL({})),null);});
+T('appliquerPlaiesActions — ouverture + réfection liée au passage + clôture, entrée non mutée',()=>{
+  const avant=[];
+  const r1=X.appliquerPlaiesActions(avant,[{mode:'ouverture',id:'plN',data:{date_debut:TODAY,localisation:'Talon',lateralite:'G',etiologie:'Escarre',stade_initial:'2',suivi_specialise:'Non'}},
+    {mode:'refection',plaieId:'plN',data:RF({})}],'pass9',TODAY,'pa');
+  eq(r1.ok,true);eq(avant.length,0,'entrée mutée');eq(r1.plaies.length,1);
+  eq(r1.plaies[0].patientId,'pa');eq(r1.plaies[0].refections[0].passageId,'pass9');eq(r1.plaies[0].refections[0].date,TODAY);
+  const r2=X.appliquerPlaiesActions(r1.plaies,[{mode:'cloture',plaieId:'plN',data:{issue:'Cicatrisée'}}],'pass10',TODAY,'pa');
+  eq(r2.ok,true);eq(r2.plaies[0].cloture.issue,'Cicatrisée');eq(r2.plaies[0].cloture.date,TODAY);
+  eq(X.plaiesActives({plaies:r2.plaies}).length,0);
+  const r3=X.appliquerPlaiesActions(r2.plaies,[{mode:'cloture',plaieId:'plN',data:{issue:'Décès'}}],'p11',TODAY,'pa');
+  eq(r3.ok,false,'double clôture acceptée');});
+T('appliquerPlaiesActions — action invalide : ok:false, erreurs remontées',()=>{
+  const r=X.appliquerPlaiesActions([],[{mode:'ouverture',data:{localisation:'Jambe'}}],'p1',TODAY,'pa');
+  eq(r.ok,false);eq(r.erreurs.length>0,true);
+  eq(X.appliquerPlaiesActions([],[{mode:'refection',plaieId:'inconnu',data:RF({})}],'p1',TODAY,'pa').ok,false);});
+T('refectionsOrphelines — pansement coté sans réfection alors qu\'une plaie était ouverte',()=>{
+  const p=pat({id:'pa',plaies:[PL({id:'plA',date_debut:dMoins(10)})]});
+  const passe=(id,d,acte,refDone)=>{if(refDone)p.plaies[0].refections.push({passageId:id,date:d,lit:'Fibrineux',exsudat:'Modéré',iso:'Aucun signe'});
+    return {id,patientId:'pa',date:d+'T08:00:00',actes:[{id:acte,k:'AMI',c:2,l:''}],transmissionIds:[],propositions:[]};};
+  const passes=[passe('g1',dMoins(3),'pans1',false),passe('g2',dMoins(2),'pans1',true),passe('g3',dMoins(1),'inj',false),passe('g4',dMoins(20),'pans1',false)];
+  const o=X.refectionsOrphelines([p],passes);
+  eq(o.map(x=>x.passageId),['g1'],'g2 a sa réfection, g3 pas un pansement, g4 avant l\'ouverture');
+  eq(X.refectionsOrphelines([pat({id:'pb'})],[passe('g5',dMoins(1),'pans1',false)]).length,0,'patient sans plaie enregistrée compté');});
+T('export — plaies et réfections pseudonymisées (P001-1), délai calculé, aucun nom',()=>{
+  const p1=pat({id:'pat_secret_77',name:'Mme Kelloud',plaies:[
+    PL({id:'plA',date_debut:dMoins(50),etiologie:'Ulcère veineux',ips_connu:'Oui mesuré',ips_valeur:0.8,
+      refections:[{passageId:'x1',date:dMoins(4),lit:'Bourgeonnant',exsudat:'Modéré',iso:{rougeur_extensive:true,ecoulement_purulent:false,dehiscence:false,fievre_rapportee:false},surface_cm2:6.5,orientation:'Médecin traitant'}],
+      cloture:{date:dMoins(1),issue:'Cicatrisée'}}),
+    PL({id:'plB',date_debut:dMoins(3),localisation:'Talon',etiologie:'Escarre',stade_initial:'2'})]});
+  const E=X.buildExport([p1],[],TODAY,{});
+  eq(E.plaiesRows.length,2);eq(E.plaiesRows[0].plaie,'P001-1');eq(E.plaiesRows[1].plaie,'P001-2');
+  eq(E.plaiesRows[0].delai_cicatrisation,49);eq(E.plaiesRows[0].issue,'Cicatrisée');eq(E.plaiesRows[0].ips_valeur,0.8);
+  eq(E.plaiesRows[1].delai_cicatrisation,'');eq(E.plaiesRows[1].stade_initial,'2');
+  eq(E.refRows.length,1);eq(E.refRows[0].plaie,'P001-1');eq(E.refRows[0].iso_rougeur,1);eq(E.refRows[0].iso_aucun,0);eq(E.refRows[0].surface_cm2,6.5);
+  eq(E.rows[0].nb_plaies_actives,1);
+  const csv=X.toCSV(E.plaiesHead,E.plaiesRows)+X.toCSV(E.refHead,E.refRows);
+  eq(csv.includes('Kelloud'),false,'nom dans les CSV plaies');eq(csv.includes('pat_secret'),false,'patientId brut dans le CSV');});
+T('export — dossiers dupliqués : plaies exportées une seule fois',()=>{
+  const matin=pat({id:'px',name:'M. X',plaies:[PL({id:'plZ'})]});
+  const soir=pat({id:'px',name:'M. X'});
+  eq(X.buildExport([matin,soir],[],TODAY,{}).plaiesRows.length,1);});
+T('appliquerPlaiesActions — ouverture_date posée (borne des orphelines), distincte de date_debut estimée',()=>{
+  const r=X.appliquerPlaiesActions([],[{mode:'ouverture',id:'plO',data:{date_debut:dMoins(90),localisation:'Jambe',lateralite:'G',etiologie:'Traumatique',suivi_specialise:'Non'}}],'p1',TODAY,'pa');
+  eq(r.ok,true);eq(r.plaies[0].ouverture_date,TODAY);eq(r.plaies[0].date_debut,dMoins(90));});
+T('refectionsOrphelines — les passages antérieurs à l\'enregistrement de la plaie ne sont pas des oublis',()=>{
+  const p=pat({id:'pa',plaies:[PL({id:'plA',date_debut:dMoins(90),ouverture_date:dMoins(5)})]});
+  const mk=(id,d)=>({id,patientId:'pa',date:d+'T08:00:00',actes:[{id:'pans1',k:'AMI',c:2,l:''}],transmissionIds:[],propositions:[]});
+  const o=X.refectionsOrphelines([p],[mk('h1',dMoins(50)),mk('h2',dMoins(20)),mk('n1',dMoins(2))]);
+  eq(o.map(x=>x.passageId),['n1'],'historique antérieur à l\'ouverture compté comme orphelin');});
+T('appliquerPlaiesActions — réouverture : clôture annulée et tracée, refusée sur plaie ouverte',()=>{
+  const base=[PL({id:'plC',cloture:{date:dMoins(2),issue:'Cicatrisée'}})];
+  const r=X.appliquerPlaiesActions(base,[{mode:'reouverture',plaieId:'plC',data:{}}],'p9',TODAY,'pa');
+  eq(r.ok,true);eq(r.plaies[0].cloture,null);
+  eq(r.plaies[0].reouvertures.length,1);eq(r.plaies[0].reouvertures[0].annulee.issue,'Cicatrisée');eq(r.plaies[0].reouvertures[0].passageId,'p9');
+  eq(X.plaiesActives({plaies:r.plaies}).length,1);
+  eq(X.appliquerPlaiesActions(r.plaies,[{mode:'reouverture',plaieId:'plC',data:{}}],'p10',TODAY,'pa').ok,false,'réouverture d\'une plaie ouverte acceptée');});
+T('export — événement HOSPIT lié à une plaie : pseudonyme Pnnn-k, jamais l\'id brut',()=>{
+  const p1=pat({id:'pat_secret_88',name:'M. Y',plaies:[PL({id:'plX_secret',date_debut:dMoins(30)})],
+    transmissions:[Object.assign(tr('EVENEMENT',dMoins(1)),{mot:'HOSPIT',liee_plaie:'plX_secret'}),Object.assign(tr('EVENEMENT',dMoins(8)),{mot:'CHUTE'})]});
+  const E=X.buildExport([p1],[],TODAY,{});
+  const ev=E.events.find(x=>x.mot==='HOSPIT');
+  eq(ev.liee_plaie,'P001-1');eq(E.events.find(x=>x.mot==='CHUTE').liee_plaie,'');
+  const csv=X.toCSV(['code','date','mot','liee_plaie'],E.events);
+  eq(csv.includes('plX_secret'),false,'id de plaie brut dans le CSV');});
+T('refDelaiLbl — délai positif en jours, réfection future (rattrapage antidaté) datée explicitement',()=>{
+  eq(X.refDelaiLbl({date:dMoins(6)},TODAY),'il y a 6 j');
+  eq(X.refDelaiLbl({date:TODAY},dMoins(3)),'réfection du '+TODAY);});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');
