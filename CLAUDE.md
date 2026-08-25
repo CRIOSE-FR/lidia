@@ -23,6 +23,7 @@ Pour tout changement important du moteur : faire ensuite intervenir `ngap-tester
 Pour toute modification visuelle : utiliser `idel-ux`.
 Pour la lecture d'ordonnance ou n8n : utiliser `prescription-ai`.
 Pour la sécurité et les données de santé : utiliser `security-health`.
+Pour le module transmissions/recueil v5 (socle, constantes, ICOPE, post-its, dictée, export) : utiliser `architecte-donnees-probantes` — dictionnaire de données obligatoire (`docs/data_dictionary.md`, versionné : aucune variable modifiée silencieusement).
 Avant déploiement : utiliser `regression-reviewer` (`bash tests/review.sh`).
 
 ## Interdictions
