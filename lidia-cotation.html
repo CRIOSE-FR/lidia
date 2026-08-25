@@ -114,7 +114,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.0.2</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.1.0</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -563,7 +563,12 @@ function LV(k){const d=day.date||"";let v=ref[k]??0;if((k==="AMI"||k==="AMX"||k=
 /* DATA_MODE "test" tant que l'hébergement n'est pas HDS : bandeau permanent, patients fictifs uniquement. */
 const DATA_MODE="test";
 const SOCLE_J=365,CONSTANTES_J=35,PHOTO_PLAIE_J=15,ICOPE_J=120;
-const PATHOS_LIST=["Diabète","Insuf. cardiaque","AOMI","Cancer actif","Tr. cognitifs","Insuf. rénale","Autre"];
+/* Liste fermée fondée sur la littérature (voir docs/socle-pathologies.md) : ALD/prévalences françaises
+   (CNAM 2022, Santé publique France BEH 2025), calculabilité des indices de comorbidité (Charlson 1987/
+   Quan 2011, Elixhauser 1998, eFI Clegg 2016) et croisement avec les données déjà recueillies (ICOPE,
+   constantes, photos de plaies). Les 7 libellés d'origine sont inchangés — ne jamais renommer une entrée
+   existante sans migration des patients qui l'ont cochée. */
+const PATHOS_LIST=["Diabète","HTA","Insuf. cardiaque","Mal. coronaire","FA / tr. rythme","AVC / séquelles","AOMI","BPCO / insuf. resp.","Insuf. rénale","Hépatopathie chr.","Cancer actif","Cancer métastatique","Tr. cognitifs","Parkinson","Tr. psychiatriques","Plaie chronique / escarre","Dénutrition","Ostéoporose / fracture","Autre"];
 const AUTONOMIE_LIST=["Autonome","Aide partielle","Dépendant"];
 const ADRESSE_PAR_LIST=["Sortie hospitalisation","Médecin traitant","Confrère IDEL","Demande directe","Autre"];
 const MOTS_EVT=["HOSPIT","URGENCES","CHUTE","DÉCÈS","EHPAD"];
@@ -785,7 +790,7 @@ function buildExport(pats,passList,today,codeMap){
   const dejaVu=new Set();
   pats=pats.filter(p=>{const k=p.id||JSON.stringify(p);if(dejaVu.has(k))return false;dejaVu.add(k);return true});
   pats.forEach(p=>{if(p.id&&!codeMap[p.id]){next++;codeMap[p.id]="P"+String(next).padStart(3,"0")}});
-  const head=["code","annee","sexe","commune","vitSeul","aidant","institution","pathos","nbMed","autonomie","bsi","adresse_par","plaie","socleDate",
+  const head=["code","annee","sexe","commune","vitSeul","aidant","institution","pathos","nbMed","autonomie","bsi","palliatif","adresse_par","plaie","socleDate",
     "nbPassages","nbTransmissions","nbLibre","nbEvenements","nbConstantes","nbObs","nbIcope","nbPhotos",
     "der_ta","der_fc","der_spo2","der_temp","der_gly","der_poids","der_cst_date",
     "icope_mobilite","icope_cognition","icope_nutrition","icope_humeur","icope_vision","icope_audition","icope_nbAlerts","icope_date",
@@ -802,7 +807,7 @@ function buildExport(pats,passList,today,codeMap){
     const pi=(p.postits||[]);
     of("EVENEMENT").forEach(t=>events.push({code,date:String(t.date).slice(0,10),mot:t.mot||""}));
     rows.push({code,annee:p.annee||"",sexe:p.sexe||"",commune:p.commune||"",vitSeul:p.vitSeul?1:0,aidant:p.aidant?1:0,institution:p.institution?1:0,
-      pathos:(p.pathos||[]).join("|"),nbMed:p.nbMed??"",autonomie:p.autonomie||"",bsi:p.bsi?1:0,adresse_par:p.adresse_par||"",plaie:p.plaie?1:0,socleDate:p.socleDate||"",
+      pathos:(p.pathos||[]).join("|"),nbMed:p.nbMed??"",autonomie:p.autonomie||"",bsi:p.bsi?1:0,palliatif:p.pal?1:0,adresse_par:p.adresse_par||"",plaie:p.plaie?1:0,socleDate:p.socleDate||"",
       nbPassages:myPass.length,nbTransmissions:tr.length,nbLibre:of("LIBRE").length,nbEvenements:of("EVENEMENT").length,nbConstantes:of("CONSTANTES").length,nbObs:of("OBS").length,nbIcope:of("ICOPE").length,nbPhotos:of("PHOTO").length,
       der_ta:lastC?.cst?.ta||"",der_fc:lastC?.cst?.fc||"",der_spo2:lastC?.cst?.spo2||"",der_temp:lastC?.cst?.temp||"",der_gly:lastC?.cst?.gly||"",der_poids:lastC?.cst?.poids||"",der_cst_date:lastC?String(lastC.date).slice(0,10):"",
       icope_mobilite:lastI?.icope?.mobilite||"",icope_cognition:lastI?.icope?.cognition||"",icope_nutrition:lastI?.icope?.nutrition||"",icope_humeur:lastI?.icope?.humeur||"",icope_vision:lastI?.icope?.vision||"",icope_audition:lastI?.icope?.audition||"",icope_nbAlerts:lastI?(lastI.nbAlerts??""):"",icope_date:lastI?String(lastI.date).slice(0,10):"",
