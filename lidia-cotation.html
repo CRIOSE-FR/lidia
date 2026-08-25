@@ -93,6 +93,14 @@ textarea{min-height:110px;resize:vertical}
 .panel h3 .x{margin:0;padding:0 4px}
 .overlay{position:fixed;inset:0;background:rgba(14,30,43,.55);display:flex;align-items:center;justify-content:center;z-index:20;padding:20px}
 .overlay .card{max-width:380px;width:100%;margin:0}
+/* modules rétractables de l'écran de passage */
+.foldh{width:100%;background:none;border:0;display:flex;align-items:center;gap:8px;padding:2px 0;text-align:left;cursor:pointer}
+.foldh h2{margin:0;flex:none}
+.foldsum{flex:1;font-size:12.5px;color:var(--ink2);font-family:var(--mono);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.foldh .chev{flex:none;color:var(--teal);font-weight:700;transition:transform .15s}
+.fold.closed .foldb{display:none}
+.fold.closed .chev{transform:rotate(-90deg)}
+.foldb{margin-top:8px}
 ol{padding-left:18px;font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 #sheet{display:none;font:13px/1.5 var(--body);color:#000;padding:10mm}
@@ -106,7 +114,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.0.1</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.0.2</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -334,8 +342,9 @@ ol{padding-left:18px;font-size:14px}
 <section id="tab-passage" hidden>
   <div class="card" id="epHead"></div>
   <div id="epPostitsList"></div>
-  <div class="card">
-    <h2>Cotation du passage</h2>
+  <div class="card fold" id="epCardCot">
+    <button class="foldh" id="epFoldCot" type="button"><h2>Cotation</h2><span class="foldsum" id="epCotSum"></span><span class="chev">▾</span></button>
+    <div class="foldb">
     <div class="row">
       <div style="max-width:130px"><label class="f" for="epHeure">Heure</label><input type="time" id="epHeure"></div>
       <div><label class="f" for="epQ">Ajouter un acte</label><input type="text" id="epQ" placeholder="insuline, pansement, perfusion, BSI…" autocomplete="off"></div>
@@ -347,9 +356,11 @@ ol{padding-left:18px;font-size:14px}
     <div id="epLines" style="margin-top:8px"></div><div id="epMajs"></div>
     <div class="total" style="border-radius:10px;margin-top:8px"><small>Total du passage</small><b id="epTotal">0,00 €</b></div>
     <div id="epAlerts"></div>
+    </div>
   </div>
-  <div class="card">
-    <h2>Transmission</h2>
+  <div class="card fold" id="epCardTrans">
+    <button class="foldh" id="epFoldTrans" type="button"><h2>Transmission</h2><span class="foldsum" id="epTransSum"></span><span class="chev">▾</span></button>
+    <div class="foldb">
     <label class="f" for="epDictee">Dictée <span class="verif" id="epDicteeBand" hidden>Dictée IA — données de test uniquement</span></label>
     <textarea id="epDictee" style="min-height:70px" placeholder="« TA 13/8, glycémie 1,2 au réveil, se plaint de douleur au talon droit… »"></textarea>
     <div class="row" style="margin-top:6px">
@@ -369,6 +380,7 @@ ol{padding-left:18px;font-size:14px}
     <div id="epPanels"></div>
     <label class="f" for="epLibre">Texte libre</label>
     <textarea id="epLibre" style="min-height:56px" placeholder="Transmission libre (facultative)…"></textarea>
+    </div>
   </div>
   <div id="epTriggers"></div>
   <div class="row" style="margin:12px 0 34px">
@@ -1321,6 +1333,9 @@ function freshTexts(f){const out=[];Object.keys(FRESH_LBL).forEach(k=>{const s=f
 
 /* ---- écran de passage : état ---- */
 let epIdx=null,epDraft=null,epGeo=null,epDate=null,epPanelOpen={postit:false,socle:false},epPostitDraft=null,epRec=null;
+/* modules rétractables (repliés par défaut, préférence mémorisée) */
+let epFoldState=Object.assign({cot:true,trans:true},settings.fold||{});
+function epFoldSave(){settings.fold={cot:!!epFoldState.cot,trans:!!epFoldState.trans};saveSettings();}
 function saveDraft(){if(epIdx==null||!epDraft)return;const p=patients[epIdx];if(!p)return;
   epDraft.panelOpen=epPanelOpen;epDraft.postitDraft=epPostitDraft;drafts[p.id]=epDraft;
   try{localStorage.setItem("lidia.cot.drafts",JSON.stringify(drafts))}catch(e){}}
@@ -1371,6 +1386,19 @@ function renderEpTicket(){
   $("#epMajs").innerHTML=res.majs.map(m=>`<div class="maj"><span><b>${m.code}</b> · ${m.l}</span><span>+ ${eur(m.amt)}</span></div>`).join("");
   $("#epTotal").textContent=eur(res.total);
   $("#epAlerts").innerHTML=[...res.alerts.map(a=>a.plan!=null||a.unplan!=null?{t:"warn",m:a.m+" — gérer le retrait dans l'onglet Journée (Plus → Cotation manuelle)"}:a),...o.D.alerts].map(epAl).join("");
+  const cs=$("#epCotSum");if(cs)cs.textContent=acts.length?acts.length+" acte"+(acts.length>1?"s":"")+" · "+eur(res.total):"aucun acte";
+}
+function epTransResume(){
+  if(!epDraft)return "";
+  const t=epDraft.trans,parts=[];
+  if(t.cst&&CST_KEYS.some(k=>(t.cst[k]||"").trim()))parts.push("constantes");
+  if(t.evt&&(t.evt.mot||(t.evt.texte||"").trim()))parts.push("événement");
+  if(t.obs&&OBS_KEYS.some(k=>(t.obs[k]||"").trim()))parts.push("observations");
+  if(t.icope)parts.push("ICOPE");
+  if(t.photo)parts.push("photo");
+  if((t.libre||"").trim())parts.push("texte");
+  else if((epDraft.dictee||"").trim())parts.push("dictée");
+  return parts.length?parts.join(" · "):"vide";
 }
 /* ---- panneaux de transmission ---- */
 const OBS_LBL={douleur:"Douleur (EVA)",chute:"Chute",confusion:"Confusion",peau:"Peau",surcharge:"Surcharge",observance:"Observance"};
@@ -1430,6 +1458,7 @@ function renderEpTriggers(){const p=patients[epIdx];
   }).join("");}
 function epTriggerClick(e){if(!epDraft)return;const t=epDraft.trans;
   const a=e.target.closest("[data-tracc]");if(a){const ty=a.dataset.tracc;epDraft.props.push({type:ty,declined:false});
+    epFoldState.trans=false;epFoldSave(); /* la proposition acceptée ouvre le module transmission */
     if(ty==="photo")t.photo=t.photo||{surface:""};
     if(ty==="icope")t.icope=t.icope||{};
     if(ty==="constantes")t.cst=t.cst||{ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""};
@@ -1472,6 +1501,7 @@ function epApplyExtraction(d){const t=epDraft.trans;
   if(d.icope)t.icope=Object.assign({},t.icope||{},objNonVides(d.icope));
   if(d.texte&&!d.mot&&!d.postit&&!((t.libre||"").trim()))t.libre=d.texte;
   if(d.postit){epPostitDraft={type:d.postit.type,texte:d.postit.texte};epPanelOpen.postit=true;}
+  if(d.mot||d.cst||d.obs||d.icope||d.texte||d.postit){epFoldState.trans=false;epFoldSave();} /* l'analyse ouvre le module pour vérifier */
   saveDraft();}
 async function epAnalyser(){
   if(!epDraft)return;
@@ -1502,6 +1532,9 @@ function renderPassage(){
   $("#epHeure").value=epDraft.heure||"";
   if($("#epDictee").value!==(epDraft.dictee||""))$("#epDictee").value=epDraft.dictee||"";
   if($("#epLibre").value!==(epDraft.trans.libre||""))$("#epLibre").value=epDraft.trans.libre||"";
+  $("#epCardCot").classList.toggle("closed",!!epFoldState.cot);
+  $("#epCardTrans").classList.toggle("closed",!!epFoldState.trans);
+  const ts=$("#epTransSum");if(ts)ts.textContent=epTransResume();
   renderEpTicket();renderEpPanels();renderEpTriggers();renderEpPostits();
 }
 function renderEpPostits(){const p=epIdx!=null?dossier(patients[epIdx]):null;if(!p)return;
@@ -1762,6 +1795,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#epHead").addEventListener("click",e=>{if(e.target.closest("[data-epfiche]")&&epIdx!=null){editIdx=epIdx;fillForm(patients[epIdx]);showTab("pat");setTimeout(()=>$("#pName").scrollIntoView({block:"start"}),60);}});
   $("#epValider").onclick=validerPassage;
   $("#epRetour").onclick=()=>{epMicStop();showTab("tour")};
+  $("#epFoldCot").onclick=()=>{epFoldState.cot=!epFoldState.cot;epFoldSave();renderPassage()};
+  $("#epFoldTrans").onclick=()=>{epFoldState.trans=!epFoldState.trans;epFoldSave();renderPassage()};
   $("#epPostitsList").addEventListener("click",postitListClick);
   $("#tReleves").addEventListener("click",postitListClick);
   $("#pPostits").addEventListener("click",postitListClick);
