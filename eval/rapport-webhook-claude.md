@@ -1,8 +1,8 @@
-# Rapport d'évaluation — dictées via webhook n8n (Claude)
+# Rapport d'évaluation — dictées LIDIA via webhook n8n (Claude)
 
-- **Date et heure** : 2026-08-25, 07:20 UTC
-- **Provider** : webhook n8n → Claude (`https://lidiaplan.app.n8n.cloud/webhook/lidia-cotation`)
-- **Commande exécutée** :
+- **Date et heure** : 2026-08-25 07:24 UTC
+- **Provider** : webhook n8n (`https://lidiaplan.app.n8n.cloud/webhook/lidia-cotation`) → Claude
+- **Commande** :
 
 ```bash
 LIDIA_WEBHOOK=https://lidiaplan.app.n8n.cloud/webhook/lidia-cotation node eval/score.js
@@ -14,60 +14,43 @@ LIDIA_WEBHOOK=https://lidiaplan.app.n8n.cloud/webhook/lidia-cotation node eval/s
 Erreur éval : webhook HTTP 403
 ```
 
-Aucune ligne par dictée (✗ ou ⚠ INVENTION) n'a été produite : le script s'est
-arrêté avant toute évaluation, aucune requête n'ayant abouti.
+Code de sortie : `1`.
 
-## Diagnostic de l'erreur
+## Verdict : ÉCHEC (non exécutable — blocage réseau de l'environnement)
 
-Le domaine `lidiaplan.app.n8n.cloud` devait avoir été ajouté à la politique
-réseau de l'environnement, mais le blocage persiste au moment de l'exécution.
-Le 403 ne provient pas du webhook n8n : c'est le proxy sortant de
-l'environnement qui refuse d'ouvrir le tunnel vers l'hôte. Vérifications
-effectuées lors de cette exécution :
+L'évaluation n'a pas pu être exécutée : le proxy réseau de l'environnement d'exécution refuse la connexion sortante vers l'hôte du webhook. Ce n'est pas un refus du webhook n8n lui-même (celui-ci est confirmé actif) : le tunnel TLS est rejeté avant d'atteindre n8n.
 
-- Sonde directe du webhook :
+Preuves :
 
-  ```
-  curl -sS -X POST -H "Content-Type: application/json" \
-    -d '{"type":"dictee","texte":"test"}' \
-    https://lidiaplan.app.n8n.cloud/webhook/lidia-cotation
-  → curl: (56) CONNECT tunnel failed, response 403
-  ```
+- Sonde `curl -X POST` directe vers le webhook :
 
-- Corps exact de la réponse 403 du proxy au CONNECT :
+```
+curl: (56) CONNECT tunnel failed, response 403
+```
 
-  ```
-  request blocked: no rule or allowlist entry allows host "lidiaplan.app.n8n.cloud"
-  ```
+- État du proxy de l'environnement (`$HTTPS_PROXY/__agentproxy/status`, extrait `recentRelayFailures`) :
 
-- Statut du proxy (`$HTTPS_PROXY/__agentproxy/status`), échecs relevés pendant
-  cette exécution :
+```json
+{
+  "ts": "2026-08-25T07:24:39.184Z",
+  "kind": "connect_rejected",
+  "detail": "gateway answered 403 to CONNECT (policy denial or upstream failure)",
+  "host": "lidiaplan.app.n8n.cloud:443"
+}
+```
 
-  ```
-  {
-    "ts": "2026-08-25T07:19:31.266Z",
-    "kind": "connect_rejected",
-    "detail": "gateway answered 403 to CONNECT (policy denial or upstream failure)",
-    "host": "lidiaplan.app.n8n.cloud:443"
-  }
-  ```
+Le 403 renvoyé au script correspond donc à un refus de politique du proxy (host non autorisé dans l'allowlist réseau de la session), noté tel quel conformément à la consigne.
 
-L'hôte `lidiaplan.app.n8n.cloud` reste hors allowlist du proxy. Aucune dictée
-du jeu d'éval n'a pu être envoyée au webhook ; l'extraction distante n'a donc
-pas pu être évaluée. Conformément à la consigne, aucune nouvelle tentative
-n'a été insistée après confirmation du blocage.
+## Critères bloquants (spec v5)
 
-## Verdict
+Non évaluables sur cette exécution — aucune dictée n'a pu être soumise au webhook :
 
-**ÉCHEC** — impossibilité d'exécution (blocage réseau) : la connexion au
-webhook est refusée par la politique réseau de l'environnement (403 au CONNECT
-du proxy, hôte hors allowlist, malgré l'ajout annoncé du domaine). Les critères
-bloquants (0 invention, ≥ 90 % d'exactitude sur constantes et mot-clé) n'ont
-pas pu être mesurés : ce n'est pas un échec de qualité d'extraction mais une
-impossibilité d'atteindre le webhook.
+- 0 invention : **non évalué**
+- ≥ 90 % constantes : **non évalué**
+- ≥ 90 % mot-clé : **non évalué**
 
-Pour rejouer l'évaluation : vérifier que l'entrée d'allowlist pour
-`lidiaplan.app.n8n.cloud` est bien effective dans la politique réseau de
-l'environnement (une session existante peut nécessiter un redémarrage pour
-prendre en compte la nouvelle politique), ou exécuter la commande depuis un
-poste ayant accès au webhook, puis relancer la commande ci-dessus.
+Aucune ligne de détail (`✗` / `⚠ INVENTION`) n'a été produite : le script s'est arrêté avant la boucle d'évaluation, à la première requête HTTP.
+
+## Reproduction
+
+Pour une exécution réelle, relancer la commande ci-dessus depuis un environnement dont la politique réseau autorise `lidiaplan.app.n8n.cloud:443` en sortie.
