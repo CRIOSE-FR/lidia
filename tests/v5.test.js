@@ -104,6 +104,11 @@ T('passage — événement, constantes, libre, photo avec surface',()=>{
   eq(r.transmissions.find(t=>t.type==='EVENEMENT').mot,'HOSPIT');
   eq(r.transmissions.find(t=>t.type==='PHOTO').texte.includes('12 cm²'),true);
   eq(r.transmissions.every(t=>t.passageId===r.pass.id),true);eq(r.pass.transmissionIds.length,4);});
+T('passage — dictée jamais analysée → transmission LIBRE automatique',()=>{
+  const r=X.buildPassageRecord(pat({}),draft({acts:[act('inj')],dictee:'TA 13/8, tout va bien'}),TODAY+'T08:00:00','AL');
+  eq(r.transmissions.length,1);eq(r.transmissions[0].type,'LIBRE');
+  eq(r.transmissions[0].texte.includes('TA 13/8'),true);
+  eq(r.pass.transmission,undefined,'transmission:none malgré la dictée');});
 T('passage — refus de proposition tracé declined:true',()=>{
   const r=X.buildPassageRecord(pat({}),draft({acts:[act('inj')],props:[{type:'photo',declined:true}]}),TODAY+'T08:00:00','AL');
   eq(r.pass.propositions,[{type:'photo',declined:true}]);});

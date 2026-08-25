@@ -106,7 +106,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.0.0</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.0.1</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -634,6 +634,8 @@ function buildPassageRecord(p,draft,iso,auteur){
   if(t.icope){const ic={};ICOPE_DOMS.forEach(k=>ic[k]=t.icope[k]);const nbAlerts=ICOPE_DOMS.filter(k=>ic[k]==="alerte").length;trs.push({id:uid("tr"),date:iso,auteur:A,type:"ICOPE",texte:(t.icopeNote||"").trim(),icope:ic,nbAlerts});}
   if(t.photo)trs.push({id:uid("tr"),date:iso,auteur:A,type:"PHOTO",texte:"Photo de plaie réalisée (stockée sur le téléphone)"+((t.photo.surface||"").trim()?" — surface "+String(t.photo.surface).trim()+" cm²":"")});
   if((t.libre||"").trim())trs.push({id:uid("tr"),date:iso,auteur:A,type:"LIBRE",texte:t.libre.trim()});
+  /* filet de sécurité : une dictée jamais analysée devient une transmission libre — aucune parole perdue */
+  if(!trs.length&&(draft.dictee||"").trim())trs.push({id:uid("tr"),date:iso,auteur:A,type:"LIBRE",texte:"Dictée : "+draft.dictee.trim()});
   const pass={id:uid("pas"),patientId:p.id,date:iso,auteur:A,
     actes:(draft.acts||[]).map(a=>({id:a.id,k:a.k,c:a.c,l:a.l})),
     transmissionIds:trs.map(x=>x.id),propositions:(draft.props||[]).slice()};
@@ -1327,7 +1329,7 @@ function saveDraft(){if(epIdx==null||!epDraft)return;const p=patients[epIdx];if(
 function dossier(p){if(!p||!p.id)return p;return patients.find(x=>x.id===p.id)||p}
 function draftContenu(d){if(!d)return false;const t=d.trans||{};
   return (d.acts||[]).length>0||!!(t.evt||t.cst||t.obs||t.icope||t.photo)||!!((t.libre||"").trim())||!!((d.dictee||"").trim())||!!d.socle}
-function epMicStop(){if(epRec){try{epRec.stop()}catch(e){}epRec=null;}const b=$("#epMic");if(b)b.textContent="🎤 Dicter";}
+function epMicStop(){epRecWanted=false;if(epRec){try{epRec.stop()}catch(e){}epRec=null;}const b=$("#epMic");if(b)b.textContent="🎤 Dicter";}
 function openPassage(i){
   const p=patients[i];if(!p)return;epMicStop();epIdx=i;
   epDate=($("#tDate")?.value)||todayISO();
@@ -1434,18 +1436,33 @@ function epTriggerClick(e){if(!epDraft)return;const t=epDraft.trans;
     if(ty==="socle")epPanelOpen.socle=true;
     saveDraft();renderPassage();return}
   const d=e.target.closest("[data-trdec]");if(d){epDraft.props.push({type:d.dataset.trdec,declined:true});saveDraft();renderPassage();return}}
-/* ---- dictée IA (module 5) ---- */
+/* ---- dictée IA (module 5) ----
+   Le navigateur coupe la reconnaissance après quelques secondes de silence : on relance
+   automatiquement tant que Stop n'est pas pressé, et Stop déclenche l'analyse. */
+let epRecWanted=false,epRecBase="";
 function epMicToggle(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){toast("Dictée vocale non disponible sur ce navigateur — saisissez au clavier");return}
-  if(epRec){epRec.stop();return}
-  epRec=new SR();epRec.lang="fr-FR";epRec.continuous=true;epRec.interimResults=false;
-  $("#epMic").textContent="⏹ Stop";
-  epRec.onresult=ev=>{let add="";for(let i=ev.resultIndex;i<ev.results.length;i++)if(ev.results[i].isFinal)add+=ev.results[i][0].transcript+" ";
-    if(add){const ta=$("#epDictee");ta.value=(ta.value+" "+add).trim();if(epDraft){epDraft.dictee=ta.value;saveDraft();}}};
-  epRec.onend=()=>{epRec=null;$("#epMic").textContent="🎤 Dicter";};
-  epRec.onerror=()=>{toast("Micro indisponible — la saisie clavier reste possible")};
-  try{epRec.start()}catch(e){epRec=null;$("#epMic").textContent="🎤 Dicter";}
+  if(epRecWanted||epRec){
+    epMicStop();$("#epIaStatus").textContent="";
+    if((($("#epDictee")||{}).value||"").trim())epAnalyser();
+    return;
+  }
+  epRecWanted=true;epRecBase=($("#epDictee").value||"").trim();
+  const lancer=()=>{
+    epRec=new SR();epRec.lang="fr-FR";epRec.continuous=true;epRec.interimResults=true;
+    epRec.onresult=ev=>{let fin="",inter="";
+      for(let i=0;i<ev.results.length;i++){const r=ev.results[i];if(r.isFinal)fin+=r[0].transcript+" ";else inter+=r[0].transcript;}
+      const ta=$("#epDictee");ta.value=((epRecBase?epRecBase+" ":"")+fin.trim()+(inter?" "+inter:"")).trim();
+      if(epDraft){epDraft.dictee=ta.value;saveDraft();}
+      $("#epIaStatus").textContent="🎙 En écoute — appuyez sur Stop quand vous avez fini.";};
+    epRec.onend=()=>{if(epRecWanted){epRecBase=(($("#epDictee")||{}).value||"").trim();try{lancer()}catch(e){epMicStop()}}else{epRec=null;}};
+    epRec.onerror=e=>{if(e&&(e.error==="not-allowed"||e.error==="service-not-allowed")){epMicStop();toast("Micro refusé — autorisez le micro pour ce site dans le navigateur")}};
+    epRec.start();
+  };
+  $("#epMic").textContent="⏹ Stop + Analyser";
+  $("#epIaStatus").textContent="🎙 En écoute — dictez, puis appuyez sur Stop.";
+  try{lancer()}catch(e){epMicStop();toast("Micro indisponible — la saisie clavier reste possible");}
 }
 function objNonVides(o){const r={};Object.keys(o||{}).forEach(k=>{if(o[k])r[k]=o[k]});return r}
 function epApplyExtraction(d){const t=epDraft.trans;
