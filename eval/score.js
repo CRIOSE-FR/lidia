@@ -24,9 +24,10 @@ const normv=v=>String(v??"").trim().toLowerCase().replace(".",",");
 
 (async()=>{
   const stats={mot:{ok:0,tot:0},cst:{ok:0,tot:0},obs:{ok:0,tot:0},icope:{ok:0,tot:0},postit:{ok:0,tot:0}};
-  let inventions=0;const detailsInv=[],detailsMiss=[];
+  let inventions=0;const detailsInv=[],detailsMiss=[],raws={};
   for(const d of JEU){
     const brut=await extraire(d.texte);
+    raws[d.id]=brut;
     const got=X.validerExtraction(brut).data;
     const att=d.attendu;
     // mot-clé
@@ -64,6 +65,10 @@ const normv=v=>String(v??"").trim().toLowerCase().replace(".",",");
   console.log(`  inventions  ${inventions}`);
   detailsInv.forEach(x=>console.log('  ⚠ INVENTION',x));
   detailsMiss.forEach(x=>console.log('  ✗',x));
+  if(process.env.LIDIA_DEBUG){
+    const ids=[...new Set([...detailsInv,...detailsMiss].map(x=>+(x.match(/#(\d+)/)||[])[1]).filter(Boolean))];
+    ids.forEach(id=>console.log('  [debug] #'+id+' réponse brute :',JSON.stringify(raws[id])));
+  }
   if(inventions>0){console.log('ÉCHEC : invention détectée (critère bloquant : 0 tolérée).');process.exit(1);}
   if(pct(stats.cst)<90||pct(stats.mot)<90){console.log('ÉCHEC : exactitude < 90 % sur constantes ou mot-clé.');process.exit(1);}
   console.log('Éval dictées : OK.');
