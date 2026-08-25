@@ -3,7 +3,7 @@
 const fs=require('fs');
 let js=fs.readFileSync(__dirname+'/../lidia-cotation.html','utf8').split('<script>')[1].split('</script>')[0];
 js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
-  +'globalThis.__x5={freshness,nbRetards,computeTriggers,buildPassageRecord,makePostit,relevesAVoir,alertesOuvertes,alertesEnRetard,validerExtraction,extraireLocal,buildExport,toCSV,byId,SOCLE_J,CONSTANTES_J,PHOTO_PLAIE_J,ICOPE_J};';
+  +'globalThis.__x5={freshness,nbRetards,computeTriggers,buildPassageRecord,makePostit,relevesAVoir,alertesOuvertes,alertesEnRetard,validerExtraction,extraireLocal,anonymiserDictee,buildExport,toCSV,byId,SOCLE_J,CONSTANTES_J,PHOTO_PLAIE_J,ICOPE_J};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -153,6 +153,10 @@ T('extraireLocal — préfixes post-it (module 4)',()=>{
   eq(X.extraireLocal('Alerte : rougeur au talon').postit.type,'ALERTE');
   eq(X.extraireLocal('À signaler au médecin : douleur persistante').postit.type,'ALERTE');
   eq(X.extraireLocal('Mémo : code portail 4712').postit.type,'PERSO');});
+T('anonymiserDictee — nom du patient retiré avant envoi IA',()=>{
+  eq(X.anonymiserDictee('Mme Kelloud va mieux, TA 13/8, mme kelloud reste fatiguée','Mme Kelloud'),'le patient va mieux, TA 13/8, le patient reste fatiguée');
+  eq(X.anonymiserDictee('M. D. a chuté','M. D.'),'le patient a chuté');
+  eq(X.anonymiserDictee('RAS',''),'RAS');});
 T('extraireLocal — zéro invention sur texte neutre',()=>{
   const r=X.extraireLocal('RAS, passage sans particularité');
   eq(r.mot,null);eq(r.cst,null);eq(r.obs,null);eq(r.postit,null);});

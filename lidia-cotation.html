@@ -114,7 +114,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.1.1</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.1.2</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -410,6 +410,7 @@ ol{padding-left:18px;font-size:14px}
       <li>📄 <a href="docs/rgpd/note-information-patient.md" target="_blank" rel="noopener"><b>Note d'information individuelle</b></a> — remise au patient à l'inclusion (document n° 3).</li>
     </ol>
     <p class="muted">Les trois modèles sont livrés avec l'application (dossier <b>docs/rgpd/</b> du déploiement) — à compléter avec les coordonnées du cabinet.</p>
+    <p class="muted">🎯 Passage en production (vrais patients) : feuille de route complète — hébergement HDS, IA conforme, AIPD, MR-004 — dans <a href="docs/production-hds.md" target="_blank" rel="noopener"><b>docs/production-hds.md</b></a>. La dictée envoyée à l'IA est déjà pseudonymisée côté appareil (nom du patient retiré avant envoi).</p>
   </div>
   <div class="card">
     <h2>Export pseudonymisé</h2>
@@ -746,6 +747,12 @@ function extraireLocal(texte){
   if(OBS_KEYS.some(k=>obs[k]))out.obs=obs;
   out.texte=corps.trim();
   return out;
+}
+/* défense en profondeur : le nom du patient est retiré du texte dicté avant tout envoi à un extracteur distant */
+function anonymiserDictee(txt,nom){
+  let t=String(txt||"");const n=String(nom||"").trim();
+  if(n.length>=2){const re=new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi");t=t.replace(re,"le patient");}
+  return t;
 }
 const DICTEE_SYS='Tu es infirmier·e libéral·e (IDEL, France). On te donne une transmission dictée. Retourne UNIQUEMENT un JSON valide, sans markdown, avec EXACTEMENT ce schéma et ces clés : {"texte":"...","mot":...,"cst":...,"obs":...,"icope":...,"postit":...}.\n'
 +'- texte : reformulation professionnelle en 1 à 3 phrases (les détails non codables, ex. « pouls irrégulier », vont ici).\n'
@@ -1514,8 +1521,10 @@ async function epAnalyser(){
   const draftRef=epDraft,idxRef=epIdx; /* garde anti-course : le brouillon peut changer pendant le await */
   epDraft.dictee=txt;$("#epIaStatus").textContent="Analyse en cours…";$("#epAnalyse").disabled=true;$("#epValider").disabled=true;
   let data;
+  const pAno=patients[epIdx];
+  const txtEnvoye=ExtracteurIA.provider==="local"?txt:anonymiserDictee(txt,pAno&&pAno.name);
   try{
-    const raw=await ExtracteurIA.extraire(txt);
+    const raw=await ExtracteurIA.extraire(txtEnvoye);
     const v=validerExtraction(raw);data=v.data;
     $("#epIaStatus").textContent=(v.ok?"Extraction OK":"Extraction partielle — champs hors schéma rejetés : "+v.erreurs.join(" · "))+" ("+EXTRACTEURS[ExtracteurIA.provider].l+"). Rien n'est enregistré : vérifiez puis validez.";
   }catch(e){
