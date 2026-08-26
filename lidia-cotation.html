@@ -628,6 +628,25 @@ function normaliserDouleur(v){
 /* bascule EN → ALGOPLUS proposée UNE fois quand le dernier ICOPE a cognition en alerte —
    refus tracé (p.algoplus_prop), jamais re-proposée avant le prochain ICOPE */
 function dernierIcopeDate(p){const t=(p.transmissions||[]).filter(x=>x.type==="ICOPE"&&!x.archive&&x.icope).sort((a,b)=>a.date<b.date?-1:1).pop();return t?String(t.date).slice(0,10):null}
+/* ---- Braden (socle conditionnel, dictionnaire v1.4) : risque d'escarre — 6 sous-échelles,
+   libellés officiels français, score 6-23, risque si ≤ 18, élevé si ≤ 12. Proposée si BSI ou
+   autonomie « Dépendant » ; optionnelle (« Plus tard » = incomplétude souhaitable, jamais bloquant),
+   re-proposée à chaque revalidation de socle. */
+const BRADEN_ECHELLES=[
+ {k:"perception",lbl:"Perception sensorielle",opts:["Complètement limitée","Très limitée","Légèrement limitée","Aucune atteinte"]},
+ {k:"humidite",lbl:"Humidité",opts:["Constamment humide","Très humide","Parfois humide","Rarement humide"]},
+ {k:"activite",lbl:"Activité",opts:["Alité","Confiné au fauteuil","Marche à l'occasion","Marche fréquemment"]},
+ {k:"mobilite",lbl:"Mobilité",opts:["Complètement immobile","Très limitée","Légèrement limitée","Non limitée"]},
+ {k:"nutrition",lbl:"Nutrition",opts:["Très pauvre","Probablement inadéquate","Adéquate","Excellente"]},
+ {k:"friction",lbl:"Friction et cisaillement",opts:["Problème","Problème potentiel","Pas de problème apparent"]},
+];
+function bradenEligible(p){return !!(p&&(p.bsi||p.autonomie==="Dépendant"))}
+function bradenScore(o){
+  o=o||{};let s=0;
+  for(const e of BRADEN_ECHELLES){const v=+o[e.k];
+    if(!Number.isInteger(v)||v<1||v>e.opts.length)return null;s+=v;}
+  return {score:s,risque:s<=12?"élevé":s<=18?"risque":"aucun"};
+}
 function proposerAlgoplus(p){
   if((p.mode_douleur||"EN")==="ALGOPLUS")return false;
   const t=(p.transmissions||[]).filter(x=>x.type==="ICOPE"&&!x.archive&&x.icope).sort((a,b)=>a.date<b.date?-1:1).pop();
@@ -1413,7 +1432,7 @@ async function savePatient(){
   const prev=editIdx!=null?patients[editIdx]:null;
   /* v5 : conserver dossier, transmissions, post-its et plaies lors d'une modification */
   if(prev)["id","socleDate","transmissions","postits","plaies"].forEach(k=>{if(prev[k]!==undefined)p[k]=prev[k]});
-  Object.assign(p,readSocleFields("pSoc"));
+  Object.assign(p,finaliserSocle(readSocleFields("pSoc"),todayISO()));
   if(!p.id)p.id=uid("pat");if(p.socleDate===undefined)p.socleDate=null;if(!p.transmissions)p.transmissions=[];if(!p.postits)p.postits=[];if(!p.plaies)p.plaies=[];
   if(gpsGeo&&$("#pAddr").dataset.gps==="1"){p.geo=gpsGeo;}
   else if(prev&&prev.addr===addr)p.geo=prev.geo;else{$("#pStatus").textContent="Localisation de l'adresse…";try{p.geo=await geocode(addr);}catch(e){p.geo=null;}}
@@ -2141,7 +2160,7 @@ function validerPassage(){
       /* le flag patient.plaie suit les plaies enregistrées ; il n'est écrasé que si le dossier en a */
       p.plaie=plaiesActives(p).length>0?true:(p.plaies.length?false:p.plaie);
     }
-    if(rec.socle){if(rec.socle==="edite"&&epDraft.socleData)Object.assign(p,epDraft.socleData);p.socleDate=epDate;}
+    if(rec.socle){if(rec.socle==="edite"&&epDraft.socleData)Object.assign(p,finaliserSocle(epDraft.socleData,epDate));p.socleDate=epDate;}
     /* le mode douleur utilisé est mémorisé par patient (défaut des passages suivants) */
     const trD=rec.transmissions.find(x=>x.type==="OBS"&&x.obs&&typeof x.obs.douleur==="object"&&x.obs.douleur);
     if(trD)p.mode_douleur=trD.obs.douleur.mode;
@@ -2214,15 +2233,40 @@ function socleFieldsHtml(p,pre){
   <div class="row" style="margin-top:6px">
     <div><label class="f">Nb médicaments</label><input type="number" id="${pre}NbMed" min="0" value="${p.nbMed??""}"></div>
     ${sel("Autonomie",AUTONOMIE_LIST,p.autonomie||"","Autonomie")}
-    ${sel("AdressePar",ADRESSE_PAR_LIST,p.adresse_par||"","Adressé par")}</div>`;
+    ${sel("AdressePar",ADRESSE_PAR_LIST,p.adresse_par||"","Adressé par")}</div>${bradenFieldsHtml(p,pre)}`;
+}
+/* grille Braden conditionnelle (BSI ou Dépendant) — laisser vide vaut « Plus tard » (incomplétude
+   souhaitable au tableau de bord, jamais bloquant), re-proposée à chaque revalidation du socle */
+function bradenFieldsHtml(p,pre){
+  if(!bradenEligible(p))return "";
+  const b=p.braden||{};
+  const done=p.braden&&p.braden.score!=null;
+  return `<details style="margin-top:8px"${done?"":" open"}><summary style="font-size:13px;font-weight:600;cursor:pointer">🛏 Échelle de Braden (risque d'escarre)${done?" — "+p.braden.score+"/23"+(p.braden.risque!=="aucun"?", risque "+p.braden.risque:""):" — à faire"}</summary>
+    <p class="muted" style="margin:6px 0 0">Proposée car BSI ou dépendance. Score 6-23 : risque si ≤ 18, élevé si ≤ 12. Laisser vide = « Plus tard » (compté en qualité renforcée, jamais bloquant).</p>
+    <div class="row" style="margin-top:6px">${BRADEN_ECHELLES.map(e=>`<div style="min-width:170px"><label class="f">${e.lbl}</label><select id="${pre}Braden_${e.k}"><option value="">—</option>${e.opts.map((o,i)=>`<option value="${i+1}"${String(b[e.k])===String(i+1)?" selected":""}>${i+1} — ${esc(o)}</option>`).join("")}</select></div>`).join("")}</div>
+    ${done?`<p class="muted" style="margin:6px 0 0">Dernier score : <b>${p.braden.score}/23</b> (${p.braden.risque==="aucun"?"pas de risque":"risque "+p.braden.risque}) le ${esc(p.braden.date)}.</p>`:""}</details>`;
 }
 function readSocleFields(pre){
   const g=id=>document.getElementById(pre+id);
   const chip=id=>g(id)?g(id).getAttribute("aria-pressed")==="true":false;
   const pathos=[...document.querySelectorAll("#"+pre+"Pathos [data-patho]")].filter(b=>b.getAttribute("aria-pressed")==="true").map(b=>b.dataset.patho);
-  return {annee:g("Annee")&&g("Annee").value?+g("Annee").value:null,sexe:g("Sexe")?g("Sexe").value:"",commune:g("Commune")?g("Commune").value.trim():"",
+  const out={annee:g("Annee")&&g("Annee").value?+g("Annee").value:null,sexe:g("Sexe")?g("Sexe").value:"",commune:g("Commune")?g("Commune").value.trim():"",
     vitSeul:chip("VitSeul"),aidant:chip("Aidant"),institution:chip("Institution"),plaie:chip("Plaie"),bsi:chip("Bsi"),
     pathos,nbMed:g("NbMed")&&g("NbMed").value!==""?+g("NbMed").value:null,autonomie:g("Autonomie")?g("Autonomie").value:"",adresse_par:g("AdressePar")?g("AdressePar").value:""};
+  /* Braden : capture brute (éventuellement partielle) — finalisée/scorée par finaliserSocle() */
+  const br={};let brN=0;
+  BRADEN_ECHELLES.forEach(e=>{const el=g("Braden_"+e.k);if(el&&el.value){br[e.k]=+el.value;brN++}});
+  if(brN)out.braden=br;
+  return out;
+}
+/* au commit du socle : les instruments saisis complets sont scorés et datés par le moteur ;
+   une grille partielle vaut « Plus tard » (rien n'écrase la précédente) */
+function finaliserSocle(data,date){
+  const d=Object.assign({},data||{});
+  if(d.braden){const s=bradenScore(d.braden);
+    if(s)d.braden=Object.assign({},d.braden,{score:s.score,risque:s.risque,date:date||todayISO()});
+    else delete d.braden;}
+  return d;
 }
 function renderSocleForm(p){const el=$("#pSocleFields");if(!el)return;
   el.innerHTML=socleFieldsHtml(p||{pathos:[]},"pSoc");
@@ -2418,7 +2462,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#dashAlertes").addEventListener("click",postitListClick);
   $("#dashLate").addEventListener("click",e=>{const b=e.target.closest("[data-dashp]");if(b)openPassage(+b.dataset.dashp)});
   $("#pSocleVal").onclick=()=>{if(editIdx==null){toast("Enregistrez d'abord le patient (le socle sera repris)");return}
-    const p=patients[editIdx];Object.assign(p,readSocleFields("pSoc"));p.socleDate=todayISO();savePatients();renderSocleForm(p);toast("Socle validé aujourd'hui")};
+    const p=patients[editIdx];Object.assign(p,finaliserSocle(readSocleFields("pSoc"),todayISO()));p.socleDate=todayISO();savePatients();renderSocleForm(p);toast("Socle validé aujourd'hui")};
   $("#expPat").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
     downloadCSV("lidia_patients_"+todayISO()+".csv",toCSV(E.head,E.rows));$("#expStatus").textContent=E.rows.length+" patient(s) exporté(s), pseudonymisés (codes stables P001…)."};
   $("#expEvt").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}

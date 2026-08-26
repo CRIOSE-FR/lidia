@@ -7,7 +7,7 @@ js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
   +'SURFACE_J,BILAN_CHIR_J,PLAIE_LOC,PLAIE_LAT,PLAIE_ETIO,PLAIE_STADES,PLAIE_INTERV,PLAIE_ADR,PLAIE_IPS,PLAIE_SUIVI,REF_LIT,REF_EXSUDAT,REF_ISO,REF_PERI,REF_PANS,REF_ORIENT,CLOTURE_ISSUES,'
   +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie,'
   +'DOULEUR_EN,ALGOPLUS_ITEMS,ALGOPLUS_LBL,evaTranche,algoplusScore,migrerDouleur,douleurRenseignee,normaliserDouleur,proposerAlgoplus,dernierIcopeDate,'
-  +'pushSurfaceClasse,pushScore,pushHistorique};';
+  +'pushSurfaceClasse,pushScore,pushHistorique,BRADEN_ECHELLES,bradenEligible,bradenScore,finaliserSocle};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -469,6 +469,31 @@ T('pushHistorique — chronologique, réfections sans surface ignorées',()=>{
   const h=X.pushHistorique(pl);
   eq(h,[{date:dMoins(20),score:13},{date:dMoins(2),score:8}]);
   eq(X.pushHistorique(PL({})),[]);});
+
+/* ---------- v5.4 : Braden au socle conditionnel ---------- */
+const BR=(p,h,a,m,n,f)=>({perception:p,humidite:h,activite:a,mobilite:m,nutrition:n,friction:f});
+T('bradenScore — bornes et seuils (≤ 18 risque, ≤ 12 élevé)',()=>{
+  eq(X.bradenScore(BR(4,4,4,4,4,3)),{score:23,risque:'aucun'});
+  eq(X.bradenScore(BR(4,4,4,3,3,1)),{score:19,risque:'aucun'});
+  eq(X.bradenScore(BR(3,3,3,3,3,3)),{score:18,risque:'risque'});
+  eq(X.bradenScore(BR(2,2,2,2,2,3)),{score:13,risque:'risque'});
+  eq(X.bradenScore(BR(2,2,2,2,2,2)),{score:12,risque:'élevé'});
+  eq(X.bradenScore(BR(1,1,1,1,1,1)),{score:6,risque:'élevé'});
+  eq(X.bradenScore(BR(1,1,1,1,1)),null,'friction manquante acceptée');
+  eq(X.bradenScore(BR(5,1,1,1,1,1)),null,'perception 5 hors échelle');
+  eq(X.bradenScore(BR(1,1,1,1,1,4)),null,'friction 4 hors échelle (max 3)');
+  eq(X.bradenScore({}),null);});
+T('bradenEligible — BSI ou autonomie Dépendant',()=>{
+  eq(X.bradenEligible(pat({bsi:true})),true);
+  eq(X.bradenEligible(pat({autonomie:'Dépendant'})),true);
+  eq(X.bradenEligible(pat({autonomie:'Aide partielle'})),false);
+  eq(X.bradenEligible(pat({})),false);});
+T('finaliserSocle — Braden complète scorée et datée, partielle = Plus tard (non écrasée)',()=>{
+  const d=X.finaliserSocle({bsi:true,braden:BR(2,2,2,2,2,2)},TODAY);
+  eq(d.braden.score,12);eq(d.braden.risque,'élevé');eq(d.braden.date,TODAY);eq(d.bsi,true);
+  const d2=X.finaliserSocle({bsi:true,braden:{perception:2}},TODAY);
+  eq('braden' in d2,false,'grille partielle enregistrée');
+  eq('braden' in X.finaliserSocle({bsi:true},TODAY),false);});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');
