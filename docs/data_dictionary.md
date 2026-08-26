@@ -1,10 +1,14 @@
 # Dictionnaire de données — LIDIA Cotation, module transmissions & recueil
 
-> **Version 1.3 — 2026-08-26.** Toute modification de variable passe par une nouvelle
+> **Version 1.4 — 2026-08-26.** Toute modification de variable passe par une nouvelle
 > version datée de ce fichier (aucune variable modifiée silencieusement) et, si le
 > format stocké change, par une migration (`migratePatients()` ou équivalent).
 > Référentiels : spec v5.0, spec Module Plaies v5.0, ICOPE Step 1 (OMS),
-> `docs/socle-pathologies.md` (fondement littérature de la liste de pathologies).
+> `docs/socle-pathologies.md` (fondement littérature de la liste de pathologies),
+> `docs/iso_cdc_mapping.md` (mapping CDC/HAS des signes ISO) et, pour les instruments
+> validés v1.4 : EN (échelle numérique de la douleur, tranches), ALGOPLUS (hétéro-évaluation),
+> PUSH 3.0 (NPUAP), Braden, SQiD (Single Question in Delirium), Wound-QoL (17 items,
+> version française — libellés sous licence, hors dépôt), Girerd (observance, 2001).
 
 ## Conventions générales
 
@@ -51,6 +55,13 @@
 | icope_mobilite … icope_audition | `ok` \| `alerte` (ICOPE Step 1, 6 domaines) | vide = jamais dépisté | capacité intrinsèque OMS |
 | icope_nbAlerts | entier 0-6 | vide | sévérité du dépistage |
 | icope_date | date ISO du dernier ICOPE | vide | fraîcheur ICOPE (120 j, ≥ 60 ans) |
+| douleur_mode | `EN` \| `ALGOPLUS` — mode du **dernier** relevé de douleur (OBS). Instruments : EN (auto-évaluation, tranches) / ALGOPLUS (hétéro-évaluation du patient non communicant). Le mode utilisé est mémorisé par patient (`mode_douleur`) ; bascule vers ALGOPLUS proposée une fois si le dernier ICOPE a `cognition: alerte` (refus tracé, pas de re-proposition avant le prochain ICOPE) | vide = douleur jamais observée | douleur des patients communicants ET non communicants |
+| douleur_en | tranche `0` \| `1-3` \| `4-6` \| `7-10` (dernier relevé en mode EN) | vide = mode ALGOPLUS, douleur dictée sans EVA, ou jamais observée | intensité auto-évaluée ; **rupture de comparabilité v1.3→v1.4** (EVA 0-10 → tranches) |
+| douleur_algoplus_score | entier 0-5 (nb d'items présents ; douleur retenue si ≥ 2), **calculé par le moteur** — les 5 items O/N sont requis à la validation | vide = mode EN ou jamais observée | douleur du patient non communicant (ALGOPLUS) |
+| braden_score | entier 6-23 (échelle de Braden, 6 sous-échelles officielles ; risque si ≤ 18, élevé si ≤ 12). Proposée au socle si `bsi=1` ou `autonomie=Dépendant`, optionnelle (« Plus tard » = qualité renforcée), re-proposée à chaque revalidation de socle | vide = non faite ou non éligible | risque d'escarre, ajustement des analyses plaies |
+| braden_date | date ISO de la dernière Braden | vide | fraîcheur (rythme du socle, 365 j) |
+| girerd_score | entier 0-6 (test de Girerd, 6 items O/N officiels : 0 = bonne observance, 1-2 = minime problème, ≥ 3 = mauvaise). Proposé à chaque revalidation de socle si `nbMed ≥ 5` | vide = non fait ou non éligible | observance des polymédiqués |
+| girerd_date | date ISO du dernier Girerd | vide | fraîcheur (annuel : échu > 365 j → qualité renforcée) |
 | postits_releve / postits_alerte | compteurs (jamais le texte) | 0 | coordination inter-soignants |
 | alertes_traitees | compteur d'alertes résolues | 0 | boucle de signalement fermée |
 | refus_propositions | compteur de propositions refusées (`declined:true`) | 0 | acceptabilité du recueil |
@@ -91,6 +102,9 @@ liste fermée ou un nombre ; null ≠ valeur ; aucun pré-cochage.
 | nb_refections | compteur | 0 | intensité du suivi |
 | cloture_date / issue | date ISO ; `Cicatrisée` \| `Transférée (hospitalisation)` \| `Transférée (consultation/HAD)` \| `Amputation` \| `Décès` \| `Perdu de vue` \| `Fin de prise en charge autre` | vides = plaie active | devenir des plaies en ville |
 | delai_cicatrisation | entier (jours), **calculé jamais saisi** : clôture − date_debut (chronique) ou clôture − date_operatoire (chirurgicale) | vide = plaie active | critère de jugement principal |
+| iso_j30_statut | `Aucun signe` \| `Signes mineurs` \| `Suspicion ISO` — **calculé, jamais saisi** (plaies chirurgicales, fenêtre J0-J30 post-opératoire) selon le mapping CDC/HAS de `docs/iso_cdc_mapping.md` : écoulement purulent OU déhiscence = suspicion forte ; rougeur extensive OU fièvre rapportée = signes mineurs | vide = non chirurgicale ou aucune réfection évaluée dans la fenêtre (absence ≠ négatif) | incidence des suspicions d'ISO en ville |
+| woundqol_ouverture_score | nombre 0-4 (moyenne des 17 items Wound-QoL FR, auto-administré à l'ouverture — libellés officiels hors dépôt, `woundqol_items_fr.json`, licence à vérifier ; l'écran refuse de s'activer sur placeholder). Refus possible, tracé (`propositions[{type:"woundqol",declined:true}]`) | vide = non fait ou refusé | qualité de vie à l'entrée du suivi |
+| woundqol_cloture_score | nombre 0-4 (idem, à la clôture) | vide = non fait ou refusé | évolution de la qualité de vie ouverture → clôture |
 
 ## Export `lidia_refections_*.csv` (une ligne par réfection évaluative)
 
@@ -116,8 +130,14 @@ facultatif — champ vide = non renseigné, jamais une valeur par défaut.
 - `Transmission` : `{id, date, auteur, type: LIBRE|EVENEMENT|CONSTANTES|OBS|ICOPE|PHOTO,
   texte, mot?, cst?{ta,fc,spo2,temp,gly,poids}, obs?{douleur,chute,confusion,peau,surcharge,observance},
   icope?{6 domaines}, nbAlerts?, passageId}`. Valeurs `obs` en listes fermées :
-  douleur `0-10|oui` ; chute/confusion/surcharge `oui|non` ; peau `RAS|rougeur|plaie|escarre` ;
-  observance `bonne|partielle|mauvaise`. Chaîne vide = non observé.
+  douleur (v1.4) = `""` ou objet `{mode:"EN", en:"0|1-3|4-6|7-10", presente:bool}` ou
+  `{mode:"ALGOPLUS", algoplus:[bool×5] (visage, regard, plaintes, corps, comportements —
+  libellés officiels ALGOPLUS), score:0-5, presente:bool (score ≥ 2)}` — score calculé par le
+  moteur, ALGOPLUS incomplet rejeté à la validation ; les anciennes valeurs `0-10|oui` sont
+  migrées en mode EN par `migratePatients()` (`migrerDouleur`) ;
+  chute/confusion/surcharge `oui|non` (confusion : libellé SQiD exact « Plus confus que
+  d'habitude ? », instrument source Single Question in Delirium) ;
+  peau `RAS|rougeur|plaie|escarre` ; observance `bonne|partielle|mauvaise`. Chaîne vide = non observé.
 - `Passage` : `{id, patientId, date, auteur, actes[{id,k,c,l}], transmissionIds[],
   transmission:"none" si validé sans transmission, propositions[{type,declined}], geoloc? (opt-in)}`.
 - `Postit` : `{id, date, auteur, type: RELEVE|ALERTE|PERSO, texte, luPar[], traite,
@@ -160,10 +180,34 @@ facultatif — champ vide = non renseigné, jamais une valeur par défaut.
   passage en un tap explicite) : un pré-remplissage silencieux fausserait le délai de
   cicatrisation des plaies chroniques.
 
+- Instruments v1.4 sur le dossier patient (jamais sur les copies « Passage soir ») :
+  `mode_douleur:"EN"|"ALGOPLUS"` (défaut EN, mémorisé au fil des passages) ;
+  `algoplus_prop:{icope_date,declined,date}|null` (trace de la proposition de bascule — une
+  seule proposition par ICOPE avec cognition en alerte) ;
+  `braden:{perception,humidite,activite,mobilite,nutrition,friction (1-4, friction 1-3),score,risque,date}|null` ;
+  `girerd:{reponses[6 bool],score,date}|null`. Grille partielle = « Plus tard » : rien n'est
+  enregistré ni écrasé (aucun pré-cochage, null ≠ valeur).
+- `Plaie` (v1.4) : champs optionnels `woundqol_ouverture:{score,sous?,date}` et
+  `woundqol_cloture:{score,sous?,date}` (moyennes 0-4 ; sous-scores corps/psychisme/vie
+  quotidienne définis par `woundqol_items_fr.json`). Les réponses item par item ne sont
+  **pas** conservées (seuls les scores le sont).
+- Complétude « qualité renforcée » (`completudeSouhaitable()`, pure) : Braden manquante chez
+  éligible (BSI ou Dépendant), Wound-QoL manquant à l'ouverture (plaie active) ou à la clôture,
+  Girerd jamais fait ou échu (> 365 j) chez `nbMed ≥ 5`. Pondération « souhaitable » : ligne
+  secondaire du tableau de bord, n'abaisse jamais le % principal, jamais bloquant.
+- PUSH (NPUAP 3.0, `pushScore()`, calculé jamais saisi, non exporté en colonne — recalculable
+  depuis `lidia_refections_*.csv`) : sous-score surface en 11 classes officielles (0 ; <0,3 ;
+  0,3-0,6 ; 0,7-1,0 ; 1,1-2,0 ; 2,1-3,0 ; 3,1-4,0 ; 4,1-8,0 ; 8,1-12,0 ; 12,1-24,0 ; >24 cm²) ;
+  exsudat LIDIA → PUSH : Absent=0, **Modéré=2, Abondant=3 — l'échelle LIDIA à 3 niveaux ne capte
+  pas « léger »=1 : mapping conservateur documenté** ; lit → tissu : Épidermisé=1 (0 si plaie
+  fermée, surface 0), Bourgeonnant=2, Fibrineux=3, Nécrotique=4. Affiché sur la réfection avec
+  variation vs dernier score (↓ = amélioration) + historique chronologique par plaie.
+
 ## Journal des versions
 
 | Version | Date | Changement |
 |---|---|---|
+| 1.4 | 2026-08-26 | Instruments validés (LIDIA v5.4.0). **Ruptures de comparabilité** : (1) `obs.douleur` passe de l'EVA `0-10\|oui` à un objet double mode EN (tranches `0\|1-3\|4-6\|7-10`) / ALGOPLUS — les anciennes valeurs sont migrées en mode EN avec perte de précision (EVA 5 → `4-6`) : toute série longitudinale de douleur doit être analysée en tranches sur l'ensemble de la période ; (2) le libellé de `confusion` devient le SQiD exact (« Plus confus que d'habitude ? ») — la variable et ses modalités sont inchangées mais la formulation posée au soignant change. Ajouts, aucune colonne existante renommée ni supprimée : export patients `douleur_mode`, `douleur_en`, `douleur_algoplus_score`, `braden_score`, `braden_date`, `girerd_score`, `girerd_date` ; export plaies `iso_j30_statut` (mapping CDC — `docs/iso_cdc_mapping.md`), `woundqol_ouverture_score`, `woundqol_cloture_score` ; PUSH calculé (non exporté, recalculable) ; complétude « qualité renforcée » (souhaitable, jamais bloquante). Extraction dictée : douleur en tranches ou `{"algoplus":{...}}` (signes dictés uniquement) — jeu d'éval porté à 40 dictées (5 ALGOPLUS dont une dictée-piège), 0 invention toujours bloquant. |
 | 1.0 | 2026-08-25 | Version initiale. Inclut : extension de la liste `pathos` de 7 à 19 entrées fermées (libellés d'origine inchangés, justification dans `socle-pathologies.md`) et ajout de la colonne `palliatif` à l'export patients. |
 | 1.1 | 2026-08-25 | Module Plaies (spec Module Plaies v5.0) : nouveaux exports `lidia_plaies_*.csv` et `lidia_refections_*.csv`, structures `Plaie`/`Refection`/`Cloture` sur le dossier patient (migration `migratePatients` : `p.plaies=[]`), règles de fraîcheur `SURFACE_J=15` et `BILAN_CHIR_J=30`, compteur de réfections orphelines. Export patients : ajout de la colonne `nb_plaies_actives` ; la sémantique de `plaie` est précisée (retombe à 0 à la clôture de la dernière plaie enregistrée). Aucune colonne existante renommée ni supprimée. |
 | 1.3 | 2026-08-26 | Dictée → réfection : champ `refection` dans le schéma d'extraction IA (listes fermées identiques à la saisie, ciblage de la plaie par localisation/latéralité dictées via `ciblerPlaie()`, pré-remplissage du panneau — validation IDEL obligatoire). Jeu d'éval porté à 35 dictées (réfections scorées, invention bloquante). Aucune variable stockée ni exportée modifiée. |

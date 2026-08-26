@@ -8,7 +8,7 @@ js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
   +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie,'
   +'DOULEUR_EN,ALGOPLUS_ITEMS,ALGOPLUS_LBL,evaTranche,algoplusScore,migrerDouleur,douleurRenseignee,normaliserDouleur,proposerAlgoplus,dernierIcopeDate,'
   +'pushSurfaceClasse,pushScore,pushHistorique,BRADEN_ECHELLES,bradenEligible,bradenScore,finaliserSocle,isoJ30Statut,'
-  +'woundqolActif,woundqolScore,validerWoundqol,GIRERD_ITEMS,GIRERD_SEUIL_MED,girerdEligible,girerdScore};';
+  +'woundqolActif,woundqolScore,validerWoundqol,GIRERD_ITEMS,GIRERD_SEUIL_MED,girerdEligible,girerdScore,GIRERD_J,completudeSouhaitable};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -572,6 +572,25 @@ T('export — girerd_score / girerd_date / braden_score / braden_date',()=>{
   eq(E.rows[0].girerd_score,1);eq(E.rows[0].girerd_date,dMoins(3));
   const E2=X.buildExport([pat({id:'pb',name:'Y'})],[],TODAY,{});
   eq(E2.rows[0].braden_score,'');eq(E2.rows[0].girerd_score,'');});
+
+/* ---------- v5.4 : complétude « qualité renforcée » (souhaitable, jamais bloquante) ---------- */
+T('completudeSouhaitable — Braden manquante, Girerd jamais fait/échu, Wound-QoL ouverture/clôture',()=>{
+  const gOK={reponses:[false,false,false,false,false,false],score:0,date:dMoins(100)};
+  const pats=[
+    pat({id:'p1',bsi:true,nbMed:6}),                                  // braden + girerd jamais fait
+    pat({id:'p2',autonomie:'Dépendant',braden:{score:15,date:dMoins(10)},nbMed:3}), // rien
+    pat({id:'p3',nbMed:8,girerd:{reponses:gOK.reponses,score:0,date:dMoins(366)}}), // girerd échu
+    pat({id:'p4',plaies:[PL({id:'w1'}),PL({id:'w2',woundqol_ouverture:{score:2,date:dMoins(5)},cloture:{date:dMoins(1),issue:'Cicatrisée'}})]}), // wql ouverture w1 + clôture w2
+    Object.assign(pat({id:'p1'}),{active:true}),                      // doublon dossier ignoré
+    Object.assign(pat({id:'p5',bsi:true}),{active:false}),            // inactif ignoré
+  ];
+  const out=X.completudeSouhaitable(pats,TODAY);
+  const types=out.map(x=>x.type).sort();
+  eq(types,['braden','girerd','girerd','woundqol_cloture','woundqol_ouverture']);
+  eq(out.filter(x=>x.patientId==='p1').map(x=>x.type).sort(),['braden','girerd']);
+  eq(out.find(x=>x.type==='woundqol_ouverture').plaieId,'w1');
+  eq(out.find(x=>x.type==='woundqol_cloture').plaieId,'w2');
+  eq(X.completudeSouhaitable([pat({id:'p3',nbMed:8,girerd:{reponses:gOK.reponses,score:0,date:dMoins(365)}})],TODAY).length,0,'girerd à 365 j compté échu');});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');

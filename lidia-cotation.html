@@ -660,6 +660,30 @@ function girerdScore(reps){
   const s=reps.filter(Boolean).length;
   return {score:s,lecture:s===0?"bonne observance":s<=2?"minime problème d'observance":"mauvaise observance"};
 }
+/* ---- Complétude « qualité renforcée » (souhaitable) : Braden manquante chez éligible, Wound-QoL
+   manquant à l'ouverture/clôture, Girerd jamais fait ou échu (> 365 j). N'abaisse JAMAIS le %
+   principal du tableau de bord — affichée en ligne secondaire uniquement, jamais bloquante. */
+const GIRERD_J=365;
+function completudeSouhaitable(pats,today){
+  today=today||todayISO();
+  const out=[],seen=new Set();
+  (pats||[]).forEach(p=>{
+    if(!p.active)return;
+    if(p.id){if(seen.has(p.id))return;seen.add(p.id);}
+    const dJ=iso=>{const j=Math.floor((Date.parse(today)-Date.parse(String(iso).slice(0,10)))/86400000);return isFinite(j)?j:null};
+    if(bradenEligible(p)&&!p.braden)out.push({patientId:p.id,type:"braden",msg:"Braden à faire (BSI/dépendance)"});
+    if(girerdEligible(p)){
+      const j=p.girerd&&p.girerd.date?dJ(p.girerd.date):null;
+      if(j==null)out.push({patientId:p.id,type:"girerd",msg:"Girerd jamais fait (≥ "+GIRERD_SEUIL_MED+" médicaments)"});
+      else if(j>GIRERD_J)out.push({patientId:p.id,type:"girerd",msg:"Girerd échu ("+j+" j)"});
+    }
+    (p.plaies||[]).forEach(pl=>{
+      if(!pl.cloture&&!pl.woundqol_ouverture)out.push({patientId:p.id,type:"woundqol_ouverture",plaieId:pl.id,msg:"Wound-QoL d'ouverture manquant ("+plaieLabel(pl)+")"});
+      if(pl.cloture&&!pl.woundqol_cloture)out.push({patientId:p.id,type:"woundqol_cloture",plaieId:pl.id,msg:"Wound-QoL de clôture manquant ("+plaieLabel(pl)+")"});
+    });
+  });
+  return out;
+}
 function bradenScore(o){
   o=o||{};let s=0;
   for(const e of BRADEN_ECHELLES){const v=+o[e.k];
@@ -2418,7 +2442,12 @@ function renderDash(){
     <div><b>${act.length?Math.round(ok/act.length*100):100} %</b><small>patients à jour (${ok}/${act.length} actifs)</small></div>
     <div><b>${passages5.filter(x=>String(x.date).slice(0,10)===today).length}</b><small>passages validés aujourd'hui</small></div>
     <div><b>${tr7}</b><small>transmissions sur 7 jours</small></div>
-    <div><b>${alertesOuvertes(patients).length}</b><small>alertes non traitées</small></div></div>`;
+    <div><b>${alertesOuvertes(patients).length}</b><small>alertes non traitées</small></div></div>
+  ${(()=>{ /* ligne secondaire « qualité renforcée » : souhaitable, n'abaisse jamais le % principal */
+    const qr=completudeSouhaitable(patients,today);
+    const nb=ty=>qr.filter(x=>x.type===ty).length,wql=nb("woundqol_ouverture")+nb("woundqol_cloture");
+    const parts=[nb("braden")?nb("braden")+" Braden":"",nb("girerd")?nb("girerd")+" Girerd":"",wql?wql+" Wound-QoL":""].filter(Boolean);
+    return `<p class="muted" style="margin:8px 0 0">Qualité renforcée (souhaitable — n'abaisse pas le % ci-dessus) : ${parts.length?parts.join(" · ")+" à compléter":"à jour ✓"}</p>`;})()}`;
   const lateL=fs.filter(x=>nbRetards(x.f)>0).sort((a,b)=>nbRetards(b.f)-nbRetards(a.f));
   $("#dashLate").innerHTML=lateL.map(x=>`<div class="pt"><div style="flex:1"><b>${esc(x.p.name)}</b> ${pastillesHtml(x.f)}<small>${freshTexts(x.f).join(" · ")}</small></div><button class="btn sm sec" data-dashp="${patients.indexOf(x.p)}">Passage</button></div>`).join("")||`<p class="muted">Tous les patients actifs sont à jour ✓</p>`;
   const late48=alertesEnRetard(patients).map(x=>x.pi.id);
