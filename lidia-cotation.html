@@ -1796,8 +1796,9 @@ function epTransResume(){
   return parts.length?parts.join(" · "):"vide";
 }
 /* ---- panneaux de transmission ---- */
-const OBS_LBL={douleur:"Douleur",chute:"Chute",confusion:"Confusion",peau:"Peau",surcharge:"Surcharge",observance:"Observance"};
-const OBS_TITLE={};
+/* confusion : libellé SQiD exact (Single Question in Delirium) — dictionnaire v1.4 */
+const OBS_LBL={douleur:"Douleur",chute:"Chute",confusion:"Plus confus que d'habitude ?",peau:"Peau",surcharge:"Surcharge",observance:"Observance"};
+const OBS_TITLE={confusion:"Single Question in Delirium (SQiD)"};
 /* composant douleur à deux modes (dictionnaire v1.4) : EN 1 tap / ALGOPLUS 5 items O-N, score live */
 function douleurPanelHtml(dv,p){
   if(typeof dv==="string"&&dv)dv=migrerDouleur(dv);
