@@ -1,5 +1,5 @@
 {
- "description": "Jeu d'évaluation des dictées LIDIA v5 — 30 dictées types anonymisées + extraction attendue. Critère bloquant : 0 invention. Cible : ≥ 90 % d'exactitude sur constantes et mot-clé.",
+ "description": "Jeu d'évaluation des dictées LIDIA v5 — 40 dictées types anonymisées + extraction attendue (dont réfections de plaie 31-35 et douleur ALGOPLUS 36-40). Critère bloquant : 0 invention. Cible : ≥ 90 % d'exactitude sur constantes et mot-clé.",
  "dictees": [
   {
    "id": 1,
@@ -196,7 +196,7 @@
     "mot": null,
     "cst": null,
     "obs": {
-     "douleur": "7"
+     "douleur": "7-10"
     },
     "postit": {
      "type": "ALERTE"
@@ -245,7 +245,7 @@
     "mot": null,
     "cst": null,
     "obs": {
-     "douleur": "5"
+     "douleur": "4-6"
     },
     "postit": null
    }
@@ -447,6 +447,84 @@
      "localisation": "Pied",
      "lateralite": "D"
     }
+   }
+  },
+  {
+   "id": 36,
+   "texte": "Il grimace au toucher et protège sa jambe droite",
+   "attendu": {
+    "mot": null,
+    "cst": null,
+    "obs": {
+     "douleur": {
+      "algoplus": {
+       "visage": true,
+       "corps": true
+      }
+     }
+    },
+    "postit": null
+   }
+  },
+  {
+   "id": 37,
+   "texte": "Patient non communicant, gémit pendant le soin, agrippe le drap",
+   "attendu": {
+    "mot": null,
+    "cst": null,
+    "obs": {
+     "douleur": {
+      "algoplus": {
+       "plaintes": true,
+       "comportements": true
+      }
+     }
+    },
+    "postit": null
+   }
+  },
+  {
+   "id": 38,
+   "texte": "Regard fixe, mâchoires serrées pendant la toilette",
+   "attendu": {
+    "mot": null,
+    "cst": null,
+    "obs": {
+     "douleur": {
+      "algoplus": {
+       "visage": true,
+       "regard": true
+      }
+     }
+    },
+    "postit": null
+   }
+  },
+  {
+   "id": 39,
+   "texte": "Refuse la mobilisation du bras gauche, crie aïe dès qu'on le touche",
+   "attendu": {
+    "mot": null,
+    "cst": null,
+    "obs": {
+     "douleur": {
+      "algoplus": {
+       "plaintes": true,
+       "corps": true
+      }
+     }
+    },
+    "postit": null
+   }
+  },
+  {
+   "id": 40,
+   "texte": "Patient souriant pendant le soin, détendu, aucune plainte",
+   "attendu": {
+    "mot": null,
+    "cst": null,
+    "obs": null,
+    "postit": null
    }
   }
  ]

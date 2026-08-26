@@ -5,7 +5,8 @@ let js=fs.readFileSync(__dirname+'/../lidia-cotation.html','utf8').split('<scrip
 js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
   +'globalThis.__x5={freshness,nbRetards,computeTriggers,buildPassageRecord,makePostit,relevesAVoir,alertesOuvertes,alertesEnRetard,validerExtraction,extraireLocal,anonymiserDictee,buildExport,toCSV,byId,SOCLE_J,CONSTANTES_J,PHOTO_PLAIE_J,ICOPE_J,'
   +'SURFACE_J,BILAN_CHIR_J,PLAIE_LOC,PLAIE_LAT,PLAIE_ETIO,PLAIE_STADES,PLAIE_INTERV,PLAIE_ADR,PLAIE_IPS,PLAIE_SUIVI,REF_LIT,REF_EXSUDAT,REF_ISO,REF_PERI,REF_PANS,REF_ORIENT,CLOTURE_ISSUES,'
-  +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie};';
+  +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie,'
+  +'DOULEUR_EN,ALGOPLUS_ITEMS,ALGOPLUS_LBL,evaTranche,algoplusScore,migrerDouleur,douleurRenseignee,normaliserDouleur,proposerAlgoplus,dernierIcopeDate};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -144,8 +145,8 @@ T('extraction — schéma fermé : mot inconnu rejeté',()=>{
   const v=X.validerExtraction({mot:'FUGUE'});
   eq(v.ok,false);eq(v.data.mot,null);});
 T('extraction — clé hors schéma rejetée, clés valides conservées',()=>{
-  const v=X.validerExtraction({cst:{ta:'13/8',pouls:'72'},obs:{douleur:'5',humeur:'triste'}});
-  eq(v.ok,false);eq(v.data.cst.ta,'13/8');eq(v.data.obs.douleur,'5');
+  const v=X.validerExtraction({cst:{ta:'13/8',pouls:'72'},obs:{douleur:'4-6',humeur:'triste'}});
+  eq(v.ok,false);eq(v.data.cst.ta,'13/8');eq(v.data.obs.douleur,'4-6');
   eq(Object.keys(v.data.cst).includes('pouls'),false);});
 T('extraction — icope valeurs hors ok|alerte rejetées',()=>{
   eq(X.validerExtraction({icope:{mobilite:'moyen'}}).ok,false);
@@ -373,6 +374,76 @@ T('extraireLocal — réfection : mots-clés stricts, zéro invention sur texte 
   eq(r.refection.pansement,'Inchangé');eq(r.refection.localisation,'Talon');eq(r.refection.lateralite,'G');
   eq(X.extraireLocal('Pansement refait ce matin, rien de particulier').refection,null,'réfection inventée');
   eq(X.extraireLocal('TA 13/8, tout va bien').refection,null);});
+
+/* ---------- v5.4 : douleur double mode EN / ALGOPLUS (dictionnaire v1.4) ---------- */
+T('evaTranche — bornes des tranches EN',()=>{
+  eq(X.evaTranche(0),'0');eq(X.evaTranche(1),'1-3');eq(X.evaTranche(3),'1-3');
+  eq(X.evaTranche(4),'4-6');eq(X.evaTranche(6),'4-6');eq(X.evaTranche(7),'7-10');eq(X.evaTranche(10),'7-10');
+  eq(X.evaTranche(11),null);eq(X.evaTranche(-1),null);eq(X.evaTranche('x'),null);});
+T('algoplusScore — score /5, seuil présente ≥ 2, complétude',()=>{
+  eq(X.algoplusScore({}),{score:0,repondu:0,complet:false,presente:false});
+  const tous=k=>{const o={};X.ALGOPLUS_ITEMS.forEach(i=>o[i]=false);o[k]=true;return o};
+  eq(X.algoplusScore(tous('visage')).score,1);eq(X.algoplusScore(tous('visage')).presente,false);
+  const deux={visage:true,corps:true,regard:false,plaintes:false,comportements:false};
+  eq(X.algoplusScore(deux),{score:2,repondu:5,complet:true,presente:true});
+  const cinq={};X.ALGOPLUS_ITEMS.forEach(i=>cinq[i]=true);
+  eq(X.algoplusScore(cinq).score,5);eq(X.algoplusScore({visage:true}).complet,false);});
+T('migrerDouleur — anciennes valeurs EVA/"oui" → mode EN',()=>{
+  eq(X.migrerDouleur('5'),{mode:'EN',en:'4-6',presente:true});
+  eq(X.migrerDouleur('0'),{mode:'EN',en:'0',presente:false});
+  eq(X.migrerDouleur('oui'),{mode:'EN',presente:true});
+  eq(X.migrerDouleur('7-10'),{mode:'EN',en:'7-10',presente:true});
+  eq(X.migrerDouleur(''),'');eq(X.migrerDouleur('insupportable'),'');});
+T('normaliserDouleur — ALGOPLUS incomplet bloqué, complet scoré par le moteur',()=>{
+  eq(!!X.normaliserDouleur({mode:'ALGOPLUS',alg:{visage:true}}).error,true);
+  const n=X.normaliserDouleur({mode:'ALGOPLUS',alg:{visage:true,regard:false,plaintes:false,corps:true,comportements:false}});
+  eq(n.douleur,{mode:'ALGOPLUS',algoplus:[true,false,false,true,false],score:2,presente:true});
+  eq(X.normaliserDouleur({mode:'EN',en:'1-3'}).douleur,{mode:'EN',en:'1-3',presente:true});
+  eq(X.normaliserDouleur('oui').douleur,{mode:'EN',en:'',presente:true});
+  eq(X.normaliserDouleur('').douleur,'');});
+T('passage — douleur ALGOPLUS complète enregistrée, incomplète rejetée',()=>{
+  const obs=d=>({libre:'',evt:null,cst:null,icope:null,photo:null,obs:{douleur:d,chute:'',confusion:'',peau:'',surcharge:'',observance:''}});
+  const ok=X.buildPassageRecord(pat({}),draft({trans:obs({mode:'ALGOPLUS',alg:{visage:true,regard:false,plaintes:true,corps:false,comportements:false}})}),TODAY+'T08:00:00','AL');
+  const t=ok.transmissions.find(x=>x.type==='OBS');
+  eq(t.obs.douleur.score,2);eq(t.obs.douleur.presente,true);eq(t.obs.douleur.mode,'ALGOPLUS');
+  const ko=X.buildPassageRecord(pat({}),draft({trans:obs({mode:'ALGOPLUS',alg:{visage:true}})}),TODAY+'T08:00:00','AL');
+  eq(!!ko.error,true,'ALGOPLUS incomplet accepté');
+  const en=X.buildPassageRecord(pat({}),draft({trans:obs({mode:'EN',en:'4-6'})}),TODAY+'T08:00:00','AL');
+  eq(en.transmissions.find(x=>x.type==='OBS').obs.douleur,{mode:'EN',en:'4-6',presente:true});});
+T('extraction — douleur : tranche EN acceptée, EVA brute rejetée, ALGOPLUS subset validé',()=>{
+  eq(X.validerExtraction({obs:{douleur:'4-6'}}).data.obs.douleur,'4-6');
+  eq(X.validerExtraction({obs:{douleur:'5'}}).ok,false,'EVA brute acceptée');
+  const v=X.validerExtraction({obs:{douleur:{algoplus:{visage:true,corps:true}}}});
+  eq(v.ok,true);eq(v.data.obs.douleur,{algoplus:{visage:true,corps:true}});
+  const v2=X.validerExtraction({obs:{douleur:{algoplus:{visage:true,humeur:true}}}});
+  eq(v2.ok,false);eq(v2.data.obs.douleur,{algoplus:{visage:true}},'clé hors schéma conservée');
+  eq(X.validerExtraction({obs:{douleur:{algoplus:{}}}}).data.obs,null,'algoplus vide compté comme observation');
+  eq(X.validerExtraction({obs:{douleur:{mode:'ALGOPLUS',algoplus:{visage:true}}}}).ok,false,'clé mode hors schéma acceptée');});
+T('extraireLocal — signes ALGOPLUS stricts, dictée-piège sans invention',()=>{
+  eq(X.extraireLocal('Il grimace au toucher et protège sa jambe droite').obs.douleur,{algoplus:{visage:true,corps:true}});
+  eq(X.extraireLocal('Patient non communicant, gémit pendant le soin, agrippe le drap').obs.douleur,{algoplus:{plaintes:true,comportements:true}});
+  eq(X.extraireLocal('Regard fixe, mâchoires serrées pendant la toilette').obs.douleur,{algoplus:{visage:true,regard:true}});
+  eq(X.extraireLocal('EVA 5 ce matin').obs.douleur,'4-6');
+  eq(X.extraireLocal('douleur à 8 malgré le traitement').obs.douleur,'7-10');
+  eq(X.extraireLocal('Patient souriant pendant le soin, détendu, aucune plainte').obs,null,'invention sur dictée-piège');});
+T('proposerAlgoplus — cognition alerte au dernier ICOPE, une seule fois, jamais si déjà en ALGOPLUS',()=>{
+  const ic=c=>Object.assign(tr('ICOPE',dMoins(3)),{icope:{mobilite:'ok',cognition:c,nutrition:'ok',humeur:'ok',vision:'ok',audition:'ok'}});
+  eq(X.proposerAlgoplus(pat({transmissions:[ic('alerte')]})),true);
+  eq(X.proposerAlgoplus(pat({transmissions:[ic('ok')]})),false);
+  eq(X.proposerAlgoplus(pat({transmissions:[]})),false);
+  eq(X.proposerAlgoplus(pat({mode_douleur:'ALGOPLUS',transmissions:[ic('alerte')]})),false);
+  eq(X.proposerAlgoplus(pat({algoplus_prop:{icope_date:dMoins(3),declined:true},transmissions:[ic('alerte')]})),false,'re-proposé malgré le refus tracé');
+  eq(X.proposerAlgoplus(pat({algoplus_prop:{icope_date:dMoins(40),declined:true},transmissions:[ic('alerte')]})),true,'nouvel ICOPE sans nouvelle proposition');});
+T('export — colonnes douleur_mode / douleur_en / douleur_algoplus_score (dernier relevé)',()=>{
+  const oA={douleur:{mode:'ALGOPLUS',algoplus:[true,false,false,true,false],score:2,presente:true},chute:'',confusion:'',peau:'',surcharge:'',observance:''};
+  const oE={douleur:{mode:'EN',en:'1-3',presente:true},chute:'',confusion:'',peau:'',surcharge:'',observance:''};
+  const p1=pat({id:'pa',name:'A',transmissions:[Object.assign(tr('OBS',dMoins(9)),{obs:oE}),Object.assign(tr('OBS',dMoins(2)),{obs:oA})]});
+  const E=X.buildExport([p1],[],TODAY,{});
+  eq(E.rows[0].douleur_mode,'ALGOPLUS');eq(E.rows[0].douleur_en,'');eq(E.rows[0].douleur_algoplus_score,2);
+  const p2=pat({id:'pb',name:'B',transmissions:[Object.assign(tr('OBS',dMoins(2)),{obs:oE})]});
+  eq(X.buildExport([p2],[],TODAY,{}).rows[0].douleur_en,'1-3');
+  const p3=pat({id:'pc',name:'C',transmissions:[Object.assign(tr('OBS',dMoins(2)),{obs:{douleur:'7',chute:'',confusion:'',peau:'',surcharge:'',observance:''}})]});
+  eq(X.buildExport([p3],[],TODAY,{}).rows[0].douleur_en,'7-10','legacy non migrée à la volée');});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');

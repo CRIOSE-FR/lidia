@@ -6,7 +6,7 @@
 const fs=require('fs');
 let js=fs.readFileSync(__dirname+'/../lidia-cotation.html','utf8').split('<script>')[1].split('</script>')[0];
 js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
-  +'globalThis.__x5={extraireLocal,validerExtraction,DICTEE_SYS,CST_KEYS,OBS_KEYS,ICOPE_DOMS,REF_EXTR_KEYS,REF_ISO};';
+  +'globalThis.__x5={extraireLocal,validerExtraction,DICTEE_SYS,CST_KEYS,OBS_KEYS,ICOPE_DOMS,REF_EXTR_KEYS,REF_ISO,ALGOPLUS_ITEMS};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -41,11 +41,13 @@ const normv=v=>String(v??"").trim().toLowerCase().replace(".",",");
       if(a){stats.cst.tot++;if(normv(g)===normv(a))stats.cst.ok++;else detailsMiss.push(`#${d.id} cst.${k} : attendu "${a}", obtenu "${g}"`);}
       else if(g){inventions++;detailsInv.push(`#${d.id} cst.${k} inventé : "${g}"`);}
     }
-    // observations
+    // observations — douleur peut être un objet ALGOPLUS {"algoplus":{...}} : forme canonique comparable
+    const dlN=v=>{if(v&&typeof v==="object"){const al=v.algoplus||{};return "ALG:"+X.ALGOPLUS_ITEMS.map(k=>al[k]===true?k+"=1":al[k]===false?k+"=0":"").filter(Boolean).join("+")}return normv(v??"")};
     for(const k of X.OBS_KEYS){
+      const N=k==="douleur"?dlN:normv;
       const a=(att.obs&&att.obs[k])||"",g=(got.obs&&got.obs[k])||"";
-      if(a){stats.obs.tot++;if(normv(g)===normv(a))stats.obs.ok++;else detailsMiss.push(`#${d.id} obs.${k} : attendu "${a}", obtenu "${g}"`);}
-      else if(g){inventions++;detailsInv.push(`#${d.id} obs.${k} inventé : "${g}"`);}
+      if(a){stats.obs.tot++;if(N(g)===N(a))stats.obs.ok++;else detailsMiss.push(`#${d.id} obs.${k} : attendu "${N(a)}", obtenu "${N(g)}"`);}
+      else if(g){inventions++;detailsInv.push(`#${d.id} obs.${k} inventé : "${N(g)}"`);}
     }
     // icope (le texte reformulé n'est pas scoré : c'est une réécriture, pas une extraction)
     for(const k of X.ICOPE_DOMS){

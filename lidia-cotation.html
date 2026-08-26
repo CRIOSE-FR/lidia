@@ -114,7 +114,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.3.1</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.4.0</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -576,8 +576,65 @@ const AUTONOMIE_LIST=["Autonome","Aide partielle","Dépendant"];
 const ADRESSE_PAR_LIST=["Sortie hospitalisation","Médecin traitant","Confrère IDEL","Demande directe","Autre"];
 const MOTS_EVT=["HOSPIT","URGENCES","CHUTE","DÉCÈS","EHPAD"];
 const OBS_KEYS=["douleur","chute","confusion","peau","surcharge","observance"];
-/* valeurs fermées par observation — l'extraction comme l'UI n'acceptent rien d'autre */
-const OBS_OPTS={douleur:["","0","1","2","3","4","5","6","7","8","9","10","oui"],chute:["","oui","non"],confusion:["","oui","non"],peau:["","RAS","rougeur","plaie","escarre"],surcharge:["","oui","non"],observance:["","bonne","partielle","mauvaise"]};
+/* valeurs fermées par observation — l'extraction comme l'UI n'acceptent rien d'autre.
+   douleur (dictionnaire v1.4) : tranches EN "0|1-3|4-6|7-10" ou "oui" (dictée sans EVA) —
+   rupture de comparabilité v1.3→v1.4 documentée au dictionnaire (EVA 0-10 → tranches). */
+const OBS_OPTS={douleur:["","0","1-3","4-6","7-10","oui"],chute:["","oui","non"],confusion:["","oui","non"],peau:["","RAS","rougeur","plaie","escarre"],surcharge:["","oui","non"],observance:["","bonne","partielle","mauvaise"]};
+/* ---- Douleur double mode : EN (auto-évaluation, tranches, 1 tap) / ALGOPLUS (hétéro-évaluation,
+   5 items O/N, score /5 calculé par le moteur, douleur présente si score ≥ 2). Libellés ALGOPLUS
+   officiels — ne jamais les reformuler. */
+const DOULEUR_EN=["0","1-3","4-6","7-10"];
+const ALGOPLUS_ITEMS=["visage","regard","plaintes","corps","comportements"];
+const ALGOPLUS_LBL={visage:"Visage (froncement des sourcils, grimaces, crispation, mâchoires serrées, visage figé)",regard:"Regard (inattentif, fixe, lointain ou suppliant, pleurs, yeux fermés)",plaintes:"Plaintes orales (« aïe », « ouille », « j'ai mal », gémissements, cris)",corps:"Corps (retrait ou protection d'une zone, refus de mobilisation, attitudes figées)",comportements:"Comportements (agitation ou agressivité, agrippement)"};
+const ALGOPLUS_SEUIL=2;
+function evaTranche(n){n=+n;if(!isFinite(n)||n<0||n>10)return null;return n===0?"0":n<=3?"1-3":n<=6?"4-6":"7-10"}
+function algoplusScore(alg){alg=alg||{};
+  const score=ALGOPLUS_ITEMS.filter(k=>alg[k]===true).length;
+  const repondu=ALGOPLUS_ITEMS.filter(k=>typeof alg[k]==="boolean").length;
+  return {score,repondu,complet:repondu===ALGOPLUS_ITEMS.length,presente:score>=ALGOPLUS_SEUIL}}
+/* migration des anciennes valeurs douleur (EVA "0"-"10" ou "oui") vers le modèle v1.4 (mode EN) */
+function migrerDouleur(v){
+  if(v==null||v==="")return "";
+  if(typeof v==="object")return v;
+  v=String(v).trim();
+  if(v==="oui")return {mode:"EN",presente:true};
+  if(DOULEUR_EN.includes(v))return {mode:"EN",en:v,presente:v!=="0"};
+  const t=evaTranche(v);
+  return t?{mode:"EN",en:t,presente:t!=="0"}:"";
+}
+function douleurRenseignee(v){
+  if(v==null||v==="")return false;
+  if(typeof v==="string")return !!v.trim();
+  if(v.mode==="ALGOPLUS")return Array.isArray(v.algoplus)||ALGOPLUS_ITEMS.some(k=>typeof (v.alg||{})[k]==="boolean");
+  return !!(v.en||v.presente!=null);
+}
+/* forme canonique enregistrée dans la transmission OBS — le score ALGOPLUS est calculé par le
+   moteur (jamais par l'IA) ; ALGOPLUS incomplet = erreur bloquante (comme un ICOPE incomplet) */
+function normaliserDouleur(v){
+  if(typeof v==="string")v=migrerDouleur(v);
+  if(!douleurRenseignee(v))return {douleur:""};
+  if(v.mode==="ALGOPLUS"){
+    let alg=v.alg||{};
+    if(Array.isArray(v.algoplus)){alg={};ALGOPLUS_ITEMS.forEach((k,i)=>{if(typeof v.algoplus[i]==="boolean")alg[k]=v.algoplus[i]})}
+    const s=algoplusScore(alg);
+    if(!s.complet)return {error:"ALGOPLUS incomplet : répondez Oui/Non aux 5 items ("+s.repondu+"/5)"};
+    return {douleur:{mode:"ALGOPLUS",algoplus:ALGOPLUS_ITEMS.map(k=>alg[k]===true),score:s.score,presente:s.presente}};
+  }
+  const en=DOULEUR_EN.includes(v.en)?v.en:"";
+  const presente=en?en!=="0":!!v.presente;
+  if(!en&&!presente)return {douleur:""};
+  return {douleur:{mode:"EN",en,presente}};
+}
+/* bascule EN → ALGOPLUS proposée UNE fois quand le dernier ICOPE a cognition en alerte —
+   refus tracé (p.algoplus_prop), jamais re-proposée avant le prochain ICOPE */
+function dernierIcopeDate(p){const t=(p.transmissions||[]).filter(x=>x.type==="ICOPE"&&!x.archive&&x.icope).sort((a,b)=>a.date<b.date?-1:1).pop();return t?String(t.date).slice(0,10):null}
+function proposerAlgoplus(p){
+  if((p.mode_douleur||"EN")==="ALGOPLUS")return false;
+  const t=(p.transmissions||[]).filter(x=>x.type==="ICOPE"&&!x.archive&&x.icope).sort((a,b)=>a.date<b.date?-1:1).pop();
+  if(!t||t.icope.cognition!=="alerte")return false;
+  if(p.algoplus_prop&&p.algoplus_prop.icope_date===String(t.date).slice(0,10))return false;
+  return true;
+}
 const CST_KEYS=["ta","fc","spo2","temp","gly","poids"];
 const ICOPE_DOMS=["mobilite","cognition","nutrition","humeur","vision","audition"];
 const TRANS_TYPES=["LIBRE","EVENEMENT","CONSTANTES","OBS","ICOPE","PHOTO"];
@@ -652,7 +709,10 @@ function buildPassageRecord(p,draft,iso,auteur){
   if(t.evt&&(t.evt.mot||((t.evt.texte||"").trim())))trs.push({id:uid("tr"),date:iso,auteur:A,type:"EVENEMENT",texte:(t.evt.texte||"").trim(),mot:MOTS_EVT.includes(t.evt.mot)?t.evt.mot:undefined,
     liee_plaie:(t.evt.mot==="HOSPIT"&&(p.plaies||[]).some(x=>x.id===t.evt.liee_plaie))?t.evt.liee_plaie:undefined});
   if(t.cst&&CST_KEYS.some(k=>(t.cst[k]||"").trim())){const cst={};CST_KEYS.forEach(k=>cst[k]=(t.cst[k]||"").trim());trs.push({id:uid("tr"),date:iso,auteur:A,type:"CONSTANTES",texte:(t.cstNote||"").trim(),cst});}
-  if(t.obs&&OBS_KEYS.some(k=>(t.obs[k]||"").trim())){const obs={};OBS_KEYS.forEach(k=>obs[k]=(t.obs[k]||"").trim());trs.push({id:uid("tr"),date:iso,auteur:A,type:"OBS",texte:(t.obsNote||"").trim(),obs});}
+  if(t.obs&&OBS_KEYS.some(k=>k==="douleur"?douleurRenseignee(t.obs[k]):(t.obs[k]||"").trim())){
+    const nd=normaliserDouleur(t.obs.douleur);if(nd.error)return {error:nd.error};
+    const obs={};OBS_KEYS.forEach(k=>obs[k]=k==="douleur"?nd.douleur:(t.obs[k]||"").trim());
+    trs.push({id:uid("tr"),date:iso,auteur:A,type:"OBS",texte:(t.obsNote||"").trim(),obs});}
   if(t.icope){const ic={};ICOPE_DOMS.forEach(k=>ic[k]=t.icope[k]);const nbAlerts=ICOPE_DOMS.filter(k=>ic[k]==="alerte").length;trs.push({id:uid("tr"),date:iso,auteur:A,type:"ICOPE",texte:(t.icopeNote||"").trim(),icope:ic,nbAlerts});}
   if(t.photo)trs.push({id:uid("tr"),date:iso,auteur:A,type:"PHOTO",texte:"Photo de plaie réalisée (stockée sur le téléphone)"+((t.photo.surface||"").trim()?" — surface "+String(t.photo.surface).trim()+" cm²":"")});
   if((t.libre||"").trim())trs.push({id:uid("tr"),date:iso,auteur:A,type:"LIBRE",texte:t.libre.trim()});
@@ -700,7 +760,22 @@ function validerExtraction(j){
       Object.keys(j.cst).forEach(k=>{if(!CST_KEYS.includes(k))err.push("constante hors schéma : "+k)});
       if(!CST_KEYS.some(k=>out.cst[k]))out.cst=null;}else err.push("cst invalide");}
   if(j.obs!=null){if(typeof j.obs==="object"){out.obs={};
-      OBS_KEYS.forEach(k=>{const v=typeof j.obs[k]==="string"?j.obs[k].trim():"";
+      OBS_KEYS.forEach(k=>{
+        const raw=j.obs[k];
+        /* douleur ALGOPLUS dictée : {"algoplus":{...}} — uniquement les signes explicitement
+           dictés (true/false), jamais de score (calculé par le moteur) */
+        if(k==="douleur"&&raw!=null&&typeof raw==="object"){
+          const src=raw.algoplus;
+          if(src&&typeof src==="object"){
+            const alg={};let any=false;
+            ALGOPLUS_ITEMS.forEach(it=>{if(typeof src[it]==="boolean"){alg[it]=src[it];any=true}});
+            Object.keys(src).forEach(it=>{if(!ALGOPLUS_ITEMS.includes(it))err.push("douleur.algoplus hors schéma : "+it)});
+            Object.keys(raw).forEach(kk=>{if(kk!=="algoplus")err.push("douleur hors schéma : "+kk)});
+            out.obs[k]=any?{algoplus:alg}:"";
+          }else{out.obs[k]="";err.push("obs.douleur invalide")}
+          return;
+        }
+        const v=typeof raw==="string"?raw.trim():"";
         if(!v)out.obs[k]="";else if(OBS_OPTS[k].includes(v))out.obs[k]=v;else{out.obs[k]="";err.push("obs."+k+" hors valeurs fermées : "+v)}});
       Object.keys(j.obs).forEach(k=>{if(!OBS_KEYS.includes(k))err.push("observation hors schéma : "+k)});
       if(!OBS_KEYS.some(k=>out.obs[k]))out.obs=null;}else err.push("obs invalide");}
@@ -769,8 +844,16 @@ function extraireLocal(texte){
   else if(m=tc.match(/(\d{2,3})(?:[.,](\d))?\s*(?:kilos?|kg)\b/))cst.poids=m[1]+(m[2]?","+m[2]:"");
   if(CST_KEYS.some(k=>cst[k]))out.cst=cst;
   const obs={douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""};
-  if(m=tc.match(/\beva[^0-9]{0,8}(\d{1,2})/))obs.douleur=m[1];
-  else if(m=tc.match(/douleur[^0-9a-z]{0,12}(?:a|evaluee a|cotee a)?\s*(\d{1,2})\s*(?:\/\s*10)?/))obs.douleur=m[1];
+  /* douleur : signes ALGOPLUS dictés (mots-clés stricts, patient non communicant) sinon tranche EVA */
+  const alg={};
+  if(/grimac|froncement des sourcils|crispation|machoires serrees|visage fige/.test(tc))alg.visage=true;
+  if(/regard (inattentif|fixe|lointain|suppliant)|yeux fermes|\bpleure\b|\bpleurs\b/.test(tc))alg.regard=true;
+  if(/\baie\b|\bouille\b|j.ai mal|gemit|gemissement|\bcrie\b|\bcris\b/.test(tc))alg.plaintes=true;
+  if(/protege (sa|son|la|le|une|un)|protection d.une zone|refus(e|ent)? (de la |de |la )?mobilisation|attitudes? figees?/.test(tc))alg.corps=true;
+  if(/agitation|\bagite(e?s?)\b|agressi(f|ve|vite)|agrippe/.test(tc))alg.comportements=true;
+  if(Object.keys(alg).length)obs.douleur={algoplus:alg};
+  else if(m=tc.match(/\beva[^0-9]{0,8}(\d{1,2})/))obs.douleur=evaTranche(m[1])||"";
+  else if(m=tc.match(/douleur[^0-9a-z]{0,12}(?:a|evaluee a|cotee a)?\s*(\d{1,2})\s*(?:\/\s*10)?/))obs.douleur=evaTranche(m[1])||"";
   else if(/douloureu|se plaint de douleur|\balgique\b/.test(tc))obs.douleur="oui";
   if(/\bchute|\btombe(e?s?)\b/.test(tc))obs.chute="oui";
   if(/confus|desoriente/.test(tc))obs.confusion="oui";
@@ -831,7 +914,7 @@ const DICTEE_SYS='Tu es infirmier·e libéral·e (IDEL, France). On te donne une
 +'- texte : reformulation professionnelle en 1 à 3 phrases (les détails non codables, ex. « pouls irrégulier », vont ici).\n'
 +'- mot : null, ou UN parmi "HOSPIT","URGENCES","CHUTE","DÉCÈS","EHPAD" si l\'événement est explicitement dicté.\n'
 +'- cst : null si aucune constante dictée, sinon {"ta":"","fc":"","spo2":"","temp":"","gly":"","poids":""} — clés EXACTES. Valeur = le nombre tel que dicté, SANS unité ni commentaire ("13/8", "72", "38,2", "1,05" — jamais "110 irrégulier" ni "72 kg"). Toute constante dictée DOIT être reportée dans son champ : glycémie/dextro→gly · température/fébrile à/fièvre à→temp · saturation/SpO2→spo2 · pouls/fréquence cardiaque→fc · poids/pèse→poids · TA/tension→ta. Champ non dicté = "".\n'
-+'- obs : null si rien à coder, sinon {"douleur":"","chute":"","confusion":"","peau":"","surcharge":"","observance":""} — valeurs FERMÉES uniquement : douleur "0" à "10" (EVA dictée) ou "oui" · chute "oui"/"non" · confusion "oui"/"non" · peau "RAS"/"rougeur"/"plaie"/"escarre" · surcharge "oui"/"non" (œdèmes, crépitants) · observance "bonne"/"partielle"/"mauvaise". Une observation clinique dictée DOIT être codée : "rougeur au talon"→peau:"rougeur" · "escarre"→peau:"escarre" · "plaie propre"→peau:"plaie" · "a chuté"→chute:"oui" · "confuse/désorientée"→confusion:"oui" · "œdèmes"→surcharge:"oui" · "n\'a pas pris son traitement"→observance:"mauvaise" · "EVA 5"→douleur:"5".\n'
++'- obs : null si rien à coder, sinon {"douleur":"","chute":"","confusion":"","peau":"","surcharge":"","observance":""} — valeurs FERMÉES uniquement : douleur = tranche de l\'EVA dictée "0"|"1-3"|"4-6"|"7-10" ("EVA 5"→"4-6", "douleur à 8"→"7-10"), ou "oui" (douleur dictée sans EVA), OU — patient non communicant, signes comportementaux dictés — {"algoplus":{...}} avec pour clés UNIQUEMENT les items ALGOPLUS dictés : "visage" (froncement des sourcils, grimaces, crispation, mâchoires serrées, visage figé) · "regard" (inattentif, fixe, lointain ou suppliant, pleurs, yeux fermés) · "plaintes" (« aïe », « ouille », « j\'ai mal », gémissements, cris) · "corps" (retrait ou protection d\'une zone, refus de mobilisation, attitudes figées) · "comportements" (agitation ou agressivité, agrippement) — true (ou false si l\'absence du signe est explicitement dictée), JAMAIS les 5 items par défaut, JAMAIS de score (l\'app le calcule) · chute "oui"/"non" · confusion "oui"/"non" · peau "RAS"/"rougeur"/"plaie"/"escarre" · surcharge "oui"/"non" (œdèmes, crépitants) · observance "bonne"/"partielle"/"mauvaise". Une observation clinique dictée DOIT être codée : "rougeur au talon"→peau:"rougeur" · "escarre"→peau:"escarre" · "plaie propre"→peau:"plaie" · "a chuté"→chute:"oui" · "confuse/désorientée"→confusion:"oui" · "œdèmes"→surcharge:"oui" · "n\'a pas pris son traitement"→observance:"mauvaise" · "EVA 5"→douleur:"4-6" · "il grimace, protège sa jambe"→douleur:{"algoplus":{"visage":true,"corps":true}}.\n'
 +'- icope : null SAUF si la dictée rapporte EXPLICITEMENT un dépistage ICOPE (le mot « ICOPE » ou l\'évaluation dictée domaine par domaine). Un symptôme isolé (confusion, chute, tristesse…) va dans obs, JAMAIS dans icope. Ne déduis AUCUN domaine, ne remplis JAMAIS les 6 domaines par défaut.\n'
 +'- postit : null, sauf préfixe dicté : "note pour la relève…"→{"type":"RELEVE","texte":"..."} · "alerte…" ou "à signaler au médecin…"→{"type":"ALERTE","texte":"..."} · "mémo…"→{"type":"PERSO","texte":"..."}.\n'
 +'- refection : null SAUF si la dictée décrit AU MOINS UN élément de la réfection elle-même : lit, exsudat, signes locaux, peau péri-lésionnelle, famille de pansement, surface ou avis demandé. « Pansement fait/refait » SANS description = refection null (et n\'implique PAS obs.peau : peau ne se code que si la plaie/rougeur/escarre est dictée comme constat). Sinon un objet avec UNIQUEMENT les champs dictés, valeurs FERMÉES : "lit" = "Épidermisé"|"Bourgeonnant"|"Fibrineux"|"Nécrotique" (aspect dominant) · "exsudat" = "Absent"|"Modéré"|"Abondant" · "iso" = "Aucun signe" ("pas de signe infectieux/local") OU {"rougeur_extensive":true,"ecoulement_purulent":true,"dehiscence":true,"fievre_rapportee":true} en ne mettant QUE les signes dictés · "peri_lesionnelle" = "Saine"|"Macérée"|"Eczéma-rougeur" · "pansement" = "Inchangé" UNIQUEMENT si l\'absence de changement est dictée (« pansement inchangé », « même protocole » — « refait » n\'est PAS « Inchangé »), ou "Hydrocellulaire"|"Hydrogel"|"Alginate"|"Hydrofibre"|"Interface"|"Pansement argent"|"Charbon"|"TPN"|"Compression associée"|"Autre" · "surface_cm2" = nombre (sans unité) · "orientation" = "Médecin traitant"|"Consultation plaies"|"Urgences" si un avis est demandé POUR LA PLAIE · "localisation" = "Jambe"|"Pied"|"Talon"|"Sacrum"|"Ischion"|"Trochanter"|"Abdomen"|"Thorax"|"Membre sup"|"Tête-face"|"Autre" si dictée · "lateralite" = "D"|"G"|"Médian"|"NA" UNIQUEMENT si le côté est explicitement dicté (« droite », « gauche ») — ne JAMAIS déduire la latéralité de l\'anatomie : « sacrum » dicté seul → PAS de lateralite. La douleur ne va JAMAIS dans refection (elle va dans obs.douleur).\n'
@@ -841,7 +924,8 @@ const DICTEE_SYS='Tu es infirmier·e libéral·e (IDEL, France). On te donne une
 +'Dictée : "Confuse ce matin, a chuté dans la nuit, pouls 110 irrégulier" → {"texte":"Patiente confuse ce matin ; chute nocturne rapportée ; pouls à 110, irrégulier.","mot":"CHUTE","cst":{"ta":"","fc":"110","spo2":"","temp":"","gly":"","poids":""},"obs":{"douleur":"","chute":"oui","confusion":"oui","peau":"","surcharge":"","observance":""},"icope":null,"postit":null,"refection":null}\n'
 +'Dictée : "Réfection de l\'ulcère jambe droite, lit fibrineux, exsudat abondant, pas de signe infectieux, je passe sur hydrofibre, surface 6 cm²" → {"texte":"Réfection de l\'ulcère de la jambe droite : lit fibrineux, exsudat abondant, pas de signe infectieux ; passage à un pansement hydrofibre ; surface 6 cm².","mot":null,"cst":null,"obs":{"douleur":"","chute":"","confusion":"","peau":"plaie","surcharge":"","observance":""},"icope":null,"postit":null,"refection":{"lit":"Fibrineux","exsudat":"Abondant","iso":"Aucun signe","pansement":"Hydrofibre","surface_cm2":6,"localisation":"Jambe","lateralite":"D"}}\n'
 +'Dictée : "Pansement fait, RAS" → {"texte":"Pansement réalisé, rien à signaler.","mot":null,"cst":null,"obs":null,"icope":null,"postit":null,"refection":null} (pansement fait sans description : ni refection, ni obs.peau, ni "Inchangé")\n'
-+'Dictée : "Escarre du sacrum, lit bourgeonnant" → {"texte":"Escarre sacrée : lit bourgeonnant.","mot":null,"cst":null,"obs":{"douleur":"","chute":"","confusion":"","peau":"escarre","surcharge":"","observance":""},"icope":null,"postit":null,"refection":{"lit":"Bourgeonnant","localisation":"Sacrum"}} (pas de lateralite : le côté n\'est pas dicté)';
++'Dictée : "Escarre du sacrum, lit bourgeonnant" → {"texte":"Escarre sacrée : lit bourgeonnant.","mot":null,"cst":null,"obs":{"douleur":"","chute":"","confusion":"","peau":"escarre","surcharge":"","observance":""},"icope":null,"postit":null,"refection":{"lit":"Bourgeonnant","localisation":"Sacrum"}} (pas de lateralite : le côté n\'est pas dicté)\n'
++'Dictée : "Il grimace au toucher et protège sa jambe" → {"texte":"Grimace au toucher ; protège sa jambe.","mot":null,"cst":null,"obs":{"douleur":{"algoplus":{"visage":true,"corps":true}},"chute":"","confusion":"","peau":"","surcharge":"","observance":""},"icope":null,"postit":null,"refection":null} (signes ALGOPLUS dictés uniquement — ni "regard", ni "plaintes", ni "comportements", ni peau, ni refection)';
 /* interface abstraite : provider interchangeable (n8n/Claude, API directe, local) */
 const EXTRACTEURS={
   n8n:{l:"Webhook n8n du cabinet (Claude)",async extraire(txt){
@@ -878,6 +962,8 @@ function buildExport(pats,passList,today,codeMap){
     "nbPassages","nbTransmissions","nbLibre","nbEvenements","nbConstantes","nbObs","nbIcope","nbPhotos",
     "der_ta","der_fc","der_spo2","der_temp","der_gly","der_poids","der_cst_date",
     "icope_mobilite","icope_cognition","icope_nutrition","icope_humeur","icope_vision","icope_audition","icope_nbAlerts","icope_date",
+    "douleur_mode","douleur_en","douleur_algoplus_score",
+    "braden_score","braden_date","girerd_score","girerd_date",
     "postits_releve","postits_alerte","alertes_traitees","refus_propositions"];
   /* dictionnaire v1.1 : exports plaies (une ligne par plaie) et réfections (une ligne par réfection),
      identifiant de plaie pseudonymisé Pnnn-k (rang d'ouverture dans le dossier, stable) */
@@ -890,6 +976,9 @@ function buildExport(pats,passList,today,codeMap){
     const of=ty=>tr.filter(t=>t.type===ty);
     const lastC=of("CONSTANTES").slice().sort((a,b)=>a.date<b.date?-1:1).pop();
     const lastI=of("ICOPE").slice().sort((a,b)=>a.date<b.date?-1:1).pop();
+    /* dernière douleur observée (dictionnaire v1.4) — legacy string migrée à la volée */
+    const lastD=of("OBS").filter(t=>t.obs&&douleurRenseignee(t.obs.douleur)).sort((a,b)=>a.date<b.date?-1:1).pop();
+    const dD=lastD?(typeof lastD.obs.douleur==="object"?lastD.obs.douleur:migrerDouleur(lastD.obs.douleur)):null;
     const myPass=(passList||[]).filter(x=>x.patientId===p.id);
     const refus=myPass.reduce((s,x)=>s+((x.propositions||[]).filter(pr=>pr.declined).length),0);
     const pi=(p.postits||[]);
@@ -912,6 +1001,8 @@ function buildExport(pats,passList,today,codeMap){
       nbPassages:myPass.length,nbTransmissions:tr.length,nbLibre:of("LIBRE").length,nbEvenements:of("EVENEMENT").length,nbConstantes:of("CONSTANTES").length,nbObs:of("OBS").length,nbIcope:of("ICOPE").length,nbPhotos:of("PHOTO").length,
       der_ta:lastC?.cst?.ta||"",der_fc:lastC?.cst?.fc||"",der_spo2:lastC?.cst?.spo2||"",der_temp:lastC?.cst?.temp||"",der_gly:lastC?.cst?.gly||"",der_poids:lastC?.cst?.poids||"",der_cst_date:lastC?String(lastC.date).slice(0,10):"",
       icope_mobilite:lastI?.icope?.mobilite||"",icope_cognition:lastI?.icope?.cognition||"",icope_nutrition:lastI?.icope?.nutrition||"",icope_humeur:lastI?.icope?.humeur||"",icope_vision:lastI?.icope?.vision||"",icope_audition:lastI?.icope?.audition||"",icope_nbAlerts:lastI?(lastI.nbAlerts??""):"",icope_date:lastI?String(lastI.date).slice(0,10):"",
+      douleur_mode:dD?dD.mode:"",douleur_en:dD&&dD.mode==="EN"?(dD.en||""):"",douleur_algoplus_score:dD&&dD.mode==="ALGOPLUS"?(dD.score??""):"",
+      braden_score:p.braden?p.braden.score:"",braden_date:p.braden?p.braden.date:"",girerd_score:p.girerd?p.girerd.score:"",girerd_date:p.girerd?p.girerd.date:"",
       postits_releve:pi.filter(x=>x.type==="RELEVE").length,postits_alerte:pi.filter(x=>x.type==="ALERTE").length,alertes_traitees:pi.filter(x=>x.type==="ALERTE"&&x.traite).length,
       refus_propositions:refus});
   });
@@ -1255,6 +1346,13 @@ function migratePatients(){let ch=false;const dossiersVus=new Set();patients.for
   p.plaies.forEach(pl=>{if(!pl.ouverture_date){pl.ouverture_date=String(((pl.refections||[])[0]||{}).date||"").slice(0,10)||todayISO();ch=true;}});
   /* v5.2.1 : seules les lignes-dossiers portent les plaies — purge des instantanés copiés par « Passage soir » */
   if(dossiersVus.has(p.id)){if((p.plaies||[]).length){p.plaies=[];ch=true;}}else dossiersVus.add(p.id);
+  /* migration v5.4 (dictionnaire v1.4) : douleur double mode — les anciennes valeurs EVA/"oui"
+     deviennent mode EN (rupture de comparabilité documentée au dictionnaire) */
+  if(p.mode_douleur===undefined){p.mode_douleur="EN";ch=true;}
+  if(p.algoplus_prop===undefined){p.algoplus_prop=null;ch=true;}
+  if(p.braden===undefined){p.braden=null;ch=true;}
+  if(p.girerd===undefined){p.girerd=null;ch=true;}
+  (p.transmissions||[]).forEach(t=>{if(t.type==="OBS"&&t.obs&&typeof t.obs.douleur==="string"&&t.obs.douleur){t.obs.douleur=migrerDouleur(t.obs.douleur);ch=true;}});
 });if(ch)savePatients();}
 function actLabel(id){const a=byId(id);return a?`${a.k} ${a.c} · ${a.l.split("(")[0].trim().slice(0,28)}`:id;}
 function renderFormActs(){$("#pActs").innerHTML=formActs.map((id,i)=>`<button type="button" class="chip" aria-pressed="true" data-fa="${i}">${actLabel(id)} ✕</button>`).join("")||'<span class="muted">Aucun soin — ajoutez avec +</span>';}
@@ -1644,7 +1742,7 @@ function epTransResume(){
   const t=epDraft.trans,parts=[];
   if(t.cst&&CST_KEYS.some(k=>(t.cst[k]||"").trim()))parts.push("constantes");
   if(t.evt&&(t.evt.mot||(t.evt.texte||"").trim()))parts.push("événement");
-  if(t.obs&&OBS_KEYS.some(k=>(t.obs[k]||"").trim()))parts.push("observations");
+  if(t.obs&&OBS_KEYS.some(k=>k==="douleur"?douleurRenseignee(t.obs[k]):(t.obs[k]||"").trim()))parts.push("observations");
   if(t.icope)parts.push("ICOPE");
   if(t.photo)parts.push("photo");
   if((t.libre||"").trim())parts.push("texte");
@@ -1652,7 +1750,25 @@ function epTransResume(){
   return parts.length?parts.join(" · "):"vide";
 }
 /* ---- panneaux de transmission ---- */
-const OBS_LBL={douleur:"Douleur (EVA)",chute:"Chute",confusion:"Confusion",peau:"Peau",surcharge:"Surcharge",observance:"Observance"};
+const OBS_LBL={douleur:"Douleur",chute:"Chute",confusion:"Confusion",peau:"Peau",surcharge:"Surcharge",observance:"Observance"};
+const OBS_TITLE={};
+/* composant douleur à deux modes (dictionnaire v1.4) : EN 1 tap / ALGOPLUS 5 items O-N, score live */
+function douleurPanelHtml(dv,p){
+  if(typeof dv==="string"&&dv)dv=migrerDouleur(dv);
+  const mode=(dv&&dv.mode)||dossier(p).mode_douleur||"EN";
+  let body;
+  if(mode==="EN"){
+    body=`<div class="chips">`+DOULEUR_EN.map(v=>`<button type="button" class="chip" data-dlen="${v}" aria-pressed="${!!(dv&&dv.en===v)}">${v==="0"?"0 — pas de douleur":v}</button>`).join("")+`</div>`
+      +(dv&&dv.presente&&!dv.en?`<p class="muted" style="margin:4px 0 0">Douleur signalée sans EVA (dictée) — précisez la tranche si possible.</p>`:"");
+  }else{
+    const alg=(dv&&dv.mode==="ALGOPLUS"&&dv.alg)||{};
+    const s=algoplusScore(alg);
+    body=ALGOPLUS_ITEMS.map(k=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:3px 0"><span style="font-size:13px;flex:1">${ALGOPLUS_LBL[k]}</span><span class="chips" style="margin:0;flex:none"><button type="button" class="chip" data-dlalg="${k}" data-dlv="1" aria-pressed="${alg[k]===true}">Oui</button><button type="button" class="chip" data-dlalg="${k}" data-dlv="0" aria-pressed="${alg[k]===false}">Non</button></span></div>`).join("")
+      +`<p class="muted" style="margin:4px 0 0">Score ALGOPLUS : <b>${s.score}/5</b>${s.complet?"":" — "+s.repondu+"/5 items répondus"} · douleur ${s.presente?"présente":"non retenue"} (seuil ≥ 2)</p>`;
+  }
+  return `<div><label class="f" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:0">${OBS_LBL.douleur}
+    <span class="chips" style="margin:0"><button type="button" class="chip" data-dlmode="EN" aria-pressed="${mode==="EN"}" title="Auto-évaluation (échelle numérique, tranches)">EN</button><button type="button" class="chip" data-dlmode="ALGOPLUS" aria-pressed="${mode==="ALGOPLUS"}" title="Hétéro-évaluation du patient non communicant (5 items)">ALGOPLUS</button></span></label>${body}</div>`;
+}
 const CST_LBL={ta:"TA",fc:"FC",spo2:"SpO₂",temp:"T°",gly:"Glycémie",poids:"Poids"};
 const ICOPE_LBL={mobilite:"Mobilité",cognition:"Cognition",nutrition:"Nutrition",humeur:"Humeur",vision:"Vision",audition:"Audition"};
 function renderEpPanels(){
@@ -1662,7 +1778,7 @@ function renderEpPanels(){
     +(t.evt.mot==="HOSPIT"&&plActives.length?`<label class="f" style="margin-top:6px">Hospitalisation liée à une plaie ? (facultatif, 1 tap)</label><div class="chips">${plActives.map(pl=>`<button type="button" class="chip" data-evtplaie="${esc(pl.id)}" aria-pressed="${t.evt.liee_plaie===pl.id}">🩹 ${esc(plaieLabel(pl))}</button>`).join("")}</div>`:"")
     +`</div>`);
   if(t.cst)H.push(`<div class="panel"><h3>🩺 Constantes — vides si non mesurées <button class="x" data-close="cst">×</button></h3><div class="row">${CST_KEYS.map(k=>`<div style="min-width:86px"><label class="f">${CST_LBL[k]}</label><input type="text" inputmode="decimal" data-cst="${k}" value="${esc(t.cst[k]||"")}"></div>`).join("")}</div></div>`);
-  if(t.obs)H.push(`<div class="panel"><h3>👁 Observations <button class="x" data-close="obs">×</button></h3><div class="row">${OBS_KEYS.map(k=>`<div style="min-width:100px"><label class="f">${OBS_LBL[k]}</label><select data-obs="${k}">${OBS_OPTS[k].map(o=>`<option value="${o}"${(t.obs[k]||"")===o?" selected":""}>${o||"—"}</option>`).join("")}</select></div>`).join("")}</div></div>`);
+  if(t.obs)H.push(`<div class="panel"><h3>👁 Observations <button class="x" data-close="obs">×</button></h3>${douleurPanelHtml(t.obs.douleur,p)}<div class="row" style="margin-top:6px">${OBS_KEYS.filter(k=>k!=="douleur").map(k=>`<div style="min-width:100px"><label class="f"${OBS_TITLE[k]?` title="${esc(OBS_TITLE[k])}"`:""}>${OBS_LBL[k]}</label><select data-obs="${k}">${OBS_OPTS[k].map(o=>`<option value="${o}"${(t.obs[k]||"")===o?" selected":""}>${o||"—"}</option>`).join("")}</select></div>`).join("")}</div></div>`);
   if(t.icope)H.push(`<div class="panel"><h3>🧠 ICOPE — les 6 domaines requis <button class="x" data-close="icope">×</button></h3>${ICOPE_DOMS.map(k=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0"><span style="font-size:13px">${ICOPE_LBL[k]}</span><span class="chips" style="margin:0"><button type="button" class="chip" data-icope="${k}" data-val="ok" aria-pressed="${t.icope[k]==="ok"}">ok</button><button type="button" class="chip" data-icope="${k}" data-val="alerte" aria-pressed="${t.icope[k]==="alerte"}">alerte</button></span></div>`).join("")}</div>`);
   if(t.photo)H.push(`<div class="panel"><h3>📷 Photo faite <button class="x" data-close="photo">×</button></h3><p class="muted" style="margin:0 0 6px">La photo reste sur le téléphone — l'app trace seulement qu'elle a été faite.</p><label class="f">Surface (cm², facultatif)</label><input type="text" inputmode="decimal" data-photosurf="1" value="${esc(t.photo.surface||"")}" style="max-width:120px"></div>`);
   if(epPanelOpen.postit){const d=epPostitDraft||{type:"RELEVE",texte:""};
@@ -1680,6 +1796,25 @@ function epPanelInput(e){if(!epDraft)return;const t=epDraft.trans,el=e.target;
   else if((el.id||"").indexOf("epSoc")===0){epDraft.socleData=readSocleFields("epSoc");}
   saveDraft();}
 function epPanelClick(e){if(!epDraft)return;const t=epDraft.trans;
+  /* douleur double mode : bascule mémorisée par patient, EN 1 tap, ALGOPLUS O/N par item */
+  const dlm=e.target.closest("[data-dlmode]");
+  if(dlm){t.obs=t.obs||{douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""};
+    const mode=dlm.dataset.dlmode;
+    const cur0=(typeof t.obs.douleur==="object"&&t.obs.douleur)||null;
+    if(!cur0||cur0.mode!==mode)t.obs.douleur={mode}; /* changer de mode remet la saisie douleur à zéro */
+    const P=dossier(patients[epIdx]);
+    if(P&&(P.mode_douleur||"EN")!==mode){P.mode_douleur=mode;savePatients();} /* mémorisé par patient, défaut des passages suivants */
+    saveDraft();renderPassage();return}
+  const dle=e.target.closest("[data-dlen]");
+  if(dle){const d0=(typeof t.obs.douleur==="object"&&t.obs.douleur&&t.obs.douleur.mode==="EN")?t.obs.douleur:{mode:"EN"};
+    d0.en=d0.en===dle.dataset.dlen?"":dle.dataset.dlen;
+    if(d0.en)d0.presente=d0.en!=="0";else delete d0.presente;
+    t.obs.douleur=(d0.en||d0.presente!=null)?d0:"";saveDraft();renderPassage();return}
+  const dla=e.target.closest("[data-dlalg]");
+  if(dla){const d0=(typeof t.obs.douleur==="object"&&t.obs.douleur&&t.obs.douleur.mode==="ALGOPLUS")?t.obs.douleur:{mode:"ALGOPLUS"};
+    d0.alg=d0.alg||{};const k=dla.dataset.dlalg,v=dla.dataset.dlv==="1";
+    if(d0.alg[k]===v)delete d0.alg[k];else d0.alg[k]=v; /* re-tap = désélection, null ≠ Non */
+    t.obs.douleur=d0;saveDraft();renderPassage();return}
   const tg=e.target.closest("[data-tgl]");
   if(tg){e.stopPropagation();tg.setAttribute("aria-pressed",tg.getAttribute("aria-pressed")!=="true");
     epDraft.socleData=readSocleFields("epSoc");saveDraft();return}
@@ -1706,12 +1841,19 @@ function epSavePostit(){const p=epIdx!=null?dossier(patients[epIdx]):null;if(!p)
 /* ---- module 3 : bandeaux 1-tap, jamais de popup bloquante ---- */
 function renderEpTriggers(){const p=patients[epIdx];
   const {props}=computeTriggers(p,epDraft.acts.map(a=>a.id),null,epDate);
-  $("#epTriggers").innerHTML=props.map(pr=>{
+  /* proposition unique EN → ALGOPLUS si cognition en alerte au dernier ICOPE (refus tracé) */
+  const algH=proposerAlgoplus(dossier(p))?`<div class="trigband"><span style="flex:1"><b>Douleur</b> · Cognition en alerte au dernier ICOPE — évaluer la douleur en ALGOPLUS (hétéro-évaluation) ?</span><button class="btn sm" data-algacc="1">Passer en ALGOPLUS</button><button class="btn sm sec" data-algdec="1">Rester en EN</button></div>`:"";
+  $("#epTriggers").innerHTML=algH+props.map(pr=>{
     const dec=(epDraft.props||[]).find(x=>x.type===pr.type);
     if(dec)return `<div class="trigband done"><span>${dec.declined?"✕":"✓"} ${esc(pr.lbl)} — ${dec.declined?"pas ce passage (tracé)":"pris en compte"}</span></div>`;
     return `<div class="trigband"><span style="flex:1"><b>${esc(pr.lbl)}</b> · ${esc(pr.msg)}</span><button class="btn sm" data-tracc="${pr.type}">${pr.type==="photo"?"📷 Photo faite":pr.type==="icope"?"Faire maintenant":pr.type==="constantes"?"Prendre":"Revalider"}</button><button class="btn sm sec" data-trdec="${pr.type}">${pr.type==="icope"?"Prochain passage":"Pas ce passage"}</button></div>`;
   }).join("");}
 function epTriggerClick(e){if(!epDraft)return;const t=epDraft.trans;
+  const aa=e.target.closest("[data-algacc]"),ad=e.target.closest("[data-algdec]");
+  if(aa||ad){const D=dossier(patients[epIdx]);if(!D)return;
+    D.algoplus_prop={icope_date:dernierIcopeDate(D),declined:!!ad,date:epDate};
+    if(aa)D.mode_douleur="ALGOPLUS";
+    savePatients();renderPassage();toast(aa?"Douleur en ALGOPLUS pour ce patient":"Proposition refusée — tracée, pas de nouvelle proposition avant le prochain ICOPE");return}
   const a=e.target.closest("[data-tracc]");if(a){const ty=a.dataset.tracc;epDraft.props.push({type:ty,declined:false});
     epFoldState.trans=false;epFoldSave(); /* la proposition acceptée ouvre le module transmission */
     if(ty==="photo")t.photo=t.photo||{surface:""};
@@ -1872,7 +2014,11 @@ function objNonVides(o){const r={};Object.keys(o||{}).forEach(k=>{if(o[k])r[k]=o
 function epApplyExtraction(d){const t=epDraft.trans;
   if(d.mot){t.evt=t.evt||{mot:null,texte:""};t.evt.mot=d.mot;if(d.texte)t.evt.texte=d.texte;}
   if(d.cst)t.cst=Object.assign({ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""},t.cst||{},objNonVides(d.cst));
-  if(d.obs)t.obs=Object.assign({douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""},t.obs||{},objNonVides(d.obs));
+  if(d.obs){const o=objNonVides(d.obs);
+    /* douleur extraite : tranche/"oui" → mode EN, {"algoplus":{...}} → mode ALGOPLUS (pré-remplissage,
+       les items non dictés restent sans réponse — l'IDEL complète, le moteur calcule le score) */
+    if(o.douleur)o.douleur=typeof o.douleur==="object"?{mode:"ALGOPLUS",alg:Object.assign({},o.douleur.algoplus)}:migrerDouleur(o.douleur);
+    t.obs=Object.assign({douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""},t.obs||{},o);}
   if(d.icope)t.icope=Object.assign({},t.icope||{},objNonVides(d.icope));
   if(d.texte&&!d.mot&&!d.postit&&!((t.libre||"").trim()))t.libre=d.texte;
   if(d.postit){epPostitDraft={type:d.postit.type,texte:d.postit.texte};epPanelOpen.postit=true;}
@@ -1961,6 +2107,9 @@ function validerPassage(){
       p.plaie=plaiesActives(p).length>0?true:(p.plaies.length?false:p.plaie);
     }
     if(rec.socle){if(rec.socle==="edite"&&epDraft.socleData)Object.assign(p,epDraft.socleData);p.socleDate=epDate;}
+    /* le mode douleur utilisé est mémorisé par patient (défaut des passages suivants) */
+    const trD=rec.transmissions.find(x=>x.type==="OBS"&&x.obs&&typeof x.obs.douleur==="object"&&x.obs.douleur);
+    if(trD)p.mode_douleur=trD.obs.douleur.mode;
     passages5.push(rec.pass);delete drafts[p.id];
     /* la clé la plus volumineuse d'abord ; en cas d'échec, le catch restaure AUSSI le stockage (tout-ou-rien) */
     localStorage.setItem("lidia.cot.patients",JSON.stringify(patients));
