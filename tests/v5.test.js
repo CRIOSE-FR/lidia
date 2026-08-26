@@ -7,7 +7,7 @@ js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
   +'SURFACE_J,BILAN_CHIR_J,PLAIE_LOC,PLAIE_LAT,PLAIE_ETIO,PLAIE_STADES,PLAIE_INTERV,PLAIE_ADR,PLAIE_IPS,PLAIE_SUIVI,REF_LIT,REF_EXSUDAT,REF_ISO,REF_PERI,REF_PANS,REF_ORIENT,CLOTURE_ISSUES,'
   +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie,'
   +'DOULEUR_EN,ALGOPLUS_ITEMS,ALGOPLUS_LBL,evaTranche,algoplusScore,migrerDouleur,douleurRenseignee,normaliserDouleur,proposerAlgoplus,dernierIcopeDate,'
-  +'pushSurfaceClasse,pushScore,pushHistorique,BRADEN_ECHELLES,bradenEligible,bradenScore,finaliserSocle};';
+  +'pushSurfaceClasse,pushScore,pushHistorique,BRADEN_ECHELLES,bradenEligible,bradenScore,finaliserSocle,isoJ30Statut};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -494,6 +494,26 @@ T('finaliserSocle — Braden complète scorée et datée, partielle = Plus tard 
   const d2=X.finaliserSocle({bsi:true,braden:{perception:2}},TODAY);
   eq('braden' in d2,false,'grille partielle enregistrée');
   eq('braden' in X.finaliserSocle({bsi:true},TODAY),false);});
+
+/* ---------- v5.4 : statut ISO J0-J30 (mapping CDC, docs/iso_cdc_mapping.md) ---------- */
+T('isoJ30Statut — purulent/déhiscence = Suspicion ISO, rougeur/fièvre = Signes mineurs, sinon Aucun signe',()=>{
+  const chir=refs=>PL({etiologie:'Plaie chirurgicale',type_intervention:'Digestif',adresseur:'CHU',date_operatoire:dMoins(40),refections:refs});
+  const R=(j,iso)=>({passageId:'x',date:dMoins(j),lit:'Fibrineux',exsudat:'Modéré',iso});
+  eq(X.isoJ30Statut(chir([R(30,{ecoulement_purulent:true})])),'Suspicion ISO');
+  eq(X.isoJ30Statut(chir([R(20,{dehiscence:true})])),'Suspicion ISO');
+  eq(X.isoJ30Statut(chir([R(35,{rougeur_extensive:true}),R(20,{fievre_rapportee:true})])),'Signes mineurs');
+  eq(X.isoJ30Statut(chir([R(38,'Aucun signe'),R(5,{dehiscence:true})])),'Aucun signe','signe à J35 (hors fenêtre) compté');
+  eq(X.isoJ30Statut(chir([R(20,'Aucun signe')])),'Aucun signe');
+  eq(X.isoJ30Statut(chir([R(5,{ecoulement_purulent:true})])),'',
+    'réfection à J35 (après la fenêtre) comptée'); /* date_operatoire J-40 : J-5 = J35 post-op */
+  eq(X.isoJ30Statut(chir([])),'','aucune réfection = non évaluable, pas « Aucun signe »');
+  eq(X.isoJ30Statut(PL({refections:[R(2,{ecoulement_purulent:true})]})),'','non chirurgicale');});
+T('export plaies — colonne iso_j30_statut calculée',()=>{
+  const p1=pat({id:'pa',name:'X',plaies:[PL({id:'plA',etiologie:'Plaie chirurgicale',type_intervention:'Orthopédie',adresseur:'Clinique',date_operatoire:dMoins(25),
+    refections:[{passageId:'x',date:dMoins(10),lit:'Fibrineux',exsudat:'Modéré',iso:{ecoulement_purulent:true}}]})]});
+  const E=X.buildExport([p1],[],TODAY,{});
+  eq(E.plaiesRows[0].iso_j30_statut,'Suspicion ISO');
+  eq(E.plaiesHead.includes('iso_j30_statut'),true);});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');

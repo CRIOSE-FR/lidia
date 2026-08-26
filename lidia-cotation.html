@@ -986,7 +986,7 @@ function buildExport(pats,passList,today,codeMap){
     "postits_releve","postits_alerte","alertes_traitees","refus_propositions"];
   /* dictionnaire v1.1 : exports plaies (une ligne par plaie) et réfections (une ligne par réfection),
      identifiant de plaie pseudonymisé Pnnn-k (rang d'ouverture dans le dossier, stable) */
-  const plaiesHead=["code","plaie","date_debut","localisation","lateralite","etiologie","stade_initial","type_intervention","date_operatoire","adresseur","ips_connu","ips_valeur","suivi_specialise","nb_refections","cloture_date","issue","delai_cicatrisation"];
+  const plaiesHead=["code","plaie","date_debut","localisation","lateralite","etiologie","stade_initial","type_intervention","date_operatoire","adresseur","ips_connu","ips_valeur","suivi_specialise","nb_refections","cloture_date","issue","delai_cicatrisation","iso_j30_statut","woundqol_ouverture_score","woundqol_cloture_score"];
   const refHead=["code","plaie","date","lit","exsudat","iso_aucun","iso_rougeur","iso_ecoulement","iso_dehiscence","iso_fievre","peri_lesionnelle","pansement","surface_cm2","orientation"];
   const rows=[],events=[],mapping=[],plaiesRows=[],refRows=[];
   pats.forEach((p,i)=>{
@@ -1008,7 +1008,9 @@ function buildExport(pats,passList,today,codeMap){
       plaiesRows.push({code,plaie:pid,date_debut:pl.date_debut||"",localisation:pl.localisation||"",lateralite:pl.lateralite||"",etiologie:pl.etiologie||"",
         stade_initial:pl.stade_initial||"",type_intervention:pl.type_intervention||"",date_operatoire:pl.date_operatoire||"",adresseur:pl.adresseur||"",
         ips_connu:pl.ips_connu||"",ips_valeur:pl.ips_valeur??"",suivi_specialise:pl.suivi_specialise||"",nb_refections:(pl.refections||[]).length,
-        cloture_date:pl.cloture?String(pl.cloture.date).slice(0,10):"",issue:pl.cloture?pl.cloture.issue:"",delai_cicatrisation:delaiCicatrisation(pl)??""});
+        cloture_date:pl.cloture?String(pl.cloture.date).slice(0,10):"",issue:pl.cloture?pl.cloture.issue:"",delai_cicatrisation:delaiCicatrisation(pl)??"",
+        iso_j30_statut:isoJ30Statut(pl),
+        woundqol_ouverture_score:pl.woundqol_ouverture?pl.woundqol_ouverture.score:"",woundqol_cloture_score:pl.woundqol_cloture?pl.woundqol_cloture.score:""});
       (pl.refections||[]).forEach(r=>{const det=r.iso&&r.iso!=="Aucun signe"?r.iso:null;
         refRows.push({code,plaie:pid,date:String(r.date||"").slice(0,10),lit:r.lit||"",exsudat:r.exsudat||"",
           iso_aucun:r.iso==="Aucun signe"?1:0,iso_rougeur:det&&det.rougeur_extensive?1:0,iso_ecoulement:det&&det.ecoulement_purulent?1:0,
@@ -1140,6 +1142,22 @@ function pushScore(surface_cm2,exsudat,lit){
   if(sc==null||ex===undefined||ti===undefined)return null;
   if(sc===0)ti=0; /* plaie fermée / cicatrisée : tissu 0 (barème PUSH) */
   return {score:sc+ex+ti,surface:sc,exsudat:ex,tissu:ti};
+}
+/* ---- Statut ISO J0-J30 (plaies chirurgicales) — mapping CDC/HAS documenté et versionné dans
+   docs/iso_cdc_mapping.md : écoulement purulent OU déhiscence = suspicion forte → « Suspicion ISO » ;
+   rougeur extensive OU fièvre rapportée = « Signes mineurs » ; sinon « Aucun signe » si ≥ 1 réfection
+   évaluée dans la fenêtre ; vide = non évaluable (absence ≠ négatif). Calculé, jamais saisi. */
+function isoJ30Statut(pl){
+  if(!pl||pl.etiologie!=="Plaie chirurgicale"||!pl.date_operatoire)return "";
+  const d0=Date.parse(String(pl.date_operatoire).slice(0,10));if(!isFinite(d0))return "";
+  const dans=(pl.refections||[]).filter(r=>{const t=Date.parse(String(r.date||"").slice(0,10));
+    return isFinite(t)&&t>=d0&&(t-d0)/86400000<=30});
+  const evalues=dans.filter(r=>r.iso!=null&&r.iso!=="");
+  if(!evalues.length)return "";
+  const sig=k=>evalues.some(r=>r.iso&&typeof r.iso==="object"&&r.iso[k]===true);
+  if(sig("ecoulement_purulent")||sig("dehiscence"))return "Suspicion ISO";
+  if(sig("rougeur_extensive")||sig("fievre_rapportee"))return "Signes mineurs";
+  return "Aucun signe";
 }
 /* historique PUSH d'une plaie (chronologique) : une entrée par réfection portant surface + lit + exsudat */
 function pushHistorique(pl){
