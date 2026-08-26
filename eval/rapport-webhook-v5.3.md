@@ -1,4 +1,6 @@
-# Rapport d'évaluation — dictées v5.3.0 (chaîne réelle n8n → Claude)
+# Rapport d'évaluation — dictées v5.3 (chaîne réelle n8n → Claude)
+
+## v5.3.0 — première évaluation réelle
 
 - **Date** : 2026-08-26
 - **Commit évalué** : `4f14b3a606b6d32f4fe19cd1aa76d5c600753628` — « v5.3.0 : la dictée pré-remplit la réfection de plaie (schéma fermé, ciblage, validation IDEL) », branche `claude/new-session-nrke97`
@@ -83,3 +85,43 @@ Les 6 inventions relèvent de **3 motifs récurrents**, tous côté prompt du wo
 ## Piste de correction (hors périmètre de ce rapport)
 
 Renforcer `DICTEE_SYS` dans le workflow n8n (`n8n_lidia_cotation.json`) avec des interdictions explicites : ne jamais déduire `lateralite` d'une localisation anatomique ; ne remplir `refection` que si la dictée décrit le contenu de la réfection ; « pansement refait » seul ⇒ extraction vide (ni `obs.peau`, ni `refection`). Les dictées #19, #29 et #34 constituent des exemples négatifs directement réutilisables en few-shot.
+
+---
+
+## v5.3.1 — prompt durci
+
+- **Date** : 2026-08-26
+- **Commit évalué** : `78c60e8e362e2592dd789a0aad74ed414b1fe41f` — « v5.3.1 : prompt réfection durci (zéro déduction) après éval réelle », branche `claude/new-session-nrke97`
+- **Webhook** : `https://lidiaplan.app.n8n.cloud/webhook/lidia-cotation`
+- **Commande** : `LIDIA_WEBHOOK=… LIDIA_DEBUG=1 node eval/score.js`
+- **Jeu d'éval** : `eval/dictees.json` — 35 dictées, identique à l'évaluation v5.3.0
+
+### Verdict global : ✅ SUCCÈS
+
+**0 invention** (critère bloquant : 0 tolérée) et 100 % d'exactitude sur toutes les catégories, dont les seuils bloquants ≥ 90 % sur constantes et mot-clé. Sortie du script : `Éval dictées : OK.` (code de sortie 0).
+
+### Scores par catégorie
+
+| Catégorie | Score | % |
+|---|---|---|
+| Mot-clé | 5/5 | 100 % |
+| Constantes | 17/17 | 100 % |
+| Observations | 13/13 | 100 % |
+| ICOPE | 0/0 | 100 % (aucun champ attendu dans le jeu) |
+| Post-its | 5/5 | 100 % |
+| Réfections | 21/21 | 100 % |
+| **Inventions** | **0** | **critère bloquant respecté** |
+
+### Écarts restants (détail brut LIDIA_DEBUG)
+
+Aucun. `LIDIA_DEBUG=1` n'a émis aucune réponse brute : le mode debug ne journalise que les dictées en écart (invention ou champ attendu manquant/erroné), et il n'y en a eu aucune sur les 35 dictées.
+
+### Effet du durcissement (v5.3.0 → v5.3.1)
+
+Les 6 inventions de la v5.3.0 sont toutes corrigées, sans aucune régression sur l'extraction des champs réellement dictés (les scores attendus restent à 100 %, réfections 21/21 comprises) :
+
+1. **`lateralite` déduite de la localisation** (#29, #32 : « sacrum » → « Médian ») : disparue.
+2. **`refection.pansement = "Inchangé"` déduit de « pansement refait »** (#19, #34) : disparue.
+3. **Objet `refection` / `obs.peau` ouvert sur simple mention d'un pansement** (#19, #29, #34, dont la dictée-piège #34 « rien de particulier ») : disparu.
+
+Les deux critères bloquants de la spec v5 (0 invention ; ≥ 90 % constantes et mot-clé) sont satisfaits : la chaîne réelle n8n → Claude est conforme pour la dictée avec pré-remplissage de réfection.
