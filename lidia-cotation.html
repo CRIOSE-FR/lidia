@@ -1102,6 +1102,33 @@ function delaiCicatrisation(pl){
   return isFinite(j)?j:null;
 }
 function dernRefection(pl){return ((pl&&pl.refections)||[]).slice().sort((a,b)=>String(a.date)<String(b.date)?-1:1).pop()||null}
+/* ---- PUSH Tool (NPUAP) : score calculé, zéro saisie supplémentaire — surface + exsudat + lit
+   déjà captés par la réfection. Barème surface officiel en 11 classes. Mapping documenté au
+   dictionnaire v1.4 : exsudat 3 niveaux LIDIA → PUSH Absent=0 / Modéré=2 / Abondant=3
+   (« léger »=1 non capté : mapping conservateur) ; lit → tissu Épidermisé=1, Bourgeonnant=2,
+   Fibrineux=3, Nécrotique=4 ; surface 0 cm² (plaie fermée) → sous-score tissu 0. */
+function pushSurfaceClasse(s){
+  s=parseFloat(String(s).replace(",","."));
+  if(!isFinite(s)||s<0)return null;
+  if(s===0)return 0;if(s<0.3)return 1;if(s<0.7)return 2;if(s<=1.0)return 3;if(s<=2.0)return 4;
+  if(s<=3.0)return 5;if(s<=4.0)return 6;if(s<=8.0)return 7;if(s<=12.0)return 8;if(s<=24.0)return 9;return 10;
+}
+function pushScore(surface_cm2,exsudat,lit){
+  if(surface_cm2==null||surface_cm2==="")return null;
+  const sc=pushSurfaceClasse(surface_cm2);
+  const ex={"Absent":0,"Modéré":2,"Abondant":3}[exsudat];
+  let ti={"Épidermisé":1,"Bourgeonnant":2,"Fibrineux":3,"Nécrotique":4}[lit];
+  if(sc==null||ex===undefined||ti===undefined)return null;
+  if(sc===0)ti=0; /* plaie fermée / cicatrisée : tissu 0 (barème PUSH) */
+  return {score:sc+ex+ti,surface:sc,exsudat:ex,tissu:ti};
+}
+/* historique PUSH d'une plaie (chronologique) : une entrée par réfection portant surface + lit + exsudat */
+function pushHistorique(pl){
+  return ((pl&&pl.refections)||[]).filter(r=>r.surface_cm2!=null&&r.surface_cm2!==""&&r.lit&&r.exsudat)
+    .map(r=>({date:String(r.date||"").slice(0,10),p:pushScore(r.surface_cm2,r.exsudat,r.lit)}))
+    .filter(x=>x.p).map(x=>({date:x.date,score:x.p.score}))
+    .sort((a,b)=>a.date<b.date?-1:1);
+}
 /* libellé du délai depuis une réfection — un rattrapage antidaté peut rendre le delta négatif */
 function refDelaiLbl(der,dateRef){const j=Math.floor((Date.parse(dateRef)-Date.parse(String(der.date).slice(0,10)))/86400000);
   return isFinite(j)&&j>=0?"il y a "+j+" j":"réfection du "+String(der.date).slice(0,10)}
@@ -1901,6 +1928,14 @@ function plaiePanelHtml(a,p){
       <div class="row"><div style="max-width:150px"><label class="f">Surface (cm², recopie Healico)</label><input type="text" inputmode="decimal" data-plf="surface_cm2" value="${esc(d.surface_cm2??"")}"></div></div>
       <label class="f">Avis demandé ce jour</label>${plChips(REF_ORIENT,d.orientation,"orientation")}
     </details>
+    ${(()=>{ /* PUSH calculé en direct dès qu'une surface est disponible, avec variation vs dernier score */
+      const push=pushScore(d.surface_cm2,d.exsudat,d.lit),hist=pushHistorique(pl),prev=hist.length?hist[hist.length-1]:null;
+      if(!push&&!hist.length)return "";
+      const delta=push&&prev?push.score-prev.score:null;
+      return `<div style="background:var(--paper);border-radius:10px;padding:8px 10px;margin-top:8px;font-size:13px">📉 <b>Score PUSH</b> (calculé — surface + exsudat + lit)`
+        +(push?` : <b>${push.score}/17</b>${delta!=null?` · ${delta<0?"↓ "+delta+" (amélioration)":delta>0?"↑ +"+delta+" (aggravation)":"= stable"} vs ${esc(prev.date)}`:""}`
+          :`<span class="muted"> — renseignez lit, exsudat et surface pour le calculer.</span>`)
+        +(hist.length?`<small style="display:block;color:var(--ink2);margin-top:2px">Historique : ${hist.map(h=>esc(h.date)+" → "+h.score).join(" · ")}</small>`:"")+`</div>`;})()}
     <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-plok="1">OK</button><button type="button" class="btn sm sec" data-plcancel="1">Annuler</button></div></div>`;}
   const pl=(p.plaies||[]).find(x=>x.id===a.plaieId)||{};const fr=plaieFraicheur(pl,epDate);
   return `<div class="panel"><h3>🩹 Clôture — ${esc(plaieLabel(pl))} <button class="x" data-plclose="1">×</button></h3>

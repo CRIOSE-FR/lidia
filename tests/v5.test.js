@@ -6,7 +6,8 @@ js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
   +'globalThis.__x5={freshness,nbRetards,computeTriggers,buildPassageRecord,makePostit,relevesAVoir,alertesOuvertes,alertesEnRetard,validerExtraction,extraireLocal,anonymiserDictee,buildExport,toCSV,byId,SOCLE_J,CONSTANTES_J,PHOTO_PLAIE_J,ICOPE_J,'
   +'SURFACE_J,BILAN_CHIR_J,PLAIE_LOC,PLAIE_LAT,PLAIE_ETIO,PLAIE_STADES,PLAIE_INTERV,PLAIE_ADR,PLAIE_IPS,PLAIE_SUIVI,REF_LIT,REF_EXSUDAT,REF_ISO,REF_PERI,REF_PANS,REF_ORIENT,CLOTURE_ISSUES,'
   +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie,'
-  +'DOULEUR_EN,ALGOPLUS_ITEMS,ALGOPLUS_LBL,evaTranche,algoplusScore,migrerDouleur,douleurRenseignee,normaliserDouleur,proposerAlgoplus,dernierIcopeDate};';
+  +'DOULEUR_EN,ALGOPLUS_ITEMS,ALGOPLUS_LBL,evaTranche,algoplusScore,migrerDouleur,douleurRenseignee,normaliserDouleur,proposerAlgoplus,dernierIcopeDate,'
+  +'pushSurfaceClasse,pushScore,pushHistorique};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -444,6 +445,30 @@ T('export — colonnes douleur_mode / douleur_en / douleur_algoplus_score (derni
   eq(X.buildExport([p2],[],TODAY,{}).rows[0].douleur_en,'1-3');
   const p3=pat({id:'pc',name:'C',transmissions:[Object.assign(tr('OBS',dMoins(2)),{obs:{douleur:'7',chute:'',confusion:'',peau:'',surcharge:'',observance:''}})]});
   eq(X.buildExport([p3],[],TODAY,{}).rows[0].douleur_en,'7-10','legacy non migrée à la volée');});
+
+/* ---------- v5.4 : PUSH Tool (score calculé, zéro saisie) ---------- */
+T('pushSurfaceClasse — les 11 classes du barème officiel, bornes exactes',()=>{
+  const cas=[[0,0],[0.1,1],[0.29,1],[0.3,2],[0.6,2],[0.65,2],[0.7,3],[1.0,3],[1.1,4],[2.0,4],[2.1,5],[3.0,5],[3.1,6],[4.0,6],[4.1,7],[8.0,7],[8.1,8],[12.0,8],[12.1,9],[24.0,9],[24.1,10],[100,10]];
+  cas.forEach(([s,c])=>eq(X.pushSurfaceClasse(s),c,'surface '+s));
+  eq(X.pushSurfaceClasse('2,5'),5,'virgule décimale');
+  eq(X.pushSurfaceClasse(-1),null);eq(X.pushSurfaceClasse('grande'),null);});
+T('pushScore — mapping exsudat/lit, plaie fermée, entrées incomplètes',()=>{
+  eq(X.pushScore(6,'Abondant','Fibrineux'),{score:13,surface:7,exsudat:3,tissu:3});
+  eq(X.pushScore(0.5,'Absent','Épidermisé'),{score:3,surface:2,exsudat:0,tissu:1});
+  eq(X.pushScore(24.5,'Abondant','Nécrotique'),{score:17,surface:10,exsudat:3,tissu:4});
+  eq(X.pushScore(0,'Absent','Épidermisé'),{score:0,surface:0,exsudat:0,tissu:0},'plaie fermée : tissu forcé à 0');
+  eq(X.pushScore(6,'Modéré','Bourgeonnant').score,11);
+  eq(X.pushScore(null,'Modéré','Fibrineux'),null);eq(X.pushScore('','Modéré','Fibrineux'),null);
+  eq(X.pushScore(6,'Léger','Fibrineux'),null,'exsudat hors mapping accepté');
+  eq(X.pushScore(6,'Modéré','Sale'),null);});
+T('pushHistorique — chronologique, réfections sans surface ignorées',()=>{
+  const pl=PL({refections:[
+    {passageId:'a',date:dMoins(2),lit:'Bourgeonnant',exsudat:'Modéré',iso:'Aucun signe',surface_cm2:2},
+    {passageId:'b',date:dMoins(20),lit:'Fibrineux',exsudat:'Abondant',iso:'Aucun signe',surface_cm2:6},
+    {passageId:'c',date:dMoins(10),lit:'Fibrineux',exsudat:'Modéré',iso:'Aucun signe'}]});
+  const h=X.pushHistorique(pl);
+  eq(h,[{date:dMoins(20),score:13},{date:dMoins(2),score:8}]);
+  eq(X.pushHistorique(PL({})),[]);});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');
