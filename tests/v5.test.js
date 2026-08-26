@@ -5,7 +5,7 @@ let js=fs.readFileSync(__dirname+'/../lidia-cotation.html','utf8').split('<scrip
 js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
   +'globalThis.__x5={freshness,nbRetards,computeTriggers,buildPassageRecord,makePostit,relevesAVoir,alertesOuvertes,alertesEnRetard,validerExtraction,extraireLocal,anonymiserDictee,buildExport,toCSV,byId,SOCLE_J,CONSTANTES_J,PHOTO_PLAIE_J,ICOPE_J,'
   +'SURFACE_J,BILAN_CHIR_J,PLAIE_LOC,PLAIE_LAT,PLAIE_ETIO,PLAIE_STADES,PLAIE_INTERV,PLAIE_ADR,PLAIE_IPS,PLAIE_SUIVI,REF_LIT,REF_EXSUDAT,REF_ISO,REF_PERI,REF_PANS,REF_ORIENT,CLOTURE_ISSUES,'
-  +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie};';
+  +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie,transmissionTexte};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -367,6 +367,22 @@ T('ciblerPlaie — 1 plaie = cible ; plusieurs = localisation/latéralité dict�
   eq(X.ciblerPlaie([j_d,j_g],{localisation:'Jambe'}),null,'ambigu deviné');
   eq(X.ciblerPlaie([j_d,tal],null),null,'plusieurs sans indice deviné');
   eq(X.ciblerPlaie([],{localisation:'Jambe'}),null);});
+T('transmissionTexte — constantes, obs, événement, plaie : texte lisible sans « undefined »',()=>{
+  const pass={date:TODAY+'T08:30:00',auteur:'AL',actes:[{id:'insu',l:'Injection d\'insuline (SC)'},{id:'pans1',l:'Pansement de plaie non chirurgicale (ulcère)'}]};
+  const trs=[
+    {type:'CONSTANTES',cst:{ta:'13/8',fc:'72',spo2:'',temp:'',gly:'1,05',poids:''},texte:''},
+    {type:'OBS',obs:{douleur:'5',chute:'oui',confusion:'',peau:'rougeur',surcharge:'',observance:''},texte:''},
+    {type:'EVENEMENT',mot:'CHUTE',texte:'chute nocturne'},
+    {type:'LIBRE',texte:'Moral en baisse.'}];
+  const plaies=[PL({id:'plT',localisation:'Talon',lateralite:'G',etiologie:'Escarre'})];
+  const acts=[{mode:'refection',plaieId:'plT',data:{lit:'Fibrineux',exsudat:'Modéré',iso:'Aucun signe'}}];
+  const tx=X.transmissionTexte({name:'Mme T.'},pass,trs,acts,plaies);
+  for(const morceau of ['Mme T.','IDE AL','TA 13/8','FC 72','Glycémie 1,05','douleur EVA 5','chute','peau : rougeur','ÉVÉNEMENT : CHUTE','chute nocturne','Moral en baisse.','Réfection Talon G','Fibrineux','Injection d\'insuline'])
+    eq(tx.includes(morceau),true,'manque « '+morceau+' »');
+  eq(tx.includes('undefined'),false);eq(tx.includes('SpO2'),false,'constante vide affichée');});
+T('transmissionTexte — passage sans transmission : en-tête + soins seulement',()=>{
+  const tx=X.transmissionTexte({name:'M. Z.'},{date:TODAY+'T09:00:00',auteur:'AL',actes:[{id:'insu',l:'Injection'}]},[],[],[]);
+  eq(tx.split('\n').length,2);eq(tx.includes('M. Z.'),true);});
 T('extraireLocal — réfection : mots-clés stricts, zéro invention sur texte neutre',()=>{
   const r=X.extraireLocal('Réfection de la plaie du talon gauche, lit bourgeonnant, exsudat modéré, aucun signe infectieux, pansement inchangé');
   eq(r.refection.lit,'Bourgeonnant');eq(r.refection.exsudat,'Modéré');eq(r.refection.iso,'Aucun signe');

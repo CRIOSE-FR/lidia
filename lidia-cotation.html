@@ -114,7 +114,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.3.2</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.4.0</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -240,6 +240,7 @@ ol{padding-left:18px;font-size:14px}
     <div class="row" style="margin-top:10px"><button class="btn" id="tGo">Recalculer</button><button class="btn sec" id="goPat">+ Patient</button><button class="btn sec" id="tSheet">Feuille</button><button class="chip" id="tFerie" aria-pressed="false" style="align-self:center">Jour férié</button><button class="btn sec" id="tMaps" hidden>Maps</button></div>
     <p class="muted" id="tStatus"></p>
   </div>
+  <div id="tTransShare"></div>
   <div id="tReleves"></div>
   <div id="tRoute"></div>
   <div class="card" style="padding:0;overflow:hidden">
@@ -1059,6 +1060,43 @@ function appliquerPlaiesActions(plaies,actions,passageId,date,patientId){
   return {ok:!err.length,erreurs:err,plaies:out};
 }
 function plaieLabel(pl){return (pl.localisation||"?")+(pl.lateralite&&pl.lateralite!=="NA"?" "+pl.lateralite:"")+" · "+(pl.etiologie||"?")}
+/* texte de transmission du passage, prêt à recopier au cahier de liaison ou à partager —
+   une seule saisie : LIDIA est la source, la deuxième copie devient un copier-coller */
+function transmissionTexte(p,pass,trs,plActions,plaies){
+  const L=[];
+  const d=String(pass.date||"").slice(0,10),h=String(pass.date||"").slice(11,16);
+  L.push((p&&p.name?p.name+" — ":"")+d+(h?" "+h:"")+" · IDE "+(pass.auteur||"??"));
+  if((pass.actes||[]).length)L.push("Soins : "+pass.actes.map(a=>a.l?String(a.l).split("(")[0].trim():a.id).join(" + "));
+  (trs||[]).forEach(t=>{
+    if(t.type==="CONSTANTES"&&t.cst){const c=t.cst,parts=[];
+      if(c.ta)parts.push("TA "+c.ta);if(c.fc)parts.push("FC "+c.fc);if(c.spo2)parts.push("SpO2 "+c.spo2+" %");
+      if(c.temp)parts.push("T° "+c.temp);if(c.gly)parts.push("Glycémie "+c.gly);if(c.poids)parts.push("Poids "+c.poids+" kg");
+      if(parts.length)L.push("Constantes : "+parts.join(" · "));
+      if((t.texte||"").trim())L.push(t.texte.trim());}
+    else if(t.type==="OBS"&&t.obs){const o=t.obs,parts=[];
+      if(o.douleur)parts.push(o.douleur==="oui"?"douleur signalée":"douleur EVA "+o.douleur);
+      if(o.chute==="oui")parts.push("chute");
+      if(o.confusion==="oui")parts.push("confusion");
+      if(o.peau)parts.push("peau : "+o.peau);
+      if(o.surcharge==="oui")parts.push("signes de surcharge");
+      if(o.observance)parts.push("observance "+o.observance);
+      if(parts.length)L.push("Observations : "+parts.join(" · "));
+      if((t.texte||"").trim())L.push(t.texte.trim());}
+    else if(t.type==="EVENEMENT")L.push("ÉVÉNEMENT : "+(t.mot||"—")+((t.texte||"").trim()?" — "+t.texte.trim():""));
+    else if(t.type==="ICOPE")L.push("ICOPE : "+(t.nbAlerts?t.nbAlerts+" alerte(s) — "+ICOPE_DOMS.filter(k=>t.icope&&t.icope[k]==="alerte").join(", "):"6 domaines ok"));
+    else if(t.type==="PHOTO")L.push(t.texte||"Photo de plaie réalisée");
+    else if(t.type==="LIBRE"&&(t.texte||"").trim())L.push(t.texte.trim());
+  });
+  (plActions||[]).forEach(a=>{
+    const pl=(plaies||[]).find(x=>x.id===(a.plaieId||a.id));
+    const lbl=pl?plaieLabel(pl):"plaie";
+    if(a.mode==="ouverture")L.push("Plaie ouverte au suivi : "+lbl);
+    else if(a.mode==="refection")L.push("Réfection "+lbl+" : "+(refResume(a.data)||"faite"));
+    else if(a.mode==="cloture")L.push("Plaie "+lbl+" clôturée : "+((a.data&&a.data.issue)||""));
+    else if(a.mode==="reouverture")L.push("Plaie "+lbl+" rouverte (clôture annulée)");
+  });
+  return L.filter(Boolean).join("\n");
+}
 
 /* ================= MOTEUR — un passage ================= */
 function computePassage(p,dayInfo){
@@ -1582,7 +1620,14 @@ function freshTexts(f){const out=[];Object.keys(FRESH_LBL).forEach(k=>{const s=f
   if(s.etat==="late")out.push(FRESH_LBL[k]+" : "+s.jours+" j");else if(s.etat==="missing")out.push(FRESH_LBL[k]+" : jamais fait");});return out;}
 
 /* ---- écran de passage : état ---- */
-let epIdx=null,epDraft=null,epGeo=null,epDate=null,epPanelOpen={postit:false,socle:false},epPostitDraft=null,epRec=null;
+let epIdx=null,epDraft=null,epGeo=null,epDate=null,epPanelOpen={postit:false,socle:false},epPostitDraft=null,epRec=null,lastTransShare=null;
+/* bandeau « transmission prête » après validation : à recopier au cahier en un coup d'œil, ou à partager */
+function renderTransShare(){const el=$("#tTransShare");if(!el)return;
+  el.innerHTML=lastTransShare?`<div class="card" style="border-left:5px solid var(--teal)">
+    <h2 style="display:flex;justify-content:space-between;align-items:center;gap:8px">📋 Transmission prête — ${esc(lastTransShare.nom)} <button class="x" data-tsclose="1" aria-label="Fermer">×</button></h2>
+    <p class="muted" style="margin:0 0 6px">Une seule saisie : recopiez-la au cahier de liaison d'un coup d'œil, ou envoyez-la telle quelle.</p>
+    <pre style="white-space:pre-wrap;font:inherit;font-size:13.5px;background:rgba(0,0,0,.04);border-radius:8px;padding:10px;margin:0 0 8px">${esc(lastTransShare.texte)}</pre>
+    <div class="row"><button class="btn sm" data-tscopy="1">📋 Copier</button>${navigator.share?`<button class="btn sm sec" data-tsshare="1">📤 Partager</button>`:""}</div></div>`:"";}
 /* modules rétractables (repliés par défaut, préférence mémorisée) */
 let epFoldState=Object.assign({cot:true,trans:true},settings.fold||{});
 function epFoldSave(){settings.fold={cot:!!epFoldState.cot,trans:!!epFoldState.trans};saveSettings();}
@@ -1978,9 +2023,11 @@ function validerPassage(){
     try{localStorage.setItem("lidia.cot.drafts",bakD)}catch(e2){}
     patients=JSON.parse(bakP);passages5=JSON.parse(bakS);drafts=JSON.parse(bakD);
     migratePatients();renderPatients();toast("Stockage plein — passage NON enregistré");return}
+  lastTransShare={nom:p.name,texte:transmissionTexte(p,rec.pass,rec.transmissions,actionsPl,p.plaies||[])};
   epMicStop();epDraft=null;epIdx=null;epGeo=null;
   toast("Passage validé — "+rec.transmissions.length+" transmission(s)"+(actionsPl.length?" · plaies à jour":""));
-  showTab("tour");if(Object.keys(lastRoutes).length)planRoute();renderReleves();
+  showTab("tour");if(Object.keys(lastRoutes).length)planRoute();renderReleves();renderTransShare();
+  const ts=$("#tTransShare");if(ts)ts.scrollIntoView({block:"start"});
 }
 /* ---- post-its : rendu & actions partagés (module 4) ---- */
 function postitHtml(p,pi){
@@ -2223,6 +2270,12 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#epFoldCot").onclick=()=>{epFoldState.cot=!epFoldState.cot;epFoldSave();renderPassage()};
   $("#epFoldTrans").onclick=()=>{epFoldState.trans=!epFoldState.trans;epFoldSave();renderPassage()};
   $("#epPostitsList").addEventListener("click",postitListClick);
+  $("#tTransShare").addEventListener("click",e=>{
+    if(e.target.closest("[data-tsclose]")){lastTransShare=null;renderTransShare();return}
+    if(!lastTransShare)return;
+    if(e.target.closest("[data-tscopy]")){navigator.clipboard?.writeText(lastTransShare.texte).then(()=>toast("Transmission copiée")).catch(()=>toast("Copie impossible — sélectionnez le texte"));return}
+    if(e.target.closest("[data-tsshare]")&&navigator.share){navigator.share({text:lastTransShare.texte}).catch(()=>{});return}
+  });
   $("#tReleves").addEventListener("click",postitListClick);
   $("#pPostits").addEventListener("click",postitListClick);
   $("#pPostits").addEventListener("click",e=>{
