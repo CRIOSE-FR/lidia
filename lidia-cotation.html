@@ -114,7 +114,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.3.1</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.3.2</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -1661,7 +1661,10 @@ function renderEpPanels(){
   if(t.evt)H.push(`<div class="panel"><h3>⚡ Événement <button class="x" data-close="evt">×</button></h3><div class="chips">${MOTS_EVT.map(m=>`<button type="button" class="chip" data-evtmot="${m}" aria-pressed="${t.evt.mot===m}">${m}</button>`).join("")}</div><input type="text" data-evttexte="1" placeholder="Précision (facultatif)…" value="${esc(t.evt.texte||"")}" style="margin-top:6px">`
     +(t.evt.mot==="HOSPIT"&&plActives.length?`<label class="f" style="margin-top:6px">Hospitalisation liée à une plaie ? (facultatif, 1 tap)</label><div class="chips">${plActives.map(pl=>`<button type="button" class="chip" data-evtplaie="${esc(pl.id)}" aria-pressed="${t.evt.liee_plaie===pl.id}">🩹 ${esc(plaieLabel(pl))}</button>`).join("")}</div>`:"")
     +`</div>`);
-  if(t.cst)H.push(`<div class="panel"><h3>🩺 Constantes — vides si non mesurées <button class="x" data-close="cst">×</button></h3><div class="row">${CST_KEYS.map(k=>`<div style="min-width:86px"><label class="f">${CST_LBL[k]}</label><input type="text" inputmode="decimal" data-cst="${k}" value="${esc(t.cst[k]||"")}"></div>`).join("")}</div></div>`);
+  if(t.cst){const taP=String(t.cst.ta||"").split("/"); /* TA en deux cases (systole/diastole) — stockée inchangée « 13/8 » */
+    H.push(`<div class="panel"><h3>🩺 Constantes — vides si non mesurées <button class="x" data-close="cst">×</button></h3><div class="row">${CST_KEYS.map(k=>k==="ta"
+      ?`<div style="min-width:140px"><label class="f">TA — systole / diastole</label><div style="display:flex;gap:4px;align-items:center"><input type="text" inputmode="decimal" data-cstta="sys" value="${esc((taP[0]||"").trim())}" placeholder="13" style="max-width:58px" aria-label="Systole"><b>/</b><input type="text" inputmode="decimal" data-cstta="dia" value="${esc((taP[1]||"").trim())}" placeholder="8" style="max-width:58px" aria-label="Diastole"></div></div>`
+      :`<div style="min-width:86px"><label class="f">${CST_LBL[k]}</label><input type="text" inputmode="decimal" data-cst="${k}" value="${esc(t.cst[k]||"")}"></div>`).join("")}</div></div>`);}
   if(t.obs)H.push(`<div class="panel"><h3>👁 Observations <button class="x" data-close="obs">×</button></h3><div class="row">${OBS_KEYS.map(k=>`<div style="min-width:100px"><label class="f">${OBS_LBL[k]}</label><select data-obs="${k}">${OBS_OPTS[k].map(o=>`<option value="${o}"${(t.obs[k]||"")===o?" selected":""}>${o||"—"}</option>`).join("")}</select></div>`).join("")}</div></div>`);
   if(t.icope)H.push(`<div class="panel"><h3>🧠 ICOPE — les 6 domaines requis <button class="x" data-close="icope">×</button></h3>${ICOPE_DOMS.map(k=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0"><span style="font-size:13px">${ICOPE_LBL[k]}</span><span class="chips" style="margin:0"><button type="button" class="chip" data-icope="${k}" data-val="ok" aria-pressed="${t.icope[k]==="ok"}">ok</button><button type="button" class="chip" data-icope="${k}" data-val="alerte" aria-pressed="${t.icope[k]==="alerte"}">alerte</button></span></div>`).join("")}</div>`);
   if(t.photo)H.push(`<div class="panel"><h3>📷 Photo faite <button class="x" data-close="photo">×</button></h3><p class="muted" style="margin:0 0 6px">La photo reste sur le téléphone — l'app trace seulement qu'elle a été faite.</p><label class="f">Surface (cm², facultatif)</label><input type="text" inputmode="decimal" data-photosurf="1" value="${esc(t.photo.surface||"")}" style="max-width:120px"></div>`);
@@ -1672,7 +1675,10 @@ function renderEpPanels(){
   [["epBtnEvt",!!t.evt],["epBtnObs",!!t.obs],["epBtnCst",!!t.cst],["epBtnIcope",!!t.icope],["epBtnPhoto",!!t.photo],["epBtnPostit",epPanelOpen.postit]].forEach(([id,on])=>{const b=document.getElementById(id);if(b)b.classList.toggle("on",on)});
 }
 function epPanelInput(e){if(!epDraft)return;const t=epDraft.trans,el=e.target;
-  if(el.dataset.cst){t.cst=t.cst||{};t.cst[el.dataset.cst]=el.value;}
+  if(el.dataset.cstta){t.cst=t.cst||{};const box=el.closest(".panel")||document;
+    const sys=((box.querySelector('[data-cstta="sys"]')||{}).value||"").trim(),dia=((box.querySelector('[data-cstta="dia"]')||{}).value||"").trim();
+    t.cst.ta=sys&&dia?sys+"/"+dia:(sys||(dia?"/"+dia:"")); /* format stocké/exporté inchangé : « 13/8 » */}
+  else if(el.dataset.cst){t.cst=t.cst||{};t.cst[el.dataset.cst]=el.value;}
   else if(el.dataset.obs){t.obs=t.obs||{};t.obs[el.dataset.obs]=el.value;}
   else if(el.dataset.evttexte){t.evt=t.evt||{mot:null,texte:""};t.evt.texte=el.value;}
   else if(el.dataset.photosurf){t.photo=t.photo||{};t.photo.surface=el.value;}
