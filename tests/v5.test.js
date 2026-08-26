@@ -5,7 +5,7 @@ let js=fs.readFileSync(__dirname+'/../lidia-cotation.html','utf8').split('<scrip
 js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
   +'globalThis.__x5={freshness,nbRetards,computeTriggers,buildPassageRecord,makePostit,relevesAVoir,alertesOuvertes,alertesEnRetard,validerExtraction,extraireLocal,anonymiserDictee,buildExport,toCSV,byId,SOCLE_J,CONSTANTES_J,PHOTO_PLAIE_J,ICOPE_J,'
   +'SURFACE_J,BILAN_CHIR_J,PLAIE_LOC,PLAIE_LAT,PLAIE_ETIO,PLAIE_STADES,PLAIE_INTERV,PLAIE_ADR,PLAIE_IPS,PLAIE_SUIVI,REF_LIT,REF_EXSUDAT,REF_ISO,REF_PERI,REF_PANS,REF_ORIENT,CLOTURE_ISSUES,'
-  +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions};';
+  +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -350,6 +350,29 @@ T('export — événement HOSPIT lié à une plaie : pseudonyme Pnnn-k, jamais l
 T('refDelaiLbl — délai positif en jours, réfection future (rattrapage antidaté) datée explicitement',()=>{
   eq(X.refDelaiLbl({date:dMoins(6)},TODAY),'il y a 6 j');
   eq(X.refDelaiLbl({date:TODAY},dMoins(3)),'réfection du '+TODAY);});
+T('extraction — réfection dictée : listes fermées acceptées, hors-liste rejeté, partiel permis',()=>{
+  const v=X.validerExtraction({refection:{lit:'Fibrineux',exsudat:'Abondant',iso:'Aucun signe',pansement:'Hydrofibre',surface_cm2:'6,5',localisation:'Jambe',lateralite:'D'}});
+  eq(v.ok,true);eq(v.data.refection.lit,'Fibrineux');eq(v.data.refection.surface_cm2,6.5);
+  const v2=X.validerExtraction({refection:{lit:'Propre',pansement:'Sparadrap',douleur:'8'}});
+  eq(v2.ok,false);eq(v2.data.refection,null,'valeurs hors liste conservées');
+  const v3=X.validerExtraction({refection:{exsudat:'Modéré'}});
+  eq(v3.ok,true);eq(v3.data.refection,{exsudat:'Modéré'},'réfection partielle');
+  const v4=X.validerExtraction({refection:{iso:{ecoulement_purulent:true,invente:true}}});
+  eq(v4.ok,false);eq(v4.data.refection.iso,{ecoulement_purulent:true},'signe hors schéma filtré');});
+T('ciblerPlaie — 1 plaie = cible ; plusieurs = localisation/latéralité dictées, sinon null',()=>{
+  const j_d=PL({id:'a',localisation:'Jambe',lateralite:'D'}),j_g=PL({id:'b',localisation:'Jambe',lateralite:'G'}),tal=PL({id:'c',localisation:'Talon',lateralite:'G'});
+  eq(X.ciblerPlaie([j_d],null).id,'a','plaie unique sans indice');
+  eq(X.ciblerPlaie([j_d,tal],{localisation:'Talon'}).id,'c');
+  eq(X.ciblerPlaie([j_d,j_g],{localisation:'Jambe',lateralite:'G'}).id,'b');
+  eq(X.ciblerPlaie([j_d,j_g],{localisation:'Jambe'}),null,'ambigu deviné');
+  eq(X.ciblerPlaie([j_d,tal],null),null,'plusieurs sans indice deviné');
+  eq(X.ciblerPlaie([],{localisation:'Jambe'}),null);});
+T('extraireLocal — réfection : mots-clés stricts, zéro invention sur texte neutre',()=>{
+  const r=X.extraireLocal('Réfection de la plaie du talon gauche, lit bourgeonnant, exsudat modéré, aucun signe infectieux, pansement inchangé');
+  eq(r.refection.lit,'Bourgeonnant');eq(r.refection.exsudat,'Modéré');eq(r.refection.iso,'Aucun signe');
+  eq(r.refection.pansement,'Inchangé');eq(r.refection.localisation,'Talon');eq(r.refection.lateralite,'G');
+  eq(X.extraireLocal('Pansement refait ce matin, rien de particulier').refection,null,'réfection inventée');
+  eq(X.extraireLocal('TA 13/8, tout va bien').refection,null);});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');

@@ -114,7 +114,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.2.1</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.3.0</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -688,7 +688,8 @@ function alertesEnRetard(pats,now){
 }
 
 /* ---- Module 5 : extraction — interface abstraite + validation stricte ---- */
-function schemaVide(){return {texte:"",mot:null,cst:null,obs:null,icope:null,postit:null}}
+function schemaVide(){return {texte:"",mot:null,cst:null,obs:null,icope:null,postit:null,refection:null}}
+const REF_EXTR_KEYS=["lit","exsudat","iso","peri_lesionnelle","pansement","surface_cm2","orientation","localisation","lateralite"];
 /* validation contre le schéma fermé : tout champ hors liste est rejeté, zéro invention côté app */
 function validerExtraction(j){
   const err=[],out=schemaVide();
@@ -708,7 +709,37 @@ function validerExtraction(j){
       Object.keys(j.icope).forEach(k=>{if(!ICOPE_DOMS.includes(k))err.push("icope hors schéma : "+k)});
       if(!any)out.icope=null;}else err.push("icope invalide");}
   if(j.postit!=null){if(typeof j.postit==="object"&&POSTIT_TYPES.includes(j.postit.type))out.postit={type:j.postit.type,texte:String(j.postit.texte||"").trim()};else err.push("postit invalide");}
+  /* réfection dictée (module 7) : mêmes listes fermées que la saisie manuelle — pré-remplit le
+     panneau, ne s'enregistre jamais sans validation. localisation/lateralite servent uniquement
+     à cibler la bonne plaie active. */
+  if(j.refection!=null){if(typeof j.refection==="object"){const jr=j.refection,rf={};
+    if(jr.lit){if(REF_LIT.includes(jr.lit))rf.lit=jr.lit;else err.push("refection.lit hors liste : "+jr.lit);}
+    if(jr.exsudat){if(REF_EXSUDAT.includes(jr.exsudat))rf.exsudat=jr.exsudat;else err.push("refection.exsudat hors liste : "+jr.exsudat);}
+    if(jr.iso!=null&&jr.iso!==""){if(jr.iso==="Aucun signe")rf.iso="Aucun signe";
+      else if(typeof jr.iso==="object"){const s={};let any=false;
+        REF_ISO.forEach(k=>{if(jr.iso[k]===true){s[k]=true;any=true}});
+        Object.keys(jr.iso).forEach(k=>{if(!REF_ISO.includes(k))err.push("refection.iso hors schéma : "+k)});
+        if(any)rf.iso=s;}
+      else err.push("refection.iso invalide");}
+    if(jr.peri_lesionnelle){if(REF_PERI.includes(jr.peri_lesionnelle))rf.peri_lesionnelle=jr.peri_lesionnelle;else err.push("refection.peri_lesionnelle hors liste");}
+    if(jr.pansement){if(jr.pansement==="Inchangé"||REF_PANS.includes(jr.pansement))rf.pansement=jr.pansement;else err.push("refection.pansement hors liste : "+jr.pansement);}
+    if(jr.surface_cm2!=null&&jr.surface_cm2!==""){const v=parseFloat(String(jr.surface_cm2).replace(",","."));
+      if(isFinite(v)&&v>=0&&v<10000)rf.surface_cm2=v;else err.push("refection.surface_cm2 invalide");}
+    if(jr.orientation){if(REF_ORIENT.includes(jr.orientation))rf.orientation=jr.orientation;else err.push("refection.orientation hors liste");}
+    if(jr.localisation){if(PLAIE_LOC.includes(jr.localisation))rf.localisation=jr.localisation;else err.push("refection.localisation hors liste");}
+    if(jr.lateralite){if(PLAIE_LAT.includes(jr.lateralite))rf.lateralite=jr.lateralite;else err.push("refection.lateralite hors liste");}
+    Object.keys(jr).forEach(k=>{if(!REF_EXTR_KEYS.includes(k))err.push("refection hors schéma : "+k)});
+    if(Object.keys(rf).length)out.refection=rf;}else err.push("refection invalide");}
   return {ok:!err.length,erreurs:err,data:out};
+}
+/* cible la plaie active correspondant à une réfection dictée — jamais de devinette (zéro invention) :
+   une seule plaie active = cible ; plusieurs = il faut une localisation (± latéralité) dictée qui
+   désigne exactement une plaie, sinon null (l'IDEL choisit à la main). */
+function ciblerPlaie(actives,rf){
+  let c=actives||[];
+  if(rf&&rf.localisation)c=c.filter(pl=>pl.localisation===rf.localisation);
+  if(rf&&rf.lateralite&&c.length>1)c=c.filter(pl=>pl.lateralite===rf.lateralite);
+  return c.length===1?c[0]:null;
 }
 /* extracteur hors-ligne par règles : n'extrait que ce qui est dicté, n'invente jamais */
 function extraireLocal(texte){
@@ -749,6 +780,44 @@ function extraireLocal(texte){
   if(/surcharge|oedeme|œdeme|jambes? gonflee|crepitants/.test(tc))obs.surcharge="oui";
   if(/(n'?a pas pris|refuse (son|le|les) (traitement|medicament)|oubli du traitement|mauvaise observance)/.test(tc))obs.observance="mauvaise";
   if(OBS_KEYS.some(k=>obs[k]))out.obs=obs;
+  /* réfection de plaie : mots-clés stricts uniquement — un état du lit, « exsudat X », les signes
+     ISO explicites, une famille de pansement ou une surface. Rien de déduit. */
+  const rf={};
+  if(/epidermis/.test(tc))rf.lit="Épidermisé";
+  else if(/bourgeonn/.test(tc))rf.lit="Bourgeonnant";
+  else if(/fibrin/.test(tc))rf.lit="Fibrineux";
+  else if(/necros|necrot|necrose/.test(tc))rf.lit="Nécrotique";
+  if(m=tc.match(/exsudat[^a-z]{0,8}(absent|modere|abondant)/))rf.exsudat={absent:"Absent",modere:"Modéré",abondant:"Abondant"}[m[1]];
+  else if(/pas d.exsudat/.test(tc))rf.exsudat="Absent";
+  const isoS={};
+  if(/ecoulement purulent|\bpurulent(e?s?)\b/.test(tc))isoS.ecoulement_purulent=true;
+  if(/rougeur extensive/.test(tc))isoS.rougeur_extensive=true;
+  if(/dehiscence/.test(tc))isoS.dehiscence=true;
+  if(Object.keys(isoS).length)rf.iso=isoS;
+  else if(/aucun signe (infectieux|local|inflammatoire)|pas de signe (infectieux|local|inflammatoire)/.test(tc))rf.iso="Aucun signe";
+  if(/macer/.test(tc))rf.peri_lesionnelle="Macérée";
+  else if(/eczema/.test(tc))rf.peri_lesionnelle="Eczéma-rougeur";
+  else if(/peau (autour |peri[- ]?lesionnelle )?saine|pourtour sain/.test(tc))rf.peri_lesionnelle="Saine";
+  if(/pansement inchange/.test(tc))rf.pansement="Inchangé";
+  else if(/hydrocellulaire/.test(tc))rf.pansement="Hydrocellulaire";
+  else if(/hydrogel/.test(tc))rf.pansement="Hydrogel";
+  else if(/alginate/.test(tc))rf.pansement="Alginate";
+  else if(/hydrofibre/.test(tc))rf.pansement="Hydrofibre";
+  else if(/pansement interface|\binterface\b/.test(tc))rf.pansement="Interface";
+  else if(/argent/.test(tc))rf.pansement="Pansement argent";
+  else if(/charbon/.test(tc))rf.pansement="Charbon";
+  else if(/\btpn\b|pression negative/.test(tc))rf.pansement="TPN";
+  if(m=tc.match(/surface[^0-9]{0,10}(\d+(?:[.,]\d+)?)/))rf.surface_cm2=parseFloat(m[1].replace(",","."));
+  else if(m=tc.match(/(\d+(?:[.,]\d+)?)\s*(?:cm2|cm carres?|centimetres? carres?)/))rf.surface_cm2=parseFloat(m[1].replace(",","."));
+  if(/(avis|oriente|adresse)[^.]{0,25}medecin traitant/.test(tc))rf.orientation="Médecin traitant";
+  else if(/consultation plaies?/.test(tc))rf.orientation="Consultation plaies";
+  const rfOK=rf.lit||rf.exsudat||rf.iso||rf.pansement||rf.surface_cm2!=null;
+  if(rfOK){ /* localisation/latéralité dictées : uniquement pour cibler la bonne plaie */
+    const locs=[["talon","Talon"],["sacrum","Sacrum"],["ischion","Ischion"],["trochanter","Trochanter"],["jambe","Jambe"],["pied","Pied"],["abdomen","Abdomen"],["thorax","Thorax"]];
+    for(const [kw,lb] of locs){if(tc.includes(kw)){rf.localisation=lb;break}}
+    if(/\bdroite?\b/.test(tc))rf.lateralite="D";else if(/\bgauche\b/.test(tc))rf.lateralite="G";
+    out.refection=rf;
+  }
   out.texte=corps.trim();
   return out;
 }
@@ -758,17 +827,19 @@ function anonymiserDictee(txt,nom){
   if(n.length>=2){const re=new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi");t=t.replace(re,"le patient");}
   return t;
 }
-const DICTEE_SYS='Tu es infirmier·e libéral·e (IDEL, France). On te donne une transmission dictée. Retourne UNIQUEMENT un JSON valide, sans markdown, avec EXACTEMENT ce schéma et ces clés : {"texte":"...","mot":...,"cst":...,"obs":...,"icope":...,"postit":...}.\n'
+const DICTEE_SYS='Tu es infirmier·e libéral·e (IDEL, France). On te donne une transmission dictée. Retourne UNIQUEMENT un JSON valide, sans markdown, avec EXACTEMENT ce schéma et ces clés : {"texte":"...","mot":...,"cst":...,"obs":...,"icope":...,"postit":...,"refection":...}.\n'
 +'- texte : reformulation professionnelle en 1 à 3 phrases (les détails non codables, ex. « pouls irrégulier », vont ici).\n'
 +'- mot : null, ou UN parmi "HOSPIT","URGENCES","CHUTE","DÉCÈS","EHPAD" si l\'événement est explicitement dicté.\n'
 +'- cst : null si aucune constante dictée, sinon {"ta":"","fc":"","spo2":"","temp":"","gly":"","poids":""} — clés EXACTES. Valeur = le nombre tel que dicté, SANS unité ni commentaire ("13/8", "72", "38,2", "1,05" — jamais "110 irrégulier" ni "72 kg"). Toute constante dictée DOIT être reportée dans son champ : glycémie/dextro→gly · température/fébrile à/fièvre à→temp · saturation/SpO2→spo2 · pouls/fréquence cardiaque→fc · poids/pèse→poids · TA/tension→ta. Champ non dicté = "".\n'
 +'- obs : null si rien à coder, sinon {"douleur":"","chute":"","confusion":"","peau":"","surcharge":"","observance":""} — valeurs FERMÉES uniquement : douleur "0" à "10" (EVA dictée) ou "oui" · chute "oui"/"non" · confusion "oui"/"non" · peau "RAS"/"rougeur"/"plaie"/"escarre" · surcharge "oui"/"non" (œdèmes, crépitants) · observance "bonne"/"partielle"/"mauvaise". Une observation clinique dictée DOIT être codée : "rougeur au talon"→peau:"rougeur" · "escarre"→peau:"escarre" · "plaie propre"→peau:"plaie" · "a chuté"→chute:"oui" · "confuse/désorientée"→confusion:"oui" · "œdèmes"→surcharge:"oui" · "n\'a pas pris son traitement"→observance:"mauvaise" · "EVA 5"→douleur:"5".\n'
 +'- icope : null SAUF si la dictée rapporte EXPLICITEMENT un dépistage ICOPE (le mot « ICOPE » ou l\'évaluation dictée domaine par domaine). Un symptôme isolé (confusion, chute, tristesse…) va dans obs, JAMAIS dans icope. Ne déduis AUCUN domaine, ne remplis JAMAIS les 6 domaines par défaut.\n'
 +'- postit : null, sauf préfixe dicté : "note pour la relève…"→{"type":"RELEVE","texte":"..."} · "alerte…" ou "à signaler au médecin…"→{"type":"ALERTE","texte":"..."} · "mémo…"→{"type":"PERSO","texte":"..."}.\n'
++'- refection : null SAUF si la dictée décrit l\'état de la plaie ou le pansement (réfection). Sinon un objet avec UNIQUEMENT les champs dictés, valeurs FERMÉES : "lit" = "Épidermisé"|"Bourgeonnant"|"Fibrineux"|"Nécrotique" (aspect dominant) · "exsudat" = "Absent"|"Modéré"|"Abondant" · "iso" = "Aucun signe" ("pas de signe infectieux/local") OU {"rougeur_extensive":true,"ecoulement_purulent":true,"dehiscence":true,"fievre_rapportee":true} en ne mettant QUE les signes dictés · "peri_lesionnelle" = "Saine"|"Macérée"|"Eczéma-rougeur" · "pansement" = "Inchangé" ou "Hydrocellulaire"|"Hydrogel"|"Alginate"|"Hydrofibre"|"Interface"|"Pansement argent"|"Charbon"|"TPN"|"Compression associée"|"Autre" · "surface_cm2" = nombre (sans unité) · "orientation" = "Médecin traitant"|"Consultation plaies"|"Urgences" si un avis est demandé POUR LA PLAIE · "localisation" = "Jambe"|"Pied"|"Talon"|"Sacrum"|"Ischion"|"Trochanter"|"Abdomen"|"Thorax"|"Membre sup"|"Tête-face"|"Autre" et "lateralite" = "D"|"G"|"Médian"|"NA" UNIQUEMENT si dictées (elles servent à désigner la plaie). La douleur ne va JAMAIS dans refection (elle va dans obs.douleur).\n'
 +'RÈGLE ABSOLUE : zéro invention — ne remplis un champ que si l\'information est dictée ; ne complète jamais un objet par déduction ; en cas de doute, laisse vide.\n'
 +'Exemples :\n'
-+'Dictée : "Glycémie 1,05 au réveil, insuline faite" → {"texte":"Glycémie à 1,05 g/L au réveil ; insuline administrée.","mot":null,"cst":{"ta":"","fc":"","spo2":"","temp":"","gly":"1,05","poids":""},"obs":null,"icope":null,"postit":null}\n'
-+'Dictée : "Confuse ce matin, a chuté dans la nuit, pouls 110 irrégulier" → {"texte":"Patiente confuse ce matin ; chute nocturne rapportée ; pouls à 110, irrégulier.","mot":"CHUTE","cst":{"ta":"","fc":"110","spo2":"","temp":"","gly":"","poids":""},"obs":{"douleur":"","chute":"oui","confusion":"oui","peau":"","surcharge":"","observance":""},"icope":null,"postit":null}';
++'Dictée : "Glycémie 1,05 au réveil, insuline faite" → {"texte":"Glycémie à 1,05 g/L au réveil ; insuline administrée.","mot":null,"cst":{"ta":"","fc":"","spo2":"","temp":"","gly":"1,05","poids":""},"obs":null,"icope":null,"postit":null,"refection":null}\n'
++'Dictée : "Confuse ce matin, a chuté dans la nuit, pouls 110 irrégulier" → {"texte":"Patiente confuse ce matin ; chute nocturne rapportée ; pouls à 110, irrégulier.","mot":"CHUTE","cst":{"ta":"","fc":"110","spo2":"","temp":"","gly":"","poids":""},"obs":{"douleur":"","chute":"oui","confusion":"oui","peau":"","surcharge":"","observance":""},"icope":null,"postit":null,"refection":null}\n'
++'Dictée : "Réfection de l\'ulcère jambe droite, lit fibrineux, exsudat abondant, pas de signe infectieux, je passe sur hydrofibre, surface 6 cm²" → {"texte":"Réfection de l\'ulcère de la jambe droite : lit fibrineux, exsudat abondant, pas de signe infectieux ; passage à un pansement hydrofibre ; surface 6 cm².","mot":null,"cst":null,"obs":{"douleur":"","chute":"","confusion":"","peau":"plaie","surcharge":"","observance":""},"icope":null,"postit":null,"refection":{"lit":"Fibrineux","exsudat":"Abondant","iso":"Aucun signe","pansement":"Hydrofibre","surface_cm2":6,"localisation":"Jambe","lateralite":"D"}}';
 /* interface abstraite : provider interchangeable (n8n/Claude, API directe, local) */
 const EXTRACTEURS={
   n8n:{l:"Webhook n8n du cabinet (Claude)",async extraire(txt){
@@ -1803,8 +1874,23 @@ function epApplyExtraction(d){const t=epDraft.trans;
   if(d.icope)t.icope=Object.assign({},t.icope||{},objNonVides(d.icope));
   if(d.texte&&!d.mot&&!d.postit&&!((t.libre||"").trim()))t.libre=d.texte;
   if(d.postit){epPostitDraft={type:d.postit.type,texte:d.postit.texte};epPanelOpen.postit=true;}
+  /* réfection dictée : pré-remplit le panneau de la plaie ciblée — l'IDEL vérifie puis OK,
+     jamais d'enregistrement sans validation. Ambiguïté (0 ou plusieurs plaies) : rien n'est appliqué. */
+  let refCiblee=false;
+  if(d.refection){
+    const cible=ciblerPlaie(plaiesActives(dossier(patients[epIdx])),d.refection);
+    if(cible){
+      epDraft.plaies=epDraft.plaies||[];
+      let i=epDraft.plaies.findIndex(a=>a.mode==="refection"&&a.plaieId===cible.id);
+      if(i<0){epDraft.plaies.push({mode:"refection",plaieId:cible.id,data:{}});i=epDraft.plaies.length-1;}
+      const tgt=epDraft.plaies[i].data;
+      ["lit","exsudat","iso","peri_lesionnelle","pansement","surface_cm2","orientation"].forEach(k=>{
+        if(d.refection[k]!=null&&d.refection[k]!=="")tgt[k]=d.refection[k]});
+      epDraft.plaieOpen=i;epDraft.plaieBak=null;refCiblee=true;
+    }
+  }
   if(d.mot||d.cst||d.obs||d.icope||d.texte||d.postit){epFoldState.trans=false;epFoldSave();} /* l'analyse ouvre le module pour vérifier */
-  saveDraft();}
+  saveDraft();return {refCiblee};}
 async function epAnalyser(){
   if(!epDraft)return;
   const txt=$("#epDictee").value.trim();if(!txt){toast("Rien à analyser");return}
@@ -1823,7 +1909,8 @@ async function epAnalyser(){
   }
   $("#epAnalyse").disabled=false;$("#epValider").disabled=false;
   if(epDraft!==draftRef||epIdx!==idxRef){$("#epIaStatus").textContent="Analyse ignorée : le passage a changé pendant l'extraction.";return}
-  epApplyExtraction(data);renderPassage();
+  const infoX=epApplyExtraction(data);renderPassage();
+  if(data.refection&&!infoX.refCiblee)$("#epIaStatus").textContent+=" — 🩹 Réfection dictée non rattachée : "+(plaiesActives(dossier(patients[epIdx])).length?"plusieurs plaies possibles, ouvrez la bonne via son bandeau Réfection (les champs restent à saisir).":"aucune plaie enregistrée — ouvrez d'abord la plaie depuis le bandeau.");
 }
 /* ---- rendu écran de passage ---- */
 function renderPassage(){

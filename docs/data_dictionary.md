@@ -1,6 +1,6 @@
 # Dictionnaire de données — LIDIA Cotation, module transmissions & recueil
 
-> **Version 1.2 — 2026-08-25.** Toute modification de variable passe par une nouvelle
+> **Version 1.3 — 2026-08-26.** Toute modification de variable passe par une nouvelle
 > version datée de ce fichier (aucune variable modifiée silencieusement) et, si le
 > format stocké change, par une migration (`migratePatients()` ou équivalent).
 > Référentiels : spec v5.0, spec Module Plaies v5.0, ICOPE Step 1 (OMS),
@@ -124,8 +124,12 @@ facultatif — champ vide = non renseigné, jamais une valeur par défaut.
   traiteComment, exclureExport (forcé pour PERSO), archive}`. RELEVE/ALERTE s'archivent
   (traçabilité), seul PERSO se supprime ; PERSO jamais transmis ni exporté.
 - Extraction IA : schéma fermé validé par `validerExtraction()` (rejet de tout champ ou
-  valeur hors listes) ; jeu d'évaluation `eval/dictees.json` (30 dictées), critères
+  valeur hors listes) ; jeu d'évaluation `eval/dictees.json` (35 dictées), critères
   bloquants : 0 invention, ≥ 90 % constantes et mot-clé (`node eval/score.js`).
+  Champ `refection` (mêmes listes fermées que la saisie manuelle + `localisation`/`lateralite`
+  dictées pour cibler la plaie) : pré-remplit le panneau réfection de la plaie ciblée par
+  `ciblerPlaie()` (une seule candidate, jamais de devinette) — validation par l'IDEL obligatoire,
+  aucune variable stockée ou exportée nouvelle.
 - `Transmission` EVENEMENT : champ optionnel `liee_plaie` (id interne de plaie, posé uniquement
   si mot=HOSPIT et confirmé en 1 tap ; traduit en `Pnnn-k` à l'export, l'id brut ne sort jamais).
 - `Plaie` (sur le dossier patient, `p.plaies[]`, append-only) : `{id, patientId, date_debut,
@@ -162,4 +166,5 @@ facultatif — champ vide = non renseigné, jamais une valeur par défaut.
 |---|---|---|
 | 1.0 | 2026-08-25 | Version initiale. Inclut : extension de la liste `pathos` de 7 à 19 entrées fermées (libellés d'origine inchangés, justification dans `socle-pathologies.md`) et ajout de la colonne `palliatif` à l'export patients. |
 | 1.1 | 2026-08-25 | Module Plaies (spec Module Plaies v5.0) : nouveaux exports `lidia_plaies_*.csv` et `lidia_refections_*.csv`, structures `Plaie`/`Refection`/`Cloture` sur le dossier patient (migration `migratePatients` : `p.plaies=[]`), règles de fraîcheur `SURFACE_J=15` et `BILAN_CHIR_J=30`, compteur de réfections orphelines. Export patients : ajout de la colonne `nb_plaies_actives` ; la sémantique de `plaie` est précisée (retombe à 0 à la clôture de la dernière plaie enregistrée). Aucune colonne existante renommée ni supprimée. |
+| 1.3 | 2026-08-26 | Dictée → réfection : champ `refection` dans le schéma d'extraction IA (listes fermées identiques à la saisie, ciblage de la plaie par localisation/latéralité dictées via `ciblerPlaie()`, pré-remplissage du panneau — validation IDEL obligatoire). Jeu d'éval porté à 35 dictées (réfections scorées, invention bloquante). Aucune variable stockée ni exportée modifiée. |
 | 1.2 | 2026-08-25 | Suite de revue (16 findings vérifiés) : colonne `liee_plaie` (`Pnnn-k`) dans l'export événements — lien hospitalisation ↔ plaie confirmé en 1 tap (spec) ; champ `ouverture_date` sur `Plaie` (migration : backfill première réfection sinon date du jour) comme borne des réfections orphelines ; trace `reouvertures[]` (correction d'une clôture erronée, jamais silencieuse) ; `date_debut` jamais pré-remplie (chip explicite « Découverte ce jour ») ; écart volontaire documenté : surface `missing` dès l'enregistrement d'une plaie active. Aucune colonne existante renommée ni supprimée. |

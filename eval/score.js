@@ -6,7 +6,7 @@
 const fs=require('fs');
 let js=fs.readFileSync(__dirname+'/../lidia-cotation.html','utf8').split('<script>')[1].split('</script>')[0];
 js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
-  +'globalThis.__x5={extraireLocal,validerExtraction,DICTEE_SYS,CST_KEYS,OBS_KEYS,ICOPE_DOMS};';
+  +'globalThis.__x5={extraireLocal,validerExtraction,DICTEE_SYS,CST_KEYS,OBS_KEYS,ICOPE_DOMS,REF_EXTR_KEYS,REF_ISO};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -23,7 +23,9 @@ async function extraire(texte){
 const normv=v=>String(v??"").trim().toLowerCase().replace(".",",");
 
 (async()=>{
-  const stats={mot:{ok:0,tot:0},cst:{ok:0,tot:0},obs:{ok:0,tot:0},icope:{ok:0,tot:0},postit:{ok:0,tot:0}};
+  const stats={mot:{ok:0,tot:0},cst:{ok:0,tot:0},obs:{ok:0,tot:0},icope:{ok:0,tot:0},postit:{ok:0,tot:0},refection:{ok:0,tot:0}};
+  /* iso : "Aucun signe" ou objet → forme canonique comparable */
+  const isoN=v=>v==null||v===""?"":(v==="Aucun signe"?"aucun":X.REF_ISO.filter(k=>v&&typeof v==="object"&&v[k]).sort().join("+"));
   let inventions=0;const detailsInv=[],detailsMiss=[],raws={};
   for(const d of JEU){
     const brut=await extraire(d.texte);
@@ -54,6 +56,13 @@ const normv=v=>String(v??"").trim().toLowerCase().replace(".",",");
     // post-it (type)
     if(att.postit){stats.postit.tot++;if(got.postit&&got.postit.type===att.postit.type)stats.postit.ok++;else detailsMiss.push(`#${d.id} postit : attendu ${att.postit.type}, obtenu ${got.postit?got.postit.type:"aucun"}`);}
     else if(got.postit){inventions++;detailsInv.push(`#${d.id} postit inventé : ${got.postit.type}`);}
+    // réfection de plaie (module 7) — mêmes règles : champ attendu scoré, champ non attendu = invention
+    for(const k of X.REF_EXTR_KEYS){
+      const a=att.refection?att.refection[k]:null,g=got.refection?got.refection[k]:null;
+      const av=k==="iso"?isoN(a):normv(a??""),gv=k==="iso"?isoN(g):normv(g??"");
+      if(av){stats.refection.tot++;if(gv===av)stats.refection.ok++;else detailsMiss.push(`#${d.id} refection.${k} : attendu "${av}", obtenu "${gv}"`);}
+      else if(gv){inventions++;detailsInv.push(`#${d.id} refection.${k} inventé : "${gv}"`);}
+    }
   }
   const pct=s=>s.tot?Math.round(s.ok/s.tot*100):100;
   console.log(`Éval dictées (${JEU.length} dictées, extracteur ${WEBHOOK?"webhook":"hors-ligne"}) :`);
@@ -62,6 +71,7 @@ const normv=v=>String(v??"").trim().toLowerCase().replace(".",",");
   console.log(`  observations ${stats.obs.ok}/${stats.obs.tot}  (${pct(stats.obs)} %)`);
   console.log(`  icope       ${stats.icope.ok}/${stats.icope.tot}  (${pct(stats.icope)} %)`);
   console.log(`  post-its    ${stats.postit.ok}/${stats.postit.tot}  (${pct(stats.postit)} %)`);
+  console.log(`  réfections  ${stats.refection.ok}/${stats.refection.tot}  (${pct(stats.refection)} %)`);
   console.log(`  inventions  ${inventions}`);
   detailsInv.forEach(x=>console.log('  ⚠ INVENTION',x));
   detailsMiss.forEach(x=>console.log('  ✗',x));
