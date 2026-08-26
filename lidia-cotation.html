@@ -114,7 +114,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.5.0</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.5.1</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -966,6 +966,20 @@ function extraireLocal(texte){
   }
   out.texte=corps.trim();
   return out;
+}
+/* Accumulation de la dictée, robuste aux caprices d'Android : Chrome mobile coupe la session
+   après chaque phrase puis, à la relance, relivre parfois le MÊME segment final — sans garde,
+   la phrase se répète à chaque cycle. Règles : un segment final identique au précédent est
+   ignoré (≥ 4 caractères — un mot très court répété volontairement passe), un long segment
+   déjà présent en fin de texte aussi (≥ 12 caractères). L'interim (texte provisoire) n'entre
+   JAMAIS dans l'état : affichage seulement. */
+function dicteeAccum(etat,seg){
+  etat=etat||{base:"",fin:"",lastSeg:""};
+  seg=String(seg||"").trim();if(!seg)return etat;
+  const nrm=s=>String(s).toLowerCase().replace(/\s+/g," ").trim();
+  if(seg.length>=4&&nrm(seg)===nrm(etat.lastSeg||""))return etat;
+  if(seg.length>=12&&nrm(etat.base+" "+etat.fin).endsWith(nrm(seg)))return etat;
+  return {base:etat.base,fin:(etat.fin?etat.fin+" ":"")+seg,lastSeg:seg};
 }
 /* défense en profondeur : le nom du patient est retiré du texte dicté avant tout envoi à un extracteur distant */
 function anonymiserDictee(txt,nom){
@@ -2232,8 +2246,11 @@ function epPlaiesInput(e){if(!epDraft)return;const el=e.target;if(!el.dataset.pl
   const a=(epDraft.plaies||[])[epDraft.plaieOpen];if(!a)return;a.data[el.dataset.plf]=el.value;saveDraft();}
 /* ---- dictée IA (module 5) ----
    Le navigateur coupe la reconnaissance après quelques secondes de silence : on relance
-   automatiquement tant que Stop n'est pas pressé, et Stop déclenche l'analyse. */
-let epRecWanted=false,epRecBase="";
+   automatiquement tant que Stop n'est pas pressé, et Stop déclenche l'analyse.
+   Anti-répétition (Android) : l'état {base, fin, lastSeg} est la seule source de vérité —
+   l'interim ne s'absorbe jamais dans la base, les finals passent par dicteeAccum() (dédupliqué),
+   et le repli en fin de session ne garde que base + finals. */
+let epRecWanted=false,epRecEtat=null;
 function epMicToggle(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){toast("Dictée vocale non disponible sur ce navigateur — saisissez au clavier");return}
@@ -2242,15 +2259,23 @@ function epMicToggle(){
     if((($("#epDictee")||{}).value||"").trim())epAnalyser();
     return;
   }
-  epRecWanted=true;epRecBase=($("#epDictee").value||"").trim();
+  epRecWanted=true;epRecEtat={base:($("#epDictee").value||"").trim(),fin:"",lastSeg:""};
+  const afficher=inter=>{const ta=$("#epDictee");
+    ta.value=[epRecEtat.base,epRecEtat.fin,String(inter||"").trim()].filter(Boolean).join(" ");
+    if(epDraft){epDraft.dictee=ta.value;saveDraft();}};
   const lancer=()=>{
     epRec=new SR();epRec.lang="fr-FR";epRec.continuous=true;epRec.interimResults=true;
-    epRec.onresult=ev=>{let fin="",inter="";
-      for(let i=0;i<ev.results.length;i++){const r=ev.results[i];if(r.isFinal)fin+=r[0].transcript+" ";else inter+=r[0].transcript;}
-      const ta=$("#epDictee");ta.value=((epRecBase?epRecBase+" ":"")+fin.trim()+(inter?" "+inter:"")).trim();
-      if(epDraft){epDraft.dictee=ta.value;saveDraft();}
+    epRec.onresult=ev=>{let inter="";
+      for(let i=ev.resultIndex;i<ev.results.length;i++){const r=ev.results[i];
+        if(r.isFinal)epRecEtat=dicteeAccum(epRecEtat,r[0].transcript);
+        else inter+=(r[0].transcript||"")+" ";}
+      afficher(inter);
       $("#epIaStatus").textContent="🎙 En écoute — appuyez sur Stop quand vous avez fini.";};
-    epRec.onend=()=>{if(epRecWanted){epRecBase=(($("#epDictee")||{}).value||"").trim();try{lancer()}catch(e){epMicStop()}}else{epRec=null;}};
+    epRec.onend=()=>{if(epRecWanted){
+      /* repli des finals seulement — l'interim disparaît ; lastSeg conservé pour dédupliquer
+         le replay du même segment par Android après la relance */
+      epRecEtat={base:[epRecEtat.base,epRecEtat.fin].filter(Boolean).join(" "),fin:"",lastSeg:epRecEtat.lastSeg};
+      try{lancer()}catch(e){epMicStop()}}else{epRec=null;}};
     epRec.onerror=e=>{if(e&&(e.error==="not-allowed"||e.error==="service-not-allowed")){epMicStop();toast("Micro refusé — autorisez le micro pour ce site dans le navigateur")}};
     epRec.start();
   };
@@ -2642,7 +2667,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#epLines").addEventListener("click",e=>{const b=e.target.closest("[data-eprm]");if(b&&epDraft){epDraft.acts.splice(+b.dataset.eprm,1);saveDraft();renderPassage();}});
   $("#epAlerts").addEventListener("click",e=>{const b=e.target.closest("[data-epadd]");if(b)epAddAct(b.dataset.epadd);});
   $("#epLibre").addEventListener("input",e=>{if(epDraft){epDraft.trans.libre=e.target.value;saveDraft();}});
-  $("#epDictee").addEventListener("input",e=>{if(epDraft){epDraft.dictee=e.target.value;saveDraft();}});
+  $("#epDictee").addEventListener("input",e=>{if(epDraft){epDraft.dictee=e.target.value;saveDraft();}
+    /* correction manuelle pendant l'écoute : le texte tapé devient la nouvelle base (sinon le prochain résultat l'écraserait) */
+    if(epRecWanted&&epRecEtat)epRecEtat={base:e.target.value.trim(),fin:"",lastSeg:epRecEtat.lastSeg};});
   $("#epMic").onclick=epMicToggle;$("#epAnalyse").onclick=epAnalyser;
   $("#epDicteeLibre").onclick=()=>{if(!epDraft)return;const v=$("#epDictee").value.trim();if(!v){toast("Dictée vide");return}
     epDraft.trans.libre=((epDraft.trans.libre||"").trim()?epDraft.trans.libre.trim()+"\n":"")+v;saveDraft();renderPassage();toast("Dictée enregistrée en transmission libre")};

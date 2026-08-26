@@ -8,7 +8,7 @@ js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
   +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie,transmissionTexte,'
   +'DOULEUR_EN,ALGOPLUS_ITEMS,ALGOPLUS_LBL,evaTranche,algoplusScore,migrerDouleur,douleurRenseignee,normaliserDouleur,proposerAlgoplus,dernierIcopeDate,'
   +'pushSurfaceClasse,pushScore,pushHistorique,BRADEN_ECHELLES,bradenEligible,bradenScore,finaliserSocle,isoJ30Statut,'
-  +'woundqolActif,woundqolScore,validerWoundqol,GIRERD_ITEMS,GIRERD_SEUIL_MED,girerdEligible,girerdScore,GIRERD_J,completudeSouhaitable};';
+  +'woundqolActif,woundqolScore,validerWoundqol,GIRERD_ITEMS,GIRERD_SEUIL_MED,girerdEligible,girerdScore,GIRERD_J,completudeSouhaitable,dicteeAccum};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -607,6 +607,25 @@ T('completudeSouhaitable — Braden manquante, Girerd jamais fait/échu, Wound-Q
   eq(out.find(x=>x.type==='woundqol_ouverture').plaieId,'w1');
   eq(out.find(x=>x.type==='woundqol_cloture').plaieId,'w2');
   eq(X.completudeSouhaitable([pat({id:'p3',nbMed:8,girerd:{reponses:gOK.reponses,score:0,date:dMoins(365)}})],TODAY).length,0,'girerd à 365 j compté échu');});
+
+/* ---------- dictée : anti-répétition Android (v5.5.1) ---------- */
+T('dicteeAccum — segment final relivré à l\'identique ignoré, segments distincts accumulés',()=>{
+  let e={base:'',fin:'',lastSeg:''};
+  e=X.dicteeAccum(e,'débranchement de la perfusion ce jour');
+  e=X.dicteeAccum(e,'débranchement de la perfusion ce jour'); // replay Android après relance
+  e=X.dicteeAccum(e,'Débranchement de la perfusion ce jour '); // replay avec casse/espaces différents
+  eq(e.fin,'débranchement de la perfusion ce jour');
+  e=X.dicteeAccum(e,'TA 13/8');
+  eq(e.fin,'débranchement de la perfusion ce jour TA 13/8');});
+T('dicteeAccum — replay après repli en base également ignoré (garde endsWith)',()=>{
+  let e={base:'bonjour débranchement de la perfusion ce jour',fin:'',lastSeg:''};
+  e=X.dicteeAccum(e,'débranchement de la perfusion ce jour');
+  eq(e.fin,'','long segment déjà en fin de texte ré-ajouté');});
+T('dicteeAccum — mots courts répétés volontairement conservés (pas de sur-déduplication)',()=>{
+  let e={base:'',fin:'',lastSeg:''};
+  e=X.dicteeAccum(e,'8');e=X.dicteeAccum(e,'8');
+  eq(e.fin,'8 8','répétition courte volontaire supprimée');
+  eq(X.dicteeAccum({base:'',fin:'',lastSeg:''},'').fin,'');});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');
