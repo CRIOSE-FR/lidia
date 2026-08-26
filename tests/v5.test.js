@@ -7,7 +7,8 @@ js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
   +'SURFACE_J,BILAN_CHIR_J,PLAIE_LOC,PLAIE_LAT,PLAIE_ETIO,PLAIE_STADES,PLAIE_INTERV,PLAIE_ADR,PLAIE_IPS,PLAIE_SUIVI,REF_LIT,REF_EXSUDAT,REF_ISO,REF_PERI,REF_PANS,REF_ORIENT,CLOTURE_ISSUES,'
   +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie,'
   +'DOULEUR_EN,ALGOPLUS_ITEMS,ALGOPLUS_LBL,evaTranche,algoplusScore,migrerDouleur,douleurRenseignee,normaliserDouleur,proposerAlgoplus,dernierIcopeDate,'
-  +'pushSurfaceClasse,pushScore,pushHistorique,BRADEN_ECHELLES,bradenEligible,bradenScore,finaliserSocle,isoJ30Statut};';
+  +'pushSurfaceClasse,pushScore,pushHistorique,BRADEN_ECHELLES,bradenEligible,bradenScore,finaliserSocle,isoJ30Statut,'
+  +'woundqolActif,woundqolScore,validerWoundqol};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -514,6 +515,38 @@ T('export plaies — colonne iso_j30_statut calculée',()=>{
   const E=X.buildExport([p1],[],TODAY,{});
   eq(E.plaiesRows[0].iso_j30_statut,'Suspicion ISO');
   eq(E.plaiesHead.includes('iso_j30_statut'),true);});
+
+/* ---------- v5.4 : Wound-QoL (libellés hors code, placeholder bloquant) ---------- */
+const WQL_OK={placeholder:false,echelle:['Pas','Peu','Moy','Bcp','Énorm'],
+  items:Array.from({length:17},(_,i)=>({id:i+1,sous_echelle:i<5?'corps':i<10?'psychisme':i<16?'vie_quotidienne':null,texte:'Item '+(i+1)}))};
+T('woundqolActif — refuse placeholder, libellés [LIBELLÉ…], mauvais compte',()=>{
+  const ph=JSON.parse(require('fs').readFileSync(__dirname+'/../woundqol_items_fr.json','utf8'));
+  eq(X.woundqolActif(ph),false,'le placeholder livré active l\'écran');
+  eq(X.woundqolActif(WQL_OK),true);
+  eq(X.woundqolActif(Object.assign({},WQL_OK,{placeholder:true})),false);
+  eq(X.woundqolActif(Object.assign({},WQL_OK,{items:WQL_OK.items.slice(0,16)})),false);
+  eq(X.woundqolActif(Object.assign({},WQL_OK,{items:WQL_OK.items.map((x,i)=>i===3?{id:4,texte:'[LIBELLÉ OFFICIEL]'}:x)})),false);
+  eq(X.woundqolActif(null),false);});
+T('woundqolScore — moyenne globale et sous-scores, réponses incomplètes rejetées',()=>{
+  const s=X.woundqolScore(Array(17).fill(2),WQL_OK.items);
+  eq(s.score,2);eq(s.sous,{corps:2,psychisme:2,vie_quotidienne:2});
+  const reps=[4,4,4,4,4, 0,0,0,0,0, 1,1,1,1,1,1, 3];
+  const s2=X.woundqolScore(reps,WQL_OK.items);
+  eq(s2.sous.corps,4);eq(s2.sous.psychisme,0);eq(s2.sous.vie_quotidienne,1);eq(s2.score,1.71);
+  eq(X.woundqolScore(Array(16).fill(2),WQL_OK.items),null);
+  eq(X.woundqolScore(Array(17).fill(null),WQL_OK.items),null);
+  eq(X.woundqolScore(Array(17).fill(5),WQL_OK.items),null,'valeur hors échelle acceptée');});
+T('appliquerPlaiesActions — Wound-QoL attaché à l\'ouverture et à la clôture, score borné',()=>{
+  const r=X.appliquerPlaiesActions([],[{mode:'ouverture',id:'plW',woundqol:{score:1.5,date:dMoins(0)},data:{date_debut:TODAY,localisation:'Jambe',lateralite:'G',etiologie:'Traumatique',suivi_specialise:'Non'}}],'p1',TODAY,'pa');
+  eq(r.ok,true);eq(r.plaies[0].woundqol_ouverture.score,1.5);
+  const r2=X.appliquerPlaiesActions(r.plaies,[{mode:'cloture',plaieId:'plW',woundqol:{score:0.75},data:{issue:'Cicatrisée'}}],'p2',TODAY,'pa');
+  eq(r2.ok,true);eq(r2.plaies[0].woundqol_cloture.score,0.75);eq(r2.plaies[0].woundqol_cloture.date,TODAY);
+  const r3=X.appliquerPlaiesActions([],[{mode:'ouverture',id:'plX',woundqol:{score:9},data:{date_debut:TODAY,localisation:'Jambe',lateralite:'G',etiologie:'Traumatique',suivi_specialise:'Non'}}],'p1',TODAY,'pa');
+  eq(r3.ok,true);eq('woundqol_ouverture' in r3.plaies[0],false,'score hors bornes stocké');});
+T('export plaies — woundqol_ouverture_score / woundqol_cloture_score',()=>{
+  const p1=pat({id:'pa',name:'X',plaies:[PL({id:'plA',woundqol_ouverture:{score:2.3,date:dMoins(9)},cloture:{date:dMoins(1),issue:'Cicatrisée'},woundqol_cloture:{score:0.5,date:dMoins(1)}})]});
+  const E=X.buildExport([p1],[],TODAY,{});
+  eq(E.plaiesRows[0].woundqol_ouverture_score,2.3);eq(E.plaiesRows[0].woundqol_cloture_score,0.5);});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');

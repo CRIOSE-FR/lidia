@@ -448,6 +448,7 @@ ol{padding-left:18px;font-size:14px}
     <div class="row" style="margin-top:10px"><button class="btn" id="initOk">Commencer</button></div>
   </div>
 </div>
+<div class="overlay" id="wqlDlg" hidden><div class="card" id="wqlCard" style="max-width:440px"></div></div>
 <div id="sheet" hidden></div>
 
 <div class="toast" id="toast"></div>
@@ -1159,6 +1160,32 @@ function isoJ30Statut(pl){
   if(sig("rougeur_extensive")||sig("fievre_rapportee"))return "Signes mineurs";
   return "Aucun signe";
 }
+/* ---- Wound-QoL (ouverture et clôture de plaie) : questionnaire auto-administré, 17 items 0-4.
+   Libellés STRICTEMENT hors code : woundqol_items_fr.json (placeholder + TODO licence) — l'écran
+   refuse de s'activer tant que le fichier contient le placeholder. Score global = moyenne 0-4,
+   sous-scores par sous-échelle. Refus toujours possible, tracé (propositions type "woundqol"). */
+function woundqolActif(d){
+  return !!(d&&d.placeholder!==true&&Array.isArray(d.items)&&d.items.length===17
+    &&d.items.every(x=>x&&typeof x.texte==="string"&&x.texte.trim()&&!/\[LIBELL/.test(x.texte))
+    &&Array.isArray(d.echelle)&&d.echelle.length===5&&d.echelle.every(x=>typeof x==="string"&&x.trim()&&!/\[/.test(x)));
+}
+function woundqolScore(reps,items){
+  if(!Array.isArray(reps)||reps.length!==17)return null;
+  if(!reps.every(v=>Number.isInteger(v)&&v>=0&&v<=4))return null;
+  const r2=x=>Math.round(x*100)/100;
+  const sous={};
+  (items||[]).forEach((it,i)=>{const g=it&&it.sous_echelle;if(!g)return;(sous[g]=sous[g]||[]).push(reps[i])});
+  const out={score:r2(reps.reduce((a,b)=>a+b,0)/17),sous:{}};
+  Object.keys(sous).forEach(g=>out.sous[g]=r2(sous[g].reduce((a,b)=>a+b,0)/sous[g].length));
+  return out;
+}
+function validerWoundqol(o){o=o||{};
+  const v=parseFloat(o.score);
+  if(!isFinite(v)||v<0||v>4)return {ok:false,erreurs:["Wound-QoL : score global 0-4 attendu"],data:{}};
+  const d={score:Math.round(v*100)/100,date:String(o.date||"").slice(0,10)||undefined};
+  if(o.sous&&typeof o.sous==="object"){d.sous={};Object.keys(o.sous).forEach(k=>{const s=parseFloat(o.sous[k]);if(isFinite(s)&&s>=0&&s<=4)d.sous[k]=Math.round(s*100)/100});}
+  return {ok:true,erreurs:[],data:d};
+}
 /* historique PUSH d'une plaie (chronologique) : une entrée par réfection portant surface + lit + exsudat */
 function pushHistorique(pl){
   return ((pl&&pl.refections)||[]).filter(r=>r.surface_cm2!=null&&r.surface_cm2!==""&&r.lit&&r.exsudat)
@@ -1193,7 +1220,9 @@ function appliquerPlaiesActions(plaies,actions,passageId,date,patientId){
   const out=JSON.parse(JSON.stringify(plaies||[])),err=[];
   (actions||[]).forEach(a=>{
     if(a.mode==="ouverture"){const v=validerPlaie(a.data);if(!v.ok){err.push(...v.erreurs);return}
-      out.push(Object.assign({id:a.id||uid("pl"),patientId,ouverture_date:date,refections:[],cloture:null},v.data));}
+      const nu=Object.assign({id:a.id||uid("pl"),patientId,ouverture_date:date,refections:[],cloture:null},v.data);
+      if(a.woundqol){const w=validerWoundqol(a.woundqol);if(w.ok)nu.woundqol_ouverture=Object.assign(w.data,{date:w.data.date||date});}
+      out.push(nu);}
     else if(a.mode==="refection"){const pl=out.find(x=>x.id===a.plaieId);
       if(!pl){err.push("réfection : plaie introuvable");return}
       const v=validerRefection(a.data);if(!v.ok){err.push(...v.erreurs);return}
@@ -1202,7 +1231,8 @@ function appliquerPlaiesActions(plaies,actions,passageId,date,patientId){
       if(!pl){err.push("clôture : plaie introuvable");return}
       if(pl.cloture){err.push("plaie déjà clôturée");return}
       const v=validerCloture(a.data);if(!v.ok){err.push(...v.erreurs);return}
-      pl.cloture={date,issue:v.data.issue};}
+      pl.cloture={date,issue:v.data.issue};
+      if(a.woundqol){const w=validerWoundqol(a.woundqol);if(w.ok)pl.woundqol_cloture=Object.assign(w.data,{date:w.data.date||date});}}
     else if(a.mode==="reouverture"){const pl=out.find(x=>x.id===a.plaieId);
       if(!pl){err.push("réouverture : plaie introuvable");return}
       if(!pl.cloture){err.push("réouverture : plaie non clôturée");return}
@@ -2014,8 +2044,56 @@ function renderEpPlaies(){
     if(decl)H.push(`<div class="trigband done"><span>✕ Suivi de plaie — pas ce passage (tracé)</span></div>`);
     else H.push(`<div class="trigband"><span style="flex:1"><b>Suivi de plaie</b> · Pansement coté : ouvrir le dossier de cette plaie ?</span><button class="btn sm" data-plouv="1">Ouvrir la plaie</button><button class="btn sm sec" data-pldec="1">Pas ce passage</button></div>`);}
   else if(hasPans)H.push(`<div style="text-align:right;margin:4px 0"><button class="btn sm sec" data-plouv="1">+ Autre plaie</button></div>`);
+  /* Wound-QoL : proposé dès qu'une ouverture ou une clôture est prête dans ce passage (refus tracé) */
+  acts.forEach((a,i)=>{
+    if(a.mode!=="ouverture"&&a.mode!=="cloture")return;
+    const ok=a.mode==="ouverture"?validerPlaie(a.data).ok:validerCloture(a.data).ok;
+    if(!ok)return;
+    const pl=a.mode==="cloture"?(p.plaies||[]).find(x=>x.id===a.plaieId):null;
+    const lbl=a.mode==="ouverture"?[a.data.localisation,a.data.etiologie].filter(Boolean).join(" · ")||"nouvelle plaie":(pl?plaieLabel(pl):"plaie");
+    if(a.woundqol)H.push(`<div class="trigband done"><span>✓ Wound-QoL (${a.mode==="ouverture"?"ouverture":"clôture"} · ${esc(lbl)}) — score ${esc(String(a.woundqol.score).replace(".",","))}/4, enregistré à la validation</span></div>`);
+    else if(!a.woundqol_refus)H.push(`<div class="trigband"><span style="flex:1">🗣 <b>Wound-QoL</b> (qualité de vie, ${a.mode==="ouverture"?"ouverture":"clôture"} · ${esc(lbl)}) — tendre la tablette au patient ?</span><button class="btn sm" data-wqlgo="${i}">Faire</button><button class="btn sm sec" data-wqldec="${i}">Pas ce passage</button></div>`);
+    else H.push(`<div class="trigband done"><span>✕ Wound-QoL (${a.mode==="ouverture"?"ouverture":"clôture"}) — pas ce passage (tracé)</span></div>`);
+  });
   if(epDraft.plaieOpen!=null&&acts[epDraft.plaieOpen])H.push(plaiePanelHtml(acts[epDraft.plaieOpen],p));
   box.innerHTML=H.join("");
+}
+/* ---- Wound-QoL : écran auto-administré, item par item, gros boutons (mode « tendre la tablette »).
+   Les libellés viennent exclusivement de woundqol_items_fr.json — refus de s'activer sur placeholder. */
+let wqlData,wqlCtx=null;
+async function chargerWoundqol(){
+  if(wqlData!==undefined)return wqlData;
+  try{const r=await fetch("woundqol_items_fr.json",{cache:"no-store"});wqlData=r.ok?await r.json():null}catch(e){wqlData=null}
+  return wqlData;
+}
+async function lancerWoundqol(i){
+  const d=await chargerWoundqol();
+  if(!woundqolActif(d)){toast("Wound-QoL indisponible : libellés officiels non installés (woundqol_items_fr.json contient le placeholder — licence à vérifier)");return}
+  wqlCtx={i,reps:Array(17).fill(null),pos:0};
+  $("#wqlDlg").hidden=false;renderWql();
+}
+function renderWql(){
+  const d=wqlData,c=wqlCtx;if(!c)return;
+  const it=d.items[c.pos];
+  $("#wqlCard").innerHTML=`<h2 style="margin:0 0 2px">Wound-QoL — ${c.pos+1}/17</h2>
+    <p class="muted" style="margin:0 0 8px">${esc(d.rappel_periode||"")} · réponse du patient</p>
+    <p style="font-size:17px;line-height:1.4;margin:0">${esc(it.texte)}</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">${d.echelle.map((l,v)=>`<button class="btn${c.reps[c.pos]===v?"":" sec"}" style="font-size:16px;padding:14px" data-wqlv="${v}">${esc(l)}</button>`).join("")}</div>
+    <div class="row" style="margin-top:12px">${c.pos>0?'<button class="btn sec sm" data-wqlprev="1">← Précédent</button>':""}<button class="btn sec sm" data-wqlstop="1">Annuler</button></div>`;
+}
+function wqlClick(e){
+  if(!wqlCtx)return;const c=wqlCtx;
+  const v=e.target.closest("[data-wqlv]");
+  if(v){c.reps[c.pos]=+v.dataset.wqlv;
+    if(c.pos<16){c.pos++;renderWql();return}
+    const sc=woundqolScore(c.reps,wqlData.items);
+    if(!sc){toast("Réponses incomplètes");return}
+    const a=((epDraft&&epDraft.plaies)||[])[c.i];
+    if(a){a.woundqol={score:sc.score,sous:sc.sous,date:epDate};saveDraft();}
+    $("#wqlDlg").hidden=true;wqlCtx=null;renderEpPlaies();
+    toast("Wound-QoL : score "+String(sc.score).replace(".",",")+"/4 — enregistré à la validation du passage");return}
+  if(e.target.closest("[data-wqlprev]")){if(c.pos>0){c.pos--;renderWql();}return}
+  if(e.target.closest("[data-wqlstop]")){$("#wqlDlg").hidden=true;wqlCtx=null;return}
 }
 function epPlaiesClick(e){
   if(!epDraft)return;epDraft.plaies=epDraft.plaies||[];
@@ -2028,6 +2106,9 @@ function epPlaiesClick(e){
   if(b=e.target.closest("[data-plref]")){acts.push({mode:"refection",plaieId:b.dataset.plref,data:{}});open(acts.length-1,true);return}
   if(b=e.target.closest("[data-plclo]")){acts.push({mode:"cloture",plaieId:b.dataset.plclo,data:{}});open(acts.length-1,true);return}
   if(b=e.target.closest("[data-plro]")){acts.push({mode:"reouverture",plaieId:b.dataset.plro,data:{}});saveDraft();renderEpPlaies();toast("Réouverture préparée — la clôture sera annulée (et tracée) à la validation");return}
+  if(b=e.target.closest("[data-wqlgo]")){lancerWoundqol(+b.dataset.wqlgo);return}
+  if(b=e.target.closest("[data-wqldec]")){const a=acts[+b.dataset.wqldec];
+    if(a&&!a.woundqol_refus){a.woundqol_refus=true;epDraft.props=epDraft.props||[];epDraft.props.push({type:"woundqol",declined:true});saveDraft();renderEpPlaies();}return}
   if(b=e.target.closest("[data-pled]")){open(+b.dataset.pled,false);return}
   if(b=e.target.closest("[data-plrm]")){if(!confirm("Retirer cette saisie plaie du passage ? (rien n'est encore enregistré)"))return;
     acts.splice(+b.dataset.plrm,1);epDraft.plaieOpen=null;epDraft.plaieBak=null;saveDraft();renderEpPlaies();return}
@@ -2457,6 +2538,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#epTriggers").addEventListener("click",epTriggerClick);
   $("#epPlaies").addEventListener("click",epPlaiesClick);
   $("#epPlaies").addEventListener("input",epPlaiesInput);
+  $("#wqlDlg").addEventListener("click",wqlClick);
   $("#dashPlaies").addEventListener("click",e=>{const b=e.target.closest("[data-dashp]");if(b)openPassage(+b.dataset.dashp)});
   $("#epHead").addEventListener("click",e=>{if(e.target.closest("[data-epfiche]")&&epIdx!=null){editIdx=epIdx;fillForm(patients[epIdx]);showTab("pat");setTimeout(()=>$("#pName").scrollIntoView({block:"start"}),60);}});
   $("#epValider").onclick=validerPassage;
