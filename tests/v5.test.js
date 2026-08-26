@@ -8,7 +8,7 @@ js=js.slice(0,js.indexOf('document.addEventListener("DOMContentLoaded"'))
   +'plaiesActives,validerPlaie,validerRefection,validerCloture,plaieFraicheur,delaiCicatrisation,dernRefection,refDelaiLbl,refectionsOrphelines,appliquerPlaiesActions,ciblerPlaie,'
   +'DOULEUR_EN,ALGOPLUS_ITEMS,ALGOPLUS_LBL,evaTranche,algoplusScore,migrerDouleur,douleurRenseignee,normaliserDouleur,proposerAlgoplus,dernierIcopeDate,'
   +'pushSurfaceClasse,pushScore,pushHistorique,BRADEN_ECHELLES,bradenEligible,bradenScore,finaliserSocle,isoJ30Statut,'
-  +'woundqolActif,woundqolScore,validerWoundqol};';
+  +'woundqolActif,woundqolScore,validerWoundqol,GIRERD_ITEMS,GIRERD_SEUIL_MED,girerdEligible,girerdScore};';
 global.localStorage={getItem:()=>null,setItem:()=>{}};
 global.document={querySelector:()=>({value:'2026-08-22'})};
 eval(js);
@@ -547,6 +547,31 @@ T('export plaies — woundqol_ouverture_score / woundqol_cloture_score',()=>{
   const p1=pat({id:'pa',name:'X',plaies:[PL({id:'plA',woundqol_ouverture:{score:2.3,date:dMoins(9)},cloture:{date:dMoins(1),issue:'Cicatrisée'},woundqol_cloture:{score:0.5,date:dMoins(1)}})]});
   const E=X.buildExport([p1],[],TODAY,{});
   eq(E.plaiesRows[0].woundqol_ouverture_score,2.3);eq(E.plaiesRows[0].woundqol_cloture_score,0.5);});
+
+/* ---------- v5.4 : Girerd (observance, polymédiqués) ---------- */
+T('girerdScore — 6 items O/N, seuils 0 / 1-2 / ≥ 3, incomplet rejeté',()=>{
+  eq(X.GIRERD_ITEMS.length,6);
+  eq(X.girerdScore([false,false,false,false,false,false]),{score:0,lecture:'bonne observance'});
+  eq(X.girerdScore([true,false,false,false,false,false]).lecture,'minime problème d\'observance');
+  eq(X.girerdScore([true,true,false,false,false,false]),{score:2,lecture:'minime problème d\'observance'});
+  eq(X.girerdScore([true,true,true,false,false,false]),{score:3,lecture:'mauvaise observance'});
+  eq(X.girerdScore([true,true,true,true,true,true]).score,6);
+  eq(X.girerdScore([true,true,null,false,false,false]),null,'item sans réponse accepté');
+  eq(X.girerdScore([true,true,false,false,false]),null);});
+T('girerdEligible — seuil nbMed ≥ 5',()=>{
+  eq(X.girerdEligible(pat({nbMed:5})),true);eq(X.girerdEligible(pat({nbMed:4})),false);
+  eq(X.girerdEligible(pat({nbMed:null})),false);eq(X.girerdEligible(pat({})),false);});
+T('finaliserSocle — Girerd complet scoré/daté, partiel = Plus tard',()=>{
+  const d=X.finaliserSocle({girerd:{reponses:[true,true,true,false,false,false]}},TODAY);
+  eq(d.girerd,{reponses:[true,true,true,false,false,false],score:3,date:TODAY});
+  eq('girerd' in X.finaliserSocle({girerd:{reponses:[true,null,null,null,null,null]}},TODAY),false);});
+T('export — girerd_score / girerd_date / braden_score / braden_date',()=>{
+  const p1=pat({id:'pa',name:'X',braden:{perception:2,humidite:2,activite:2,mobilite:2,nutrition:2,friction:2,score:12,risque:'élevé',date:dMoins(3)},girerd:{reponses:[true,false,false,false,false,false],score:1,date:dMoins(3)}});
+  const E=X.buildExport([p1],[],TODAY,{});
+  eq(E.rows[0].braden_score,12);eq(E.rows[0].braden_date,dMoins(3));
+  eq(E.rows[0].girerd_score,1);eq(E.rows[0].girerd_date,dMoins(3));
+  const E2=X.buildExport([pat({id:'pb',name:'Y'})],[],TODAY,{});
+  eq(E2.rows[0].braden_score,'');eq(E2.rows[0].girerd_score,'');});
 
 if(fails){console.log(fails+' test(s) v5 en échec');process.exit(1);}
 console.log('Tous les tests v5 passent.');

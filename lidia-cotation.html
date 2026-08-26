@@ -642,6 +642,24 @@ const BRADEN_ECHELLES=[
  {k:"friction",lbl:"Friction et cisaillement",opts:["Problème","Problème potentiel","Pas de problème apparent"]},
 ];
 function bradenEligible(p){return !!(p&&(p.bsi||p.autonomie==="Dépendant"))}
+/* ---- Girerd (observance médicamenteuse) : 6 items O/N, libellés officiels (Girerd 2001) —
+   score = nombre de « oui » : 0 = bonne observance, 1-2 = minime problème, ≥ 3 = mauvaise.
+   Proposé à chaque revalidation de socle (annuel de fait) chez les polymédiqués (nbMed ≥ 5). */
+const GIRERD_ITEMS=[
+ "Ce matin, avez-vous oublié de prendre votre médicament ?",
+ "Depuis la dernière consultation, avez-vous été en panne de médicament ?",
+ "Vous est-il arrivé de prendre votre traitement avec retard ?",
+ "Vous est-il arrivé de ne pas prendre votre traitement parce que, certains jours, votre mémoire vous fait défaut ?",
+ "Vous est-il arrivé de ne pas prendre votre traitement parce que, certains jours, vous avez l'impression que votre traitement vous fait plus de mal que de bien ?",
+ "Pensez-vous que vous avez trop de comprimés à prendre ?",
+];
+const GIRERD_SEUIL_MED=5;
+function girerdEligible(p){return !!(p&&p.nbMed!=null&&p.nbMed>=GIRERD_SEUIL_MED)}
+function girerdScore(reps){
+  if(!Array.isArray(reps)||reps.length!==6||!reps.every(v=>typeof v==="boolean"))return null;
+  const s=reps.filter(Boolean).length;
+  return {score:s,lecture:s===0?"bonne observance":s<=2?"minime problème d'observance":"mauvaise observance"};
+}
 function bradenScore(o){
   o=o||{};let s=0;
   for(const e of BRADEN_ECHELLES){const v=+o[e.k];
@@ -2333,7 +2351,19 @@ function socleFieldsHtml(p,pre){
   <div class="row" style="margin-top:6px">
     <div><label class="f">Nb médicaments</label><input type="number" id="${pre}NbMed" min="0" value="${p.nbMed??""}"></div>
     ${sel("Autonomie",AUTONOMIE_LIST,p.autonomie||"","Autonomie")}
-    ${sel("AdressePar",ADRESSE_PAR_LIST,p.adresse_par||"","Adressé par")}</div>${bradenFieldsHtml(p,pre)}`;
+    ${sel("AdressePar",ADRESSE_PAR_LIST,p.adresse_par||"","Adressé par")}</div>${bradenFieldsHtml(p,pre)}${girerdFieldsHtml(p,pre)}`;
+}
+/* questionnaire de Girerd conditionnel (nbMed ≥ 5) — laisser vide vaut « Plus tard », re-proposé
+   à chaque revalidation du socle (rythme annuel de fait) */
+function girerdFieldsHtml(p,pre){
+  if(!girerdEligible(p))return "";
+  const reps=(p.girerd&&p.girerd.reponses)||[];
+  const done=p.girerd&&p.girerd.score!=null;
+  const s=done?girerdScore(p.girerd.reponses):null;
+  return `<details style="margin-top:8px"${done?"":" open"}><summary style="font-size:13px;font-weight:600;cursor:pointer">💊 Test de Girerd (observance)${done?" — "+p.girerd.score+"/6 le "+esc(p.girerd.date):" — à faire"}</summary>
+    <p class="muted" style="margin:6px 0 0">Proposé car ≥ ${GIRERD_SEUIL_MED} médicaments. Réponses du patient. 0 = bonne observance · 1-2 = minime problème · ≥ 3 = mauvaise. Laisser vide = « Plus tard » (compté en qualité renforcée, jamais bloquant).</p>
+    ${GIRERD_ITEMS.map((q,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0"><span style="font-size:13px;flex:1">${i+1}. ${esc(q)}</span><select id="${pre}Girerd_${i}" style="width:84px;flex:none"><option value="">—</option><option value="1"${reps[i]===true?" selected":""}>Oui</option><option value="0"${reps[i]===false?" selected":""}>Non</option></select></div>`).join("")}
+    ${done&&s?`<p class="muted" style="margin:6px 0 0">Dernier score : <b>${p.girerd.score}/6</b> (${s.lecture}) le ${esc(p.girerd.date)}.</p>`:""}</details>`;
 }
 /* grille Braden conditionnelle (BSI ou Dépendant) — laisser vide vaut « Plus tard » (incomplétude
    souhaitable au tableau de bord, jamais bloquant), re-proposée à chaque revalidation du socle */
@@ -2353,10 +2383,13 @@ function readSocleFields(pre){
   const out={annee:g("Annee")&&g("Annee").value?+g("Annee").value:null,sexe:g("Sexe")?g("Sexe").value:"",commune:g("Commune")?g("Commune").value.trim():"",
     vitSeul:chip("VitSeul"),aidant:chip("Aidant"),institution:chip("Institution"),plaie:chip("Plaie"),bsi:chip("Bsi"),
     pathos,nbMed:g("NbMed")&&g("NbMed").value!==""?+g("NbMed").value:null,autonomie:g("Autonomie")?g("Autonomie").value:"",adresse_par:g("AdressePar")?g("AdressePar").value:""};
-  /* Braden : capture brute (éventuellement partielle) — finalisée/scorée par finaliserSocle() */
+  /* Braden / Girerd : capture brute (éventuellement partielle) — finalisées/scorées par finaliserSocle() */
   const br={};let brN=0;
   BRADEN_ECHELLES.forEach(e=>{const el=g("Braden_"+e.k);if(el&&el.value){br[e.k]=+el.value;brN++}});
   if(brN)out.braden=br;
+  const gi=[];let giN=0;
+  GIRERD_ITEMS.forEach((q,i)=>{const el=g("Girerd_"+i);gi.push(el&&el.value!==""&&el.value!=null?el.value==="1":null);if(gi[i]!=null)giN++});
+  if(giN)out.girerd={reponses:gi};
   return out;
 }
 /* au commit du socle : les instruments saisis complets sont scorés et datés par le moteur ;
@@ -2366,6 +2399,9 @@ function finaliserSocle(data,date){
   if(d.braden){const s=bradenScore(d.braden);
     if(s)d.braden=Object.assign({},d.braden,{score:s.score,risque:s.risque,date:date||todayISO()});
     else delete d.braden;}
+  if(d.girerd){const s=girerdScore(d.girerd.reponses);
+    if(s)d.girerd={reponses:d.girerd.reponses.slice(),score:s.score,date:date||todayISO()};
+    else delete d.girerd;}
   return d;
 }
 function renderSocleForm(p){const el=$("#pSocleFields");if(!el)return;
