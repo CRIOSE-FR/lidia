@@ -1,0 +1,32 @@
+{
+ "instrument": "Wound-QoL — qualité de vie liée aux plaies chroniques, version française, 17 items",
+ "placeholder": true,
+ "TODO": "insérer les 17 libellés officiels de la version française validée du Wound-QoL (et les 5 libellés officiels de l'échelle de réponse) — licence/conditions d'usage à vérifier avant production (www.wound-qol.com). Ne JAMAIS reformuler ni traduire soi-même les libellés. Tant que ce fichier contient placeholder:true ou des textes [LIBELLÉ…], l'écran Wound-QoL refuse de s'activer.",
+ "rappel_periode": "au cours des 7 derniers jours",
+ "echelle": [
+  "[0 — LIBELLÉ OFFICIEL DE L'ANCRE 0 — Wound-QoL FR]",
+  "[1 — LIBELLÉ OFFICIEL DE L'ANCRE 1 — Wound-QoL FR]",
+  "[2 — LIBELLÉ OFFICIEL DE L'ANCRE 2 — Wound-QoL FR]",
+  "[3 — LIBELLÉ OFFICIEL DE L'ANCRE 3 — Wound-QoL FR]",
+  "[4 — LIBELLÉ OFFICIEL DE L'ANCRE 4 — Wound-QoL FR]"
+ ],
+ "items": [
+  {"id": 1,  "sous_echelle": "corps",           "texte": "[LIBELLÉ OFFICIEL ITEM 1 — Wound-QoL FR]"},
+  {"id": 2,  "sous_echelle": "corps",           "texte": "[LIBELLÉ OFFICIEL ITEM 2 — Wound-QoL FR]"},
+  {"id": 3,  "sous_echelle": "corps",           "texte": "[LIBELLÉ OFFICIEL ITEM 3 — Wound-QoL FR]"},
+  {"id": 4,  "sous_echelle": "corps",           "texte": "[LIBELLÉ OFFICIEL ITEM 4 — Wound-QoL FR]"},
+  {"id": 5,  "sous_echelle": "corps",           "texte": "[LIBELLÉ OFFICIEL ITEM 5 — Wound-QoL FR]"},
+  {"id": 6,  "sous_echelle": "psychisme",       "texte": "[LIBELLÉ OFFICIEL ITEM 6 — Wound-QoL FR]"},
+  {"id": 7,  "sous_echelle": "psychisme",       "texte": "[LIBELLÉ OFFICIEL ITEM 7 — Wound-QoL FR]"},
+  {"id": 8,  "sous_echelle": "psychisme",       "texte": "[LIBELLÉ OFFICIEL ITEM 8 — Wound-QoL FR]"},
+  {"id": 9,  "sous_echelle": "psychisme",       "texte": "[LIBELLÉ OFFICIEL ITEM 9 — Wound-QoL FR]"},
+  {"id": 10, "sous_echelle": "psychisme",       "texte": "[LIBELLÉ OFFICIEL ITEM 10 — Wound-QoL FR]"},
+  {"id": 11, "sous_echelle": "vie_quotidienne", "texte": "[LIBELLÉ OFFICIEL ITEM 11 — Wound-QoL FR]"},
+  {"id": 12, "sous_echelle": "vie_quotidienne", "texte": "[LIBELLÉ OFFICIEL ITEM 12 — Wound-QoL FR]"},
+  {"id": 13, "sous_echelle": "vie_quotidienne", "texte": "[LIBELLÉ OFFICIEL ITEM 13 — Wound-QoL FR]"},
+  {"id": 14, "sous_echelle": "vie_quotidienne", "texte": "[LIBELLÉ OFFICIEL ITEM 14 — Wound-QoL FR]"},
+  {"id": 15, "sous_echelle": "vie_quotidienne", "texte": "[LIBELLÉ OFFICIEL ITEM 15 — Wound-QoL FR]"},
+  {"id": 16, "sous_echelle": "vie_quotidienne", "texte": "[LIBELLÉ OFFICIEL ITEM 16 — Wound-QoL FR]"},
+  {"id": 17, "sous_echelle": null,              "texte": "[LIBELLÉ OFFICIEL ITEM 17 — Wound-QoL FR]"}
+ ]
+}

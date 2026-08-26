@@ -69,6 +69,38 @@ textarea{min-height:110px;resize:vertical}
 .tag{font-size:11px;background:var(--paper);border-radius:4px;padding:1px 5px;color:var(--ink2)}
 .ordo-acts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}.toast.on{opacity:1}
+/* ---- v5 : transmissions & données ---- */
+.testpill{position:absolute;top:10px;right:12px;background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber);border-radius:999px;padding:3px 10px;font-size:10.5px;font-weight:700;cursor:pointer;z-index:6}
+.pastilles{display:inline-flex;gap:3px;vertical-align:middle;margin-right:4px}
+.pastille{width:15px;height:15px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:700;color:#fff}
+.pastille.na{color:var(--ink2)}
+.bandeau{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:10px;margin-top:6px;font-size:13px;background:var(--amber-soft);color:#7A4A05}
+.bandeau.missing{background:var(--red-soft);color:#7C2620}
+.trigband{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 10px;border-radius:10px;margin-top:8px;font-size:13.5px;background:var(--teal-soft)}
+.trigband.done{opacity:.55}
+.trigband .btn{padding:6px 10px;font-size:12.5px}
+.postit{border-left:4px solid var(--ink2);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:13px;background:var(--paper);display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.postit.RELEVE{border-color:var(--teal);background:var(--teal-soft)}
+.postit.ALERTE{border-color:var(--red);background:var(--red-soft)}
+.postit small{display:block;color:var(--ink2);font-size:11px;width:100%}
+.postit .btn{margin-left:auto}
+.badge{display:inline-block;min-width:16px;height:16px;line-height:16px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;font-weight:700;text-align:center;padding:0 4px;vertical-align:middle}
+.epgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.epgrid .chip{text-align:center;padding:9px 6px}
+.epgrid .chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.panel{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px;background:#fff}
+.panel h3{font-size:13px;margin:0 0 6px;font-family:var(--disp);display:flex;justify-content:space-between;align-items:center}
+.panel h3 .x{margin:0;padding:0 4px}
+.overlay{position:fixed;inset:0;background:rgba(14,30,43,.55);display:flex;align-items:center;justify-content:center;z-index:20;padding:20px}
+.overlay .card{max-width:380px;width:100%;margin:0}
+/* modules rétractables de l'écran de passage */
+.foldh{width:100%;background:none;border:0;display:flex;align-items:center;gap:8px;padding:2px 0;text-align:left;cursor:pointer}
+.foldh h2{margin:0;flex:none}
+.foldsum{flex:1;font-size:12.5px;color:var(--ink2);font-family:var(--mono);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.foldh .chev{flex:none;color:var(--teal);font-weight:700;transition:transform .15s}
+.fold.closed .foldb{display:none}
+.fold.closed .chev{transform:rotate(-90deg)}
+.foldb{margin-top:8px}
 ol{padding-left:18px;font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 #sheet{display:none;font:13px/1.5 var(--body);color:#000;padding:10mm}
@@ -82,13 +114,15 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v4.2.2</small></h1>
-  <p>Une journée, plusieurs passages, zéro perte</p>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.5.1</small></h1>
+  <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
-    <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui</button>
+    <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
     <button role="tab" aria-selected="false" data-tab="pat">Patients</button>
+    <button role="tab" aria-selected="false" data-tab="dash">Suivi</button>
     <button role="tab" aria-selected="false" data-tab="plus">Plus</button>
   </nav>
+  <button class="testpill" id="testband" hidden type="button" title="Patients fictifs uniquement tant que l'hébergement n'est pas HDS — toucher pour le détail">🧪 MODE TEST</button>
 </header>
 
 <main>
@@ -206,6 +240,8 @@ ol{padding-left:18px;font-size:14px}
     <div class="row" style="margin-top:10px"><button class="btn" id="tGo">Recalculer</button><button class="btn sec" id="goPat">+ Patient</button><button class="btn sec" id="tSheet">Feuille</button><button class="chip" id="tFerie" aria-pressed="false" style="align-self:center">Jour férié</button><button class="btn sec" id="tMaps" hidden>Maps</button></div>
     <p class="muted" id="tStatus"></p>
   </div>
+  <div id="tTransShare"></div>
+  <div id="tReleves"></div>
   <div id="tRoute"></div>
   <div class="card" style="padding:0;overflow:hidden">
     <div class="th" style="background:var(--ink);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
@@ -226,6 +262,7 @@ ol{padding-left:18px;font-size:14px}
   <div class="card">
     <h2 id="pFormTitle">Ajouter un patient / un passage</h2>
     <p class="muted">Données stockées uniquement sur cet appareil. Utilisez des initiales. Un patient vu matin et soir = deux passages (bouton « Dupliquer »).</p>
+    <div id="pPostits"></div>
     <div class="row"><div><label class="f" for="pName">Patient (initiales)</label><input type="text" id="pName" placeholder="M. D."></div></div>
     <label class="f">Soins de ce passage (cumul calculé par le moteur NGAP)</label>
     <div style="display:flex;gap:8px"><select id="pSoin" style="flex:1"></select><button class="btn sec" type="button" id="pAddSoin">+</button></div>
@@ -241,6 +278,12 @@ ol{padding-left:18px;font-size:14px}
     <div class="chips" id="pDays"><button class="chip" data-d="1" aria-pressed="true">L</button><button class="chip" data-d="2" aria-pressed="true">M</button><button class="chip" data-d="3" aria-pressed="true">Me</button><button class="chip" data-d="4" aria-pressed="true">J</button><button class="chip" data-d="5" aria-pressed="true">V</button><button class="chip" data-d="6" aria-pressed="true">S</button><button class="chip" data-d="0" aria-pressed="true">D</button></div>
     <div class="row"><div><label class="f" for="pFrom">Début</label><input type="date" id="pFrom"></div><div><label class="f" for="pTo">Fin (vide = sans fin)</label><input type="date" id="pTo"></div></div>
     <label class="f" for="pNote">Note</label><input type="text" id="pNote" placeholder="code portail, chien, clé sous le pot…">
+    <details style="margin-top:10px">
+      <summary style="font-size:13px;font-weight:600;cursor:pointer">🗂 Socle recherche (données patient)</summary>
+      <div id="pSocleFields"></div>
+      <div class="row" style="margin-top:8px"><button class="btn sec sm" type="button" id="pSocleVal">✓ Valider le socle (aujourd'hui)</button></div>
+      <p class="muted" id="pSocleInfo"></p>
+    </details>
     <div class="row" style="margin-top:10px"><button class="btn" id="pSave">Enregistrer</button><button class="btn sec" id="pCancel" hidden>Annuler</button></div>
     <p class="muted" id="pStatus"></p>
   </div>
@@ -255,7 +298,9 @@ ol{padding-left:18px;font-size:14px}
     <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="renta"><span><b>📈</b> Rentabilité d'un nouveau patient</span><span class="plus">›</span></button>
     <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="ref"><span><b>📚</b> Référentiel NGAP<small>actes, lettres-clés, valeurs</small></span><span class="plus">›</span></button>
     <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="regles"><span><b>⚖️</b> Règles du moteur</span><span class="plus">›</span></button>
-    <button class="act" style="border:0;border-radius:0" data-go="param"><span><b>🤖</b> Connexion IA</span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="param"><span><b>🤖</b> Connexion IA</span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-bottom:1px solid var(--line);border-radius:0" data-go="conf"><span><b>🛡</b> Conformité &amp; export<small>RGPD, MR-004, export pseudonymisé</small></span><span class="plus">›</span></button>
+    <button class="act" style="border:0;border-radius:0" data-go="reglages"><span><b>⚙️</b> Réglages<small>initiales, géolocalisation, dictée IA</small></span><span class="plus">›</span></button>
   </div>
 </section>
 
@@ -294,7 +339,117 @@ ol{padding-left:18px;font-size:14px}
     <p class="muted">Importer <b>n8n_lidia_cotation.json</b> dans n8n → nœud « Appel Claude » → choisir la credential x-api-key existante → Activer → copier l'URL de production ici. Sans réglage, analyse hors-ligne par mots-clés.</p>
   </div>
 </section>
+<!-- ============ ÉCRAN DE PASSAGE UNIFIÉ (v5 — module 1) ============ -->
+<section id="tab-passage" hidden>
+  <div class="card" id="epHead"></div>
+  <div id="epPostitsList"></div>
+  <div class="card fold" id="epCardCot">
+    <button class="foldh" id="epFoldCot" type="button"><h2>Cotation</h2><span class="foldsum" id="epCotSum"></span><span class="chev">▾</span></button>
+    <div class="foldb">
+    <div class="row">
+      <div style="max-width:130px"><label class="f" for="epHeure">Heure</label><input type="time" id="epHeure"></div>
+      <div><label class="f" for="epQ">Ajouter un acte</label><input type="text" id="epQ" placeholder="insuline, pansement, perfusion, BSI…" autocomplete="off"></div>
+    </div>
+    <div class="chips" id="epQuick" style="margin-top:6px">
+      <button class="chip" data-q="prelev">Prise de sang</button><button class="chip" data-q="insu">Insuline</button><button class="chip" data-q="dextro">Dextro</button><button class="chip" data-q="pans1">Pansement</button><button class="chip" data-q="pans4">Pans. lourd</button><button class="chip" data-q="inj">Injection</button><button class="chip" data-q="bsc">BSC</button><button class="chip" data-q="perf9">Perf ≤1h</button>
+    </div>
+    <div class="results" id="epResults"></div>
+    <div id="epLines" style="margin-top:8px"></div><div id="epMajs"></div>
+    <div class="total" style="border-radius:10px;margin-top:8px"><small>Total du passage</small><b id="epTotal">0,00 €</b></div>
+    <div id="epAlerts"></div>
+    </div>
+  </div>
+  <div class="card fold" id="epCardTrans">
+    <button class="foldh" id="epFoldTrans" type="button"><h2>Transmission</h2><span class="foldsum" id="epTransSum"></span><span class="chev">▾</span></button>
+    <div class="foldb">
+    <label class="f" for="epDictee">Dictée <span class="verif" id="epDicteeBand" hidden>Dictée IA — données de test uniquement</span></label>
+    <textarea id="epDictee" style="min-height:70px" placeholder="« TA 13/8, glycémie 1,2 au réveil, se plaint de douleur au talon droit… »"></textarea>
+    <div class="row" style="margin-top:6px">
+      <button class="btn sec" id="epMic" type="button">🎤 Dicter</button>
+      <button class="btn" id="epAnalyse" type="button">Analyser</button>
+      <button class="btn sec" id="epDicteeLibre" type="button" title="Enregistrer la dictée telle quelle en transmission libre">→ Libre</button>
+    </div>
+    <p class="muted" id="epIaStatus"></p>
+    <div class="epgrid">
+      <button class="chip" id="epBtnEvt" type="button">⚡ Événement</button>
+      <button class="chip" id="epBtnObs" type="button">👁 Observation</button>
+      <button class="chip" id="epBtnCst" type="button">🩺 Constantes</button>
+      <button class="chip" id="epBtnIcope" type="button">🧠 ICOPE</button>
+      <button class="chip" id="epBtnPhoto" type="button">📷 Photo faite</button>
+      <button class="chip" id="epBtnPostit" type="button">📌 Post-it</button>
+    </div>
+    <div id="epPanels"></div>
+    <label class="f" for="epLibre">Texte libre</label>
+    <textarea id="epLibre" style="min-height:56px" placeholder="Transmission libre (facultative)…"></textarea>
+    </div>
+  </div>
+  <div id="epTriggers"></div>
+  <div id="epPlaies"></div>
+  <div class="row" style="margin:12px 0 34px">
+    <button class="btn" id="epValider" style="flex:2">Valider le passage</button>
+    <button class="btn sec" id="epRetour" type="button">Retour</button>
+  </div>
+</section>
+
+<!-- ============ TABLEAU DE BORD (v5 — module 2) ============ -->
+<section id="tab-dash" hidden>
+  <div class="card"><h2>Suivi du recueil</h2><div id="dashKpi"></div></div>
+  <div class="card"><h2>À compléter en tournée</h2><div id="dashLate"></div></div>
+  <div class="card"><h2>Alertes à transmettre</h2><div id="dashAlertes"></div></div>
+  <div class="card"><h2>Plaies en suivi</h2><div id="dashPlaies"></div></div>
+  <div class="card"><h2>Événements — 30 derniers jours</h2><div id="dashEvts"></div></div>
+  <div class="card"><h2>Propositions refusées</h2><p class="muted">Le refus est un signal d'organisation, pas une faute : il indique ce qui ne passe pas en tournée.</p><div id="dashRefus"></div></div>
+</section>
+
+<!-- ============ CONFORMITÉ & EXPORT (v5 — module 6) ============ -->
+<section id="tab-conf" hidden>
+  <div class="card">
+    <h2>Conformité</h2>
+    <p>Mode données : <b id="confMode"></b></p>
+    <p class="muted">Recueil adossé à la méthodologie de référence <b>MR-004</b> (CNIL) : information des patients, registre des traitements, pas de donnée directement identifiante dans l'export. En mode test, uniquement des patients fictifs tant que l'hébergement n'est pas certifié HDS.</p>
+    <ol style="font-size:13.5px">
+      <li>📄 <a href="docs/rgpd/registre-traitements.md" target="_blank" rel="noopener"><b>Registre des traitements</b></a> — à tenir au cabinet (document RGPD n° 1).</li>
+      <li>📄 <a href="docs/rgpd/affiche-information.md" target="_blank" rel="noopener"><b>Affiche d'information patients</b></a> — salle d'attente / classeur de soins (document n° 2).</li>
+      <li>📄 <a href="docs/rgpd/note-information-patient.md" target="_blank" rel="noopener"><b>Note d'information individuelle</b></a> — remise au patient à l'inclusion (document n° 3).</li>
+    </ol>
+    <p class="muted">Les trois modèles sont livrés avec l'application (dossier <b>docs/rgpd/</b> du déploiement) — à compléter avec les coordonnées du cabinet.</p>
+    <p class="muted">🎯 Passage en production (vrais patients) : feuille de route complète — hébergement HDS, IA conforme, AIPD, MR-004 — dans <a href="docs/production-hds.md" target="_blank" rel="noopener"><b>docs/production-hds.md</b></a>. La dictée envoyée à l'IA est déjà pseudonymisée côté appareil (nom du patient retiré avant envoi).</p>
+  </div>
+  <div class="card">
+    <h2>Export pseudonymisé</h2>
+    <p class="muted">Codes P001, P002… Socle + agrégats de transmissions + événements datés + dernières constantes + dernier ICOPE + compteurs. Plaies et réfections dans leurs propres CSV (identifiants P001-1…, listes fermées, délai de cicatrisation calculé). Les post-its RELEVE/ALERTE sortent en compteurs uniquement, les PERSO jamais. Aucun nom, aucune adresse.</p>
+    <div class="row"><button class="btn" id="expPat">⬇ Patients (CSV)</button><button class="btn sec" id="expEvt">⬇ Événements (CSV)</button><button class="btn sec" id="expPlaies">⬇ Plaies (CSV)</button><button class="btn sec" id="expRef">⬇ Réfections (CSV)</button></div>
+    <details style="margin-top:10px"><summary style="font-size:13px;cursor:pointer">Table de correspondance code ↔ patient (affichée ici, jamais exportée)</summary><div id="expMap" style="font-size:13px;margin-top:6px"></div></details>
+    <p class="muted" id="expStatus"></p>
+  </div>
+</section>
+
+<!-- ============ RÉGLAGES (v5) ============ -->
+<section id="tab-reglages" hidden>
+  <div class="card">
+    <h2>Réglages</h2>
+    <label class="f" for="setAuteur">Initiales de session (auteur des transmissions et post-its)</label>
+    <input type="text" id="setAuteur" maxlength="5" placeholder="AL" style="max-width:120px">
+    <div class="chips" style="margin-top:10px">
+      <button class="chip" id="setGeo" type="button">📍 Géolocaliser les passages (opt-in, jamais par défaut)</button>
+      <button class="chip" id="setRattr" type="button">🔄 Suggérer les rattrapages en tournée</button>
+    </div>
+    <label class="f" for="setProv">Extracteur IA pour la dictée</label>
+    <select id="setProv" style="max-width:320px"></select>
+    <div class="row" style="margin-top:10px"><button class="btn" id="setSave">Enregistrer</button></div>
+    <p class="muted" id="setStatus"></p>
+  </div>
+</section>
 </main>
+<div class="overlay" id="initDlg" hidden>
+  <div class="card">
+    <h2>Vos initiales</h2>
+    <p class="muted">Elles signent chaque transmission, passage et post-it de cette session. Modifiables ensuite dans Réglages.</p>
+    <input type="text" id="initInp" maxlength="5" placeholder="AL">
+    <div class="row" style="margin-top:10px"><button class="btn" id="initOk">Commencer</button></div>
+  </div>
+</div>
+<div class="overlay" id="wqlDlg" hidden><div class="card" id="wqlCard" style="max-width:440px"></div></div>
 <div id="sheet" hidden></div>
 
 <div class="toast" id="toast"></div>
@@ -409,6 +564,782 @@ function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");setT
 function norm(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
 function LV(k){const d=day.date||"";let v=ref[k]??0;if((k==="AMI"||k==="AMX"||k==="TMI")&&ref.AMI===DEFAULT_REF.AMI){if(d>="2027-11-06")v=3.45;else if(d>="2026-11-06")v=3.35;}return v}
 
+/* ================= V5 — TRANSMISSIONS & DONNÉES ================= */
+/* DATA_MODE "test" tant que l'hébergement n'est pas HDS : bandeau permanent, patients fictifs uniquement. */
+const DATA_MODE="test";
+const SOCLE_J=365,CONSTANTES_J=35,PHOTO_PLAIE_J=15,ICOPE_J=120;
+/* Liste fermée fondée sur la littérature (voir docs/socle-pathologies.md) : ALD/prévalences françaises
+   (CNAM 2022, Santé publique France BEH 2025), calculabilité des indices de comorbidité (Charlson 1987/
+   Quan 2011, Elixhauser 1998, eFI Clegg 2016) et croisement avec les données déjà recueillies (ICOPE,
+   constantes, photos de plaies). Les 7 libellés d'origine sont inchangés — ne jamais renommer une entrée
+   existante sans migration des patients qui l'ont cochée. */
+const PATHOS_LIST=["Diabète","HTA","Insuf. cardiaque","Mal. coronaire","FA / tr. rythme","AVC / séquelles","AOMI","BPCO / insuf. resp.","Insuf. rénale","Hépatopathie chr.","Cancer actif","Cancer métastatique","Tr. cognitifs","Parkinson","Tr. psychiatriques","Plaie chronique / escarre","Dénutrition","Ostéoporose / fracture","Autre"];
+const AUTONOMIE_LIST=["Autonome","Aide partielle","Dépendant"];
+const ADRESSE_PAR_LIST=["Sortie hospitalisation","Médecin traitant","Confrère IDEL","Demande directe","Autre"];
+const MOTS_EVT=["HOSPIT","URGENCES","CHUTE","DÉCÈS","EHPAD"];
+const OBS_KEYS=["douleur","chute","confusion","peau","surcharge","observance"];
+/* valeurs fermées par observation — l'extraction comme l'UI n'acceptent rien d'autre.
+   douleur (dictionnaire v1.4) : tranches EN "0|1-3|4-6|7-10" ou "oui" (dictée sans EVA) —
+   rupture de comparabilité v1.3→v1.4 documentée au dictionnaire (EVA 0-10 → tranches). */
+const OBS_OPTS={douleur:["","0","1-3","4-6","7-10","oui"],chute:["","oui","non"],confusion:["","oui","non"],peau:["","RAS","rougeur","plaie","escarre"],surcharge:["","oui","non"],observance:["","bonne","partielle","mauvaise"]};
+/* ---- Douleur double mode : EN (auto-évaluation, tranches, 1 tap) / ALGOPLUS (hétéro-évaluation,
+   5 items O/N, score /5 calculé par le moteur, douleur présente si score ≥ 2). Libellés ALGOPLUS
+   officiels — ne jamais les reformuler. */
+const DOULEUR_EN=["0","1-3","4-6","7-10"];
+const ALGOPLUS_ITEMS=["visage","regard","plaintes","corps","comportements"];
+const ALGOPLUS_LBL={visage:"Visage (froncement des sourcils, grimaces, crispation, mâchoires serrées, visage figé)",regard:"Regard (inattentif, fixe, lointain ou suppliant, pleurs, yeux fermés)",plaintes:"Plaintes orales (« aïe », « ouille », « j'ai mal », gémissements, cris)",corps:"Corps (retrait ou protection d'une zone, refus de mobilisation, attitudes figées)",comportements:"Comportements (agitation ou agressivité, agrippement)"};
+const ALGOPLUS_SEUIL=2;
+function evaTranche(n){n=+n;if(!isFinite(n)||n<0||n>10)return null;return n===0?"0":n<=3?"1-3":n<=6?"4-6":"7-10"}
+function algoplusScore(alg){alg=alg||{};
+  const score=ALGOPLUS_ITEMS.filter(k=>alg[k]===true).length;
+  const repondu=ALGOPLUS_ITEMS.filter(k=>typeof alg[k]==="boolean").length;
+  return {score,repondu,complet:repondu===ALGOPLUS_ITEMS.length,presente:score>=ALGOPLUS_SEUIL}}
+/* migration des anciennes valeurs douleur (EVA "0"-"10" ou "oui") vers le modèle v1.4 (mode EN) */
+function migrerDouleur(v){
+  if(v==null||v==="")return "";
+  if(typeof v==="object")return v;
+  v=String(v).trim();
+  if(v==="oui")return {mode:"EN",presente:true};
+  if(DOULEUR_EN.includes(v))return {mode:"EN",en:v,presente:v!=="0"};
+  const t=evaTranche(v);
+  return t?{mode:"EN",en:t,presente:t!=="0"}:"";
+}
+function douleurRenseignee(v){
+  if(v==null||v==="")return false;
+  if(typeof v==="string")return !!v.trim();
+  if(v.mode==="ALGOPLUS")return Array.isArray(v.algoplus)||ALGOPLUS_ITEMS.some(k=>typeof (v.alg||{})[k]==="boolean");
+  return !!(v.en||v.presente!=null);
+}
+/* forme canonique enregistrée dans la transmission OBS — le score ALGOPLUS est calculé par le
+   moteur (jamais par l'IA) ; ALGOPLUS incomplet = erreur bloquante (comme un ICOPE incomplet) */
+function normaliserDouleur(v){
+  if(typeof v==="string")v=migrerDouleur(v);
+  if(!douleurRenseignee(v))return {douleur:""};
+  if(v.mode==="ALGOPLUS"){
+    let alg=v.alg||{};
+    if(Array.isArray(v.algoplus)){alg={};ALGOPLUS_ITEMS.forEach((k,i)=>{if(typeof v.algoplus[i]==="boolean")alg[k]=v.algoplus[i]})}
+    const s=algoplusScore(alg);
+    if(!s.complet)return {error:"ALGOPLUS incomplet : répondez Oui/Non aux 5 items ("+s.repondu+"/5)"};
+    return {douleur:{mode:"ALGOPLUS",algoplus:ALGOPLUS_ITEMS.map(k=>alg[k]===true),score:s.score,presente:s.presente}};
+  }
+  const en=DOULEUR_EN.includes(v.en)?v.en:"";
+  const presente=en?en!=="0":!!v.presente;
+  if(!en&&!presente)return {douleur:""};
+  return {douleur:{mode:"EN",en,presente}};
+}
+/* bascule EN → ALGOPLUS proposée UNE fois quand le dernier ICOPE a cognition en alerte —
+   refus tracé (p.algoplus_prop), jamais re-proposée avant le prochain ICOPE */
+function dernierIcopeDate(p){const t=(p.transmissions||[]).filter(x=>x.type==="ICOPE"&&!x.archive&&x.icope).sort((a,b)=>a.date<b.date?-1:1).pop();return t?String(t.date).slice(0,10):null}
+/* ---- Braden (socle conditionnel, dictionnaire v1.4) : risque d'escarre — 6 sous-échelles,
+   libellés officiels français, score 6-23, risque si ≤ 18, élevé si ≤ 12. Proposée si BSI ou
+   autonomie « Dépendant » ; optionnelle (« Plus tard » = incomplétude souhaitable, jamais bloquant),
+   re-proposée à chaque revalidation de socle. */
+const BRADEN_ECHELLES=[
+ {k:"perception",lbl:"Perception sensorielle",opts:["Complètement limitée","Très limitée","Légèrement limitée","Aucune atteinte"]},
+ {k:"humidite",lbl:"Humidité",opts:["Constamment humide","Très humide","Parfois humide","Rarement humide"]},
+ {k:"activite",lbl:"Activité",opts:["Alité","Confiné au fauteuil","Marche à l'occasion","Marche fréquemment"]},
+ {k:"mobilite",lbl:"Mobilité",opts:["Complètement immobile","Très limitée","Légèrement limitée","Non limitée"]},
+ {k:"nutrition",lbl:"Nutrition",opts:["Très pauvre","Probablement inadéquate","Adéquate","Excellente"]},
+ {k:"friction",lbl:"Friction et cisaillement",opts:["Problème","Problème potentiel","Pas de problème apparent"]},
+];
+function bradenEligible(p){return !!(p&&(p.bsi||p.autonomie==="Dépendant"))}
+/* ---- Girerd (observance médicamenteuse) : 6 items O/N, libellés officiels (Girerd 2001) —
+   score = nombre de « oui » : 0 = bonne observance, 1-2 = minime problème, ≥ 3 = mauvaise.
+   Proposé à chaque revalidation de socle (annuel de fait) chez les polymédiqués (nbMed ≥ 5). */
+const GIRERD_ITEMS=[
+ "Ce matin, avez-vous oublié de prendre votre médicament ?",
+ "Depuis la dernière consultation, avez-vous été en panne de médicament ?",
+ "Vous est-il arrivé de prendre votre traitement avec retard ?",
+ "Vous est-il arrivé de ne pas prendre votre traitement parce que, certains jours, votre mémoire vous fait défaut ?",
+ "Vous est-il arrivé de ne pas prendre votre traitement parce que, certains jours, vous avez l'impression que votre traitement vous fait plus de mal que de bien ?",
+ "Pensez-vous que vous avez trop de comprimés à prendre ?",
+];
+const GIRERD_SEUIL_MED=5;
+function girerdEligible(p){return !!(p&&p.nbMed!=null&&p.nbMed>=GIRERD_SEUIL_MED)}
+function girerdScore(reps){
+  if(!Array.isArray(reps)||reps.length!==6||!reps.every(v=>typeof v==="boolean"))return null;
+  const s=reps.filter(Boolean).length;
+  return {score:s,lecture:s===0?"bonne observance":s<=2?"minime problème d'observance":"mauvaise observance"};
+}
+/* ---- Complétude « qualité renforcée » (souhaitable) : Braden manquante chez éligible, Wound-QoL
+   manquant à l'ouverture/clôture, Girerd jamais fait ou échu (> 365 j). N'abaisse JAMAIS le %
+   principal du tableau de bord — affichée en ligne secondaire uniquement, jamais bloquante. */
+const GIRERD_J=365;
+function completudeSouhaitable(pats,today){
+  today=today||todayISO();
+  const out=[],seen=new Set();
+  (pats||[]).forEach(p=>{
+    if(!p.active)return;
+    if(p.id){if(seen.has(p.id))return;seen.add(p.id);}
+    const dJ=iso=>{const j=Math.floor((Date.parse(today)-Date.parse(String(iso).slice(0,10)))/86400000);return isFinite(j)?j:null};
+    if(bradenEligible(p)&&!p.braden)out.push({patientId:p.id,type:"braden",msg:"Braden à faire (BSI/dépendance)"});
+    if(girerdEligible(p)){
+      const j=p.girerd&&p.girerd.date?dJ(p.girerd.date):null;
+      if(j==null)out.push({patientId:p.id,type:"girerd",msg:"Girerd jamais fait (≥ "+GIRERD_SEUIL_MED+" médicaments)"});
+      else if(j>GIRERD_J)out.push({patientId:p.id,type:"girerd",msg:"Girerd échu ("+j+" j)"});
+    }
+    (p.plaies||[]).forEach(pl=>{
+      if(!pl.cloture&&!pl.woundqol_ouverture)out.push({patientId:p.id,type:"woundqol_ouverture",plaieId:pl.id,msg:"Wound-QoL d'ouverture manquant ("+plaieLabel(pl)+")"});
+      if(pl.cloture&&!pl.woundqol_cloture)out.push({patientId:p.id,type:"woundqol_cloture",plaieId:pl.id,msg:"Wound-QoL de clôture manquant ("+plaieLabel(pl)+")"});
+    });
+  });
+  return out;
+}
+function bradenScore(o){
+  o=o||{};let s=0;
+  for(const e of BRADEN_ECHELLES){const v=+o[e.k];
+    if(!Number.isInteger(v)||v<1||v>e.opts.length)return null;s+=v;}
+  return {score:s,risque:s<=12?"élevé":s<=18?"risque":"aucun"};
+}
+function proposerAlgoplus(p){
+  if((p.mode_douleur||"EN")==="ALGOPLUS")return false;
+  const t=(p.transmissions||[]).filter(x=>x.type==="ICOPE"&&!x.archive&&x.icope).sort((a,b)=>a.date<b.date?-1:1).pop();
+  if(!t||t.icope.cognition!=="alerte")return false;
+  if(p.algoplus_prop&&p.algoplus_prop.icope_date===String(t.date).slice(0,10))return false;
+  return true;
+}
+const CST_KEYS=["ta","fc","spo2","temp","gly","poids"];
+const ICOPE_DOMS=["mobilite","cognition","nutrition","humeur","vision","audition"];
+const TRANS_TYPES=["LIBRE","EVENEMENT","CONSTANTES","OBS","ICOPE","PHOTO"];
+const POSTIT_TYPES=["RELEVE","ALERTE","PERSO"];
+/* actes qui signent une plaie active (bascule patient.plaie) */
+const PLAIE_ACTS=["pans1","pans1c","pans4","ulc","pico","pico2","pans_diab","topique","topique_diab","bilan_plaie","pans_mam","pans_var"];
+let settings={auteur:"",geoloc:false,rattrapage:true,iaProvider:"n8n",...loadJSON("lidia.cot.settings",{})};
+let passages5=loadJSON("lidia.cot.passages",[]);
+let drafts=loadJSON("lidia.cot.drafts",{});
+let exportCodes=loadJSON("lidia.cot.codes",{});
+function saveSettings(){try{localStorage.setItem("lidia.cot.settings",JSON.stringify(settings))}catch(e){}}
+function uid(p){return (p||"id")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function todayISO(){return new Date().toISOString().slice(0,10)}
+function nowHM(){const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+
+/* ---- Module 2 : moteur de fraîcheur (fonction pure) ---- */
+function freshness(p,today){
+  today=today||todayISO();
+  const dJ=iso=>{if(!iso)return null;const j=Math.floor((Date.parse(today)-Date.parse(String(iso).slice(0,10)))/86400000);return isFinite(j)?j:null};
+  const state=(iso,lim)=>{const j=dJ(iso);return j==null?{etat:"missing",jours:null,date:null}:{etat:j>lim?"late":"ok",jours:j,date:String(iso).slice(0,10)}};
+  const tr=(p.transmissions||[]).filter(t=>!t.archive);
+  const lastOf=ty=>tr.filter(t=>t.type===ty&&t.date).map(t=>t.date).sort().pop()||null;
+  const socle=state(p.socleDate,SOCLE_J);
+  const constantes=state(lastOf("CONSTANTES"),CONSTANTES_J);
+  const photo=p.plaie?state(lastOf("PHOTO"),PHOTO_PLAIE_J):{etat:"na",jours:null,date:null};
+  const age=p.annee?(+today.slice(0,4))-(+p.annee):null;
+  const icope=(age!=null&&age>=60)?state(lastOf("ICOPE"),ICOPE_J):{etat:"na",jours:null,date:null};
+  return {socle,constantes,photo,icope};
+}
+function nbRetards(f){return ["socle","constantes","photo","icope"].filter(k=>f[k].etat==="late"||f[k].etat==="missing").length}
+
+/* ---- Module 3 : table de déclenchement cotation → recueil (extensible) ---- */
+const TRIGGER_PRIO={photo:0,icope:1,constantes:2,socle:3};
+const TRIGGERS_TABLE=[
+ {type:"photo",lbl:"Photo de plaie",when:(p,acts,f)=>{
+   const plaieActe=acts.some(a=>PLAIE_ACTS.includes(a.id)||(a.tags&&a.tags.lourd));
+   if(!plaieActe)return null;
+   const ph=p.plaie?f.photo:freshness({...p,plaie:true},f._today).photo;
+   if(ph.etat==="ok")return null;
+   return {surface:acts.some(a=>a.id==="bilan_plaie"),msg:ph.etat==="missing"?"Plaie sans photo : documenter ce passage ?":"Dernière photo il y a "+ph.jours+" j — à refaire ce passage ?"};}},
+ {type:"icope",lbl:"Dépistage ICOPE",when:(p,acts,f)=>{
+   if(!acts.length)return null;
+   if(f.icope.etat!=="late"&&f.icope.etat!=="missing")return null;
+   return {msg:f.icope.etat==="missing"?"Jamais dépisté (≥ 60 ans) — faire l'ICOPE ?":"Dernier ICOPE il y a "+f.icope.jours+" j — à refaire ?"};}},
+ {type:"constantes",lbl:"Constantes",when:(p,acts,f)=>{
+   const injPerf=acts.some(a=>/^(inj|insu|implant|k_inj|k_iv|k_chimio)/.test(a.id)||(a.tags&&(a.tags.perfC||a.tags.perfL||a.tags.perfR||a.tags.perfX||a.tags.perfS)));
+   if(!injPerf)return null;
+   if(f.constantes.etat!=="late"&&f.constantes.etat!=="missing")return null;
+   return {msg:f.constantes.etat==="missing"?"Constantes jamais mesurées — à prendre ce passage ?":"Dernière mesure il y a "+f.constantes.jours+" j — à reprendre ?"};}},
+ {type:"socle",lbl:"Socle",when:(p,acts,f)=>{
+   const bsi=acts.some(a=>(a.tags&&a.tags.bsi)||a.id==="bsi_init"||a.id==="bsi_ren");
+   if(!bsi)return null;
+   if(f.socle.etat==="ok")return null;
+   return {msg:f.socle.etat==="missing"?"Socle jamais validé — revalider en 1 tap ?":"Socle validé il y a "+f.socle.jours+" j — revalider ?"};}},
+];
+/* max 2 propositions par passage, priorité photo > icope > constantes > socle ; refus toujours possible et tracé */
+function computeTriggers(p,actIds,f,today){
+  const acts=(actIds||[]).map(id=>byId(id)).filter(Boolean);
+  f=f||freshness(p,today);f._today=today||todayISO();
+  const props=[];
+  TRIGGERS_TABLE.forEach(t=>{const r=t.when(p,acts,f);if(r)props.push({type:t.type,lbl:t.lbl,...r})});
+  props.sort((a,b)=>TRIGGER_PRIO[a.type]-TRIGGER_PRIO[b.type]);
+  const setPlaie=!p.plaie&&acts.some(a=>PLAIE_ACTS.includes(a.id));
+  return {props:props.slice(0,2),setPlaie};
+}
+
+/* ---- Module 1 : construction pure du passage (validation atomique) ---- */
+function buildPassageRecord(p,draft,iso,auteur){
+  const A=auteur||"??",trs=[],t=draft.trans||{};
+  if(t.icope){const manq=ICOPE_DOMS.filter(k=>!t.icope[k]);if(manq.length)return {error:"ICOPE incomplet : les 6 domaines sont requis ("+manq.join(", ")+" manquant·s)"};}
+  /* liee_plaie (spec module plaies) : lien hospitalisation ↔ plaie confirmé en 1 tap par l'IDEL, porté seulement s'il pointe une plaie du dossier */
+  if(t.evt&&(t.evt.mot||((t.evt.texte||"").trim())))trs.push({id:uid("tr"),date:iso,auteur:A,type:"EVENEMENT",texte:(t.evt.texte||"").trim(),mot:MOTS_EVT.includes(t.evt.mot)?t.evt.mot:undefined,
+    liee_plaie:(t.evt.mot==="HOSPIT"&&(p.plaies||[]).some(x=>x.id===t.evt.liee_plaie))?t.evt.liee_plaie:undefined});
+  if(t.cst&&CST_KEYS.some(k=>(t.cst[k]||"").trim())){const cst={};CST_KEYS.forEach(k=>cst[k]=(t.cst[k]||"").trim());trs.push({id:uid("tr"),date:iso,auteur:A,type:"CONSTANTES",texte:(t.cstNote||"").trim(),cst});}
+  if(t.obs&&OBS_KEYS.some(k=>k==="douleur"?douleurRenseignee(t.obs[k]):(t.obs[k]||"").trim())){
+    const nd=normaliserDouleur(t.obs.douleur);if(nd.error)return {error:nd.error};
+    const obs={};OBS_KEYS.forEach(k=>obs[k]=k==="douleur"?nd.douleur:(t.obs[k]||"").trim());
+    trs.push({id:uid("tr"),date:iso,auteur:A,type:"OBS",texte:(t.obsNote||"").trim(),obs});}
+  if(t.icope){const ic={};ICOPE_DOMS.forEach(k=>ic[k]=t.icope[k]);const nbAlerts=ICOPE_DOMS.filter(k=>ic[k]==="alerte").length;trs.push({id:uid("tr"),date:iso,auteur:A,type:"ICOPE",texte:(t.icopeNote||"").trim(),icope:ic,nbAlerts});}
+  if(t.photo)trs.push({id:uid("tr"),date:iso,auteur:A,type:"PHOTO",texte:"Photo de plaie réalisée (stockée sur le téléphone)"+((t.photo.surface||"").trim()?" — surface "+String(t.photo.surface).trim()+" cm²":"")});
+  if((t.libre||"").trim())trs.push({id:uid("tr"),date:iso,auteur:A,type:"LIBRE",texte:t.libre.trim()});
+  /* filet de sécurité : une dictée jamais analysée devient une transmission libre — aucune parole perdue */
+  if(!trs.length&&(draft.dictee||"").trim())trs.push({id:uid("tr"),date:iso,auteur:A,type:"LIBRE",texte:"Dictée : "+draft.dictee.trim()});
+  const pass={id:uid("pas"),patientId:p.id,date:iso,auteur:A,
+    actes:(draft.acts||[]).map(a=>({id:a.id,k:a.k,c:a.c,l:a.l})),
+    transmissionIds:trs.map(x=>x.id),propositions:(draft.props||[]).slice()};
+  if(!trs.length)pass.transmission="none";
+  trs.forEach(x=>x.passageId=pass.id);
+  const trg=computeTriggers(p,(draft.acts||[]).map(a=>a.id),null,iso.slice(0,10));
+  return {pass,transmissions:trs,setPlaie:trg.setPlaie,socle:draft.socle||null};
+}
+
+/* ---- Module 4 : post-its typés ---- */
+function makePostit(type,texte,auteur,date){
+  if(!POSTIT_TYPES.includes(type))return null;
+  return {id:uid("pi"),date:date||new Date().toISOString(),auteur:auteur||"??",type,texte:String(texte||"").trim(),luPar:[],traite:false,exclureExport:type==="PERSO",archive:false};
+}
+/* RELEVE à afficher à l'ouverture de tournée pour tout auteur ≠ créateur et non lu */
+function relevesAVoir(pats,auteur){
+  const out=[];pats.forEach((p,i)=>(p.postits||[]).forEach(pi=>{
+    if(pi.type==="RELEVE"&&!pi.archive&&pi.auteur!==auteur&&!(pi.luPar||[]).includes(auteur))out.push({p,i,pi});}));
+  return out;
+}
+function alertesOuvertes(pats){
+  const out=[];pats.forEach((p,i)=>(p.postits||[]).forEach(pi=>{if(pi.type==="ALERTE"&&!pi.archive&&!pi.traite)out.push({p,i,pi})}));
+  return out;
+}
+function alertesEnRetard(pats,now){
+  now=now||Date.now();
+  return alertesOuvertes(pats).filter(x=>now-Date.parse(x.pi.date)>48*3600*1000);
+}
+
+/* ---- Module 5 : extraction — interface abstraite + validation stricte ---- */
+function schemaVide(){return {texte:"",mot:null,cst:null,obs:null,icope:null,postit:null,refection:null}}
+const REF_EXTR_KEYS=["lit","exsudat","iso","peri_lesionnelle","pansement","surface_cm2","orientation","localisation","lateralite"];
+/* validation contre le schéma fermé : tout champ hors liste est rejeté, zéro invention côté app */
+function validerExtraction(j){
+  const err=[],out=schemaVide();
+  if(!j||typeof j!=="object")return {ok:false,erreurs:["réponse non JSON"],data:out};
+  if(typeof j.texte==="string")out.texte=j.texte.trim().slice(0,600);
+  if(j.mot!=null){if(MOTS_EVT.includes(j.mot))out.mot=j.mot;else err.push("mot hors liste : "+j.mot);}
+  if(j.cst!=null){if(typeof j.cst==="object"){out.cst={};CST_KEYS.forEach(k=>out.cst[k]=typeof j.cst[k]==="string"?j.cst[k].trim():(j.cst[k]==null?"":String(j.cst[k])));
+      Object.keys(j.cst).forEach(k=>{if(!CST_KEYS.includes(k))err.push("constante hors schéma : "+k)});
+      if(!CST_KEYS.some(k=>out.cst[k]))out.cst=null;}else err.push("cst invalide");}
+  if(j.obs!=null){if(typeof j.obs==="object"){out.obs={};
+      OBS_KEYS.forEach(k=>{
+        const raw=j.obs[k];
+        /* douleur ALGOPLUS dictée : {"algoplus":{...}} — uniquement les signes explicitement
+           dictés (true/false), jamais de score (calculé par le moteur) */
+        if(k==="douleur"&&raw!=null&&typeof raw==="object"){
+          const src=raw.algoplus;
+          if(src&&typeof src==="object"){
+            const alg={};let any=false;
+            ALGOPLUS_ITEMS.forEach(it=>{if(typeof src[it]==="boolean"){alg[it]=src[it];any=true}});
+            Object.keys(src).forEach(it=>{if(!ALGOPLUS_ITEMS.includes(it))err.push("douleur.algoplus hors schéma : "+it)});
+            Object.keys(raw).forEach(kk=>{if(kk!=="algoplus")err.push("douleur hors schéma : "+kk)});
+            out.obs[k]=any?{algoplus:alg}:"";
+          }else{out.obs[k]="";err.push("obs.douleur invalide")}
+          return;
+        }
+        const v=typeof raw==="string"?raw.trim():"";
+        if(!v)out.obs[k]="";else if(OBS_OPTS[k].includes(v))out.obs[k]=v;else{out.obs[k]="";err.push("obs."+k+" hors valeurs fermées : "+v)}});
+      Object.keys(j.obs).forEach(k=>{if(!OBS_KEYS.includes(k))err.push("observation hors schéma : "+k)});
+      if(!OBS_KEYS.some(k=>out.obs[k]))out.obs=null;}else err.push("obs invalide");}
+  if(j.icope!=null){if(typeof j.icope==="object"){out.icope={};let any=false;
+      ICOPE_DOMS.forEach(k=>{const v=j.icope[k];if(v==="ok"||v==="alerte"){out.icope[k]=v;any=true}else if(v!=null&&v!=="")err.push("icope."+k+" hors valeurs ok|alerte")});
+      Object.keys(j.icope).forEach(k=>{if(!ICOPE_DOMS.includes(k))err.push("icope hors schéma : "+k)});
+      if(!any)out.icope=null;}else err.push("icope invalide");}
+  if(j.postit!=null){if(typeof j.postit==="object"&&POSTIT_TYPES.includes(j.postit.type))out.postit={type:j.postit.type,texte:String(j.postit.texte||"").trim()};else err.push("postit invalide");}
+  /* réfection dictée (module 7) : mêmes listes fermées que la saisie manuelle — pré-remplit le
+     panneau, ne s'enregistre jamais sans validation. localisation/lateralite servent uniquement
+     à cibler la bonne plaie active. */
+  if(j.refection!=null){if(typeof j.refection==="object"){const jr=j.refection,rf={};
+    if(jr.lit){if(REF_LIT.includes(jr.lit))rf.lit=jr.lit;else err.push("refection.lit hors liste : "+jr.lit);}
+    if(jr.exsudat){if(REF_EXSUDAT.includes(jr.exsudat))rf.exsudat=jr.exsudat;else err.push("refection.exsudat hors liste : "+jr.exsudat);}
+    if(jr.iso!=null&&jr.iso!==""){if(jr.iso==="Aucun signe")rf.iso="Aucun signe";
+      else if(typeof jr.iso==="object"){const s={};let any=false;
+        REF_ISO.forEach(k=>{if(jr.iso[k]===true){s[k]=true;any=true}});
+        Object.keys(jr.iso).forEach(k=>{if(!REF_ISO.includes(k))err.push("refection.iso hors schéma : "+k)});
+        if(any)rf.iso=s;}
+      else err.push("refection.iso invalide");}
+    if(jr.peri_lesionnelle){if(REF_PERI.includes(jr.peri_lesionnelle))rf.peri_lesionnelle=jr.peri_lesionnelle;else err.push("refection.peri_lesionnelle hors liste");}
+    if(jr.pansement){if(jr.pansement==="Inchangé"||REF_PANS.includes(jr.pansement))rf.pansement=jr.pansement;else err.push("refection.pansement hors liste : "+jr.pansement);}
+    if(jr.surface_cm2!=null&&jr.surface_cm2!==""){const v=parseFloat(String(jr.surface_cm2).replace(",","."));
+      if(isFinite(v)&&v>=0&&v<10000)rf.surface_cm2=v;else err.push("refection.surface_cm2 invalide");}
+    if(jr.orientation){if(REF_ORIENT.includes(jr.orientation))rf.orientation=jr.orientation;else err.push("refection.orientation hors liste");}
+    if(jr.localisation){if(PLAIE_LOC.includes(jr.localisation))rf.localisation=jr.localisation;else err.push("refection.localisation hors liste");}
+    if(jr.lateralite){if(PLAIE_LAT.includes(jr.lateralite))rf.lateralite=jr.lateralite;else err.push("refection.lateralite hors liste");}
+    Object.keys(jr).forEach(k=>{if(!REF_EXTR_KEYS.includes(k))err.push("refection hors schéma : "+k)});
+    if(Object.keys(rf).length)out.refection=rf;}else err.push("refection invalide");}
+  return {ok:!err.length,erreurs:err,data:out};
+}
+/* cible la plaie active correspondant à une réfection dictée — jamais de devinette (zéro invention) :
+   une seule plaie active = cible ; plusieurs = il faut une localisation (± latéralité) dictée qui
+   désigne exactement une plaie, sinon null (l'IDEL choisit à la main). */
+function ciblerPlaie(actives,rf){
+  let c=actives||[];
+  if(rf&&rf.localisation)c=c.filter(pl=>pl.localisation===rf.localisation);
+  if(rf&&rf.lateralite&&c.length>1)c=c.filter(pl=>pl.lateralite===rf.lateralite);
+  return c.length===1?c[0]:null;
+}
+/* extracteur hors-ligne par règles : n'extrait que ce qui est dicté, n'invente jamais */
+function extraireLocal(texte){
+  const raw=String(texte||"").trim(),out=schemaVide();if(!raw)return out;
+  const t=norm(raw);
+  let corps=raw;
+  const pfx=[[/^note pour la releve\s*[:,–—-]?\s*/i,"RELEVE"],[/^(alerte|a signaler au medecin)\s*[:,–—-]?\s*/i,"ALERTE"],[/^memo\s*[:,–—-]?\s*/i,"PERSO"]];
+  for(const [re,ty] of pfx){const m=t.match(re);if(m){out.postit={type:ty,texte:raw.slice(m[0].length).trim()||raw.trim()};corps=raw.slice(m[0].length);break}}
+  const tc=norm(corps);
+  if(/hospitalis|\bhospit\b/.test(tc))out.mot="HOSPIT";
+  else if(/\burgences?\b/.test(tc))out.mot="URGENCES";
+  else if(/\bdecede|\bdeces\b/.test(tc))out.mot="DÉCÈS";
+  else if(/\behpad\b|maison de retraite/.test(tc))out.mot="EHPAD";
+  else if(/\bchute|\btombe(e?s?)\b/.test(tc))out.mot="CHUTE";
+  const cst={ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""};
+  let m;
+  if(m=tc.match(/(?:\bta\b|tension(?: arterielle)?)[^0-9]{0,12}(\d{1,3})\s*(?:\/|sur)\s*(\d{1,3})/))cst.ta=m[1]+"/"+m[2];
+  else if(m=tc.match(/(?:\bta\b|tension(?: arterielle)?)[^0-9]{0,12}(\d{2})\s+(\d{1,2})\b/))cst.ta=m[1]+"/"+m[2];
+  if(m=tc.match(/(?:pouls|frequence cardiaque|\bfc\b)[^0-9]{0,12}(\d{2,3})/))cst.fc=m[1];
+  if(m=tc.match(/(?:satu?ration|\bsat\b|spo ?2)[^0-9]{0,12}(\d{2,3})/))cst.spo2=m[1];
+  if(m=tc.match(/(?:temperature|fievre a|febrile a)[^0-9]{0,12}(\d{2})(?:[.,]\s?(\d))?/))cst.temp=m[1]+(m[2]?","+m[2]:"");
+  else if((m=tc.match(/\b(3[5-9]|4[01])[.,](\d)\b(?![^ ]*\/)/))&&/temp|fievre|febrile|\bdegres\b/.test(tc))cst.temp=m[1]+","+m[2];
+  if(m=tc.match(/(?:glycemie|dextro|glyc)[^0-9]{0,15}(\d)[.,](\d{1,2})\b/))cst.gly=m[1]+","+m[2];
+  else if(m=tc.match(/(?:glycemie|dextro)[^0-9]{0,15}(\d)\s?(?:g|gramme)/))cst.gly=m[1];
+  else if(m=tc.match(/(\d)[.,](\d{1,2})\s*(?:g(?:\/l| par litre)?|gramme)/))cst.gly=m[1]+","+m[2];
+  if(m=tc.match(/(?:poids|pese)[^0-9]{0,12}(\d{2,3})(?:[.,](\d))?/))cst.poids=m[1]+(m[2]?","+m[2]:"");
+  else if(m=tc.match(/(\d{2,3})(?:[.,](\d))?\s*(?:kilos?|kg)\b/))cst.poids=m[1]+(m[2]?","+m[2]:"");
+  if(CST_KEYS.some(k=>cst[k]))out.cst=cst;
+  const obs={douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""};
+  /* douleur : signes ALGOPLUS dictés (mots-clés stricts, patient non communicant) sinon tranche EVA */
+  const alg={};
+  if(/grimac|froncement des sourcils|crispation|machoires serrees|visage fige/.test(tc))alg.visage=true;
+  if(/regard (inattentif|fixe|lointain|suppliant)|yeux fermes|\bpleure\b|\bpleurs\b/.test(tc))alg.regard=true;
+  if(/\baie\b|\bouille\b|j.ai mal|gemit|gemissement|\bcrie\b|\bcris\b/.test(tc))alg.plaintes=true;
+  if(/protege (sa|son|la|le|une|un)|protection d.une zone|refus(e|ent)? (de la |de |la )?mobilisation|attitudes? figees?/.test(tc))alg.corps=true;
+  if(/agitation|\bagite(e?s?)\b|agressi(f|ve|vite)|agrippe/.test(tc))alg.comportements=true;
+  if(Object.keys(alg).length)obs.douleur={algoplus:alg};
+  else if(m=tc.match(/\beva[^0-9]{0,8}(\d{1,2})/))obs.douleur=evaTranche(m[1])||"";
+  else if(m=tc.match(/douleur[^0-9a-z]{0,12}(?:a|evaluee a|cotee a)?\s*(\d{1,2})\s*(?:\/\s*10)?/))obs.douleur=evaTranche(m[1])||"";
+  else if(/douloureu|se plaint de douleur|\balgique\b/.test(tc))obs.douleur="oui";
+  if(/\bchute|\btombe(e?s?)\b/.test(tc))obs.chute="oui";
+  if(/confus|desoriente/.test(tc))obs.confusion="oui";
+  if(/escarre/.test(tc))obs.peau="escarre";
+  else if(/rougeur|erytheme/.test(tc))obs.peau="rougeur";
+  else if(/plaie/.test(tc))obs.peau="plaie";
+  if(/surcharge|oedeme|œdeme|jambes? gonflee|crepitants/.test(tc))obs.surcharge="oui";
+  if(/(n'?a pas pris|refuse (son|le|les) (traitement|medicament)|oubli du traitement|mauvaise observance)/.test(tc))obs.observance="mauvaise";
+  if(OBS_KEYS.some(k=>obs[k]))out.obs=obs;
+  /* réfection de plaie : mots-clés stricts uniquement — un état du lit, « exsudat X », les signes
+     ISO explicites, une famille de pansement ou une surface. Rien de déduit. */
+  const rf={};
+  if(/epidermis/.test(tc))rf.lit="Épidermisé";
+  else if(/bourgeonn/.test(tc))rf.lit="Bourgeonnant";
+  else if(/fibrin/.test(tc))rf.lit="Fibrineux";
+  else if(/necros|necrot|necrose/.test(tc))rf.lit="Nécrotique";
+  if(m=tc.match(/exsudat[^a-z]{0,8}(absent|modere|abondant)/))rf.exsudat={absent:"Absent",modere:"Modéré",abondant:"Abondant"}[m[1]];
+  else if(/pas d.exsudat/.test(tc))rf.exsudat="Absent";
+  const isoS={};
+  if(/ecoulement purulent|\bpurulent(e?s?)\b/.test(tc))isoS.ecoulement_purulent=true;
+  if(/rougeur extensive/.test(tc))isoS.rougeur_extensive=true;
+  if(/dehiscence/.test(tc))isoS.dehiscence=true;
+  if(Object.keys(isoS).length)rf.iso=isoS;
+  else if(/aucun signe (infectieux|local|inflammatoire)|pas de signe (infectieux|local|inflammatoire)/.test(tc))rf.iso="Aucun signe";
+  if(/macer/.test(tc))rf.peri_lesionnelle="Macérée";
+  else if(/eczema/.test(tc))rf.peri_lesionnelle="Eczéma-rougeur";
+  else if(/peau (autour |peri[- ]?lesionnelle )?saine|pourtour sain/.test(tc))rf.peri_lesionnelle="Saine";
+  if(/pansement inchange/.test(tc))rf.pansement="Inchangé";
+  else if(/hydrocellulaire/.test(tc))rf.pansement="Hydrocellulaire";
+  else if(/hydrogel/.test(tc))rf.pansement="Hydrogel";
+  else if(/alginate/.test(tc))rf.pansement="Alginate";
+  else if(/hydrofibre/.test(tc))rf.pansement="Hydrofibre";
+  else if(/pansement interface|\binterface\b/.test(tc))rf.pansement="Interface";
+  else if(/argent/.test(tc))rf.pansement="Pansement argent";
+  else if(/charbon/.test(tc))rf.pansement="Charbon";
+  else if(/\btpn\b|pression negative/.test(tc))rf.pansement="TPN";
+  if(m=tc.match(/surface[^0-9]{0,10}(\d+(?:[.,]\d+)?)/))rf.surface_cm2=parseFloat(m[1].replace(",","."));
+  else if(m=tc.match(/(\d+(?:[.,]\d+)?)\s*(?:cm2|cm carres?|centimetres? carres?)/))rf.surface_cm2=parseFloat(m[1].replace(",","."));
+  if(/(avis|oriente|adresse)[^.]{0,25}medecin traitant/.test(tc))rf.orientation="Médecin traitant";
+  else if(/consultation plaies?/.test(tc))rf.orientation="Consultation plaies";
+  const rfOK=rf.lit||rf.exsudat||rf.iso||rf.pansement||rf.surface_cm2!=null;
+  if(rfOK){ /* localisation/latéralité dictées : uniquement pour cibler la bonne plaie */
+    const locs=[["talon","Talon"],["sacrum","Sacrum"],["ischion","Ischion"],["trochanter","Trochanter"],["jambe","Jambe"],["pied","Pied"],["abdomen","Abdomen"],["thorax","Thorax"]];
+    for(const [kw,lb] of locs){if(tc.includes(kw)){rf.localisation=lb;break}}
+    if(/\bdroite?\b/.test(tc))rf.lateralite="D";else if(/\bgauche\b/.test(tc))rf.lateralite="G";
+    out.refection=rf;
+  }
+  out.texte=corps.trim();
+  return out;
+}
+/* Accumulation de la dictée, robuste aux caprices d'Android : Chrome mobile coupe la session
+   après chaque phrase puis, à la relance, relivre parfois le MÊME segment final — sans garde,
+   la phrase se répète à chaque cycle. Règles : un segment final identique au précédent est
+   ignoré (≥ 4 caractères — un mot très court répété volontairement passe), un long segment
+   déjà présent en fin de texte aussi (≥ 12 caractères). L'interim (texte provisoire) n'entre
+   JAMAIS dans l'état : affichage seulement. */
+function dicteeAccum(etat,seg){
+  etat=etat||{base:"",fin:"",lastSeg:""};
+  seg=String(seg||"").trim();if(!seg)return etat;
+  const nrm=s=>String(s).toLowerCase().replace(/\s+/g," ").trim();
+  if(seg.length>=4&&nrm(seg)===nrm(etat.lastSeg||""))return etat;
+  if(seg.length>=12&&nrm(etat.base+" "+etat.fin).endsWith(nrm(seg)))return etat;
+  return {base:etat.base,fin:(etat.fin?etat.fin+" ":"")+seg,lastSeg:seg};
+}
+/* défense en profondeur : le nom du patient est retiré du texte dicté avant tout envoi à un extracteur distant */
+function anonymiserDictee(txt,nom){
+  let t=String(txt||"");const n=String(nom||"").trim();
+  if(n.length>=2){const re=new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi");t=t.replace(re,"le patient");}
+  return t;
+}
+const DICTEE_SYS='Tu es infirmier·e libéral·e (IDEL, France). On te donne une transmission dictée. Retourne UNIQUEMENT un JSON valide, sans markdown, avec EXACTEMENT ce schéma et ces clés : {"texte":"...","mot":...,"cst":...,"obs":...,"icope":...,"postit":...,"refection":...}.\n'
++'- texte : reformulation professionnelle en 1 à 3 phrases (les détails non codables, ex. « pouls irrégulier », vont ici).\n'
++'- mot : null, ou UN parmi "HOSPIT","URGENCES","CHUTE","DÉCÈS","EHPAD" si l\'événement est explicitement dicté.\n'
++'- cst : null si aucune constante dictée, sinon {"ta":"","fc":"","spo2":"","temp":"","gly":"","poids":""} — clés EXACTES. Valeur = le nombre tel que dicté, SANS unité ni commentaire ("13/8", "72", "38,2", "1,05" — jamais "110 irrégulier" ni "72 kg"). Toute constante dictée DOIT être reportée dans son champ : glycémie/dextro→gly · température/fébrile à/fièvre à→temp · saturation/SpO2→spo2 · pouls/fréquence cardiaque→fc · poids/pèse→poids · TA/tension→ta. Champ non dicté = "".\n'
++'- obs : null si rien à coder, sinon {"douleur":"","chute":"","confusion":"","peau":"","surcharge":"","observance":""} — valeurs FERMÉES uniquement : douleur = tranche de l\'EVA dictée "0"|"1-3"|"4-6"|"7-10" ("EVA 5"→"4-6", "douleur à 8"→"7-10"), ou "oui" (douleur dictée sans EVA), OU — patient non communicant, signes comportementaux dictés — {"algoplus":{...}} avec pour clés UNIQUEMENT les items ALGOPLUS dictés : "visage" (froncement des sourcils, grimaces, crispation, mâchoires serrées, visage figé) · "regard" (inattentif, fixe, lointain ou suppliant, pleurs, yeux fermés) · "plaintes" (« aïe », « ouille », « j\'ai mal », gémissements, cris) · "corps" (retrait ou protection d\'une zone, refus de mobilisation, attitudes figées) · "comportements" (agitation ou agressivité, agrippement) — true (ou false si l\'absence du signe est explicitement dictée), JAMAIS les 5 items par défaut, JAMAIS de score (l\'app le calcule) · chute "oui"/"non" · confusion "oui"/"non" · peau "RAS"/"rougeur"/"plaie"/"escarre" · surcharge "oui"/"non" (œdèmes, crépitants) · observance "bonne"/"partielle"/"mauvaise". Une observation clinique dictée DOIT être codée : "rougeur au talon"→peau:"rougeur" · "escarre"→peau:"escarre" · "plaie propre"→peau:"plaie" · "a chuté"→chute:"oui" · "confuse/désorientée"→confusion:"oui" · "œdèmes"→surcharge:"oui" · "n\'a pas pris son traitement"→observance:"mauvaise" · "EVA 5"→douleur:"4-6" · "il grimace, protège sa jambe"→douleur:{"algoplus":{"visage":true,"corps":true}}.\n'
++'- icope : null SAUF si la dictée rapporte EXPLICITEMENT un dépistage ICOPE (le mot « ICOPE » ou l\'évaluation dictée domaine par domaine). Un symptôme isolé (confusion, chute, tristesse…) va dans obs, JAMAIS dans icope. Ne déduis AUCUN domaine, ne remplis JAMAIS les 6 domaines par défaut.\n'
++'- postit : null, sauf préfixe dicté : "note pour la relève…"→{"type":"RELEVE","texte":"..."} · "alerte…" ou "à signaler au médecin…"→{"type":"ALERTE","texte":"..."} · "mémo…"→{"type":"PERSO","texte":"..."}.\n'
++'- refection : null SAUF si la dictée décrit AU MOINS UN élément de la réfection elle-même : lit, exsudat, signes locaux, peau péri-lésionnelle, famille de pansement, surface ou avis demandé. « Pansement fait/refait » SANS description = refection null (et n\'implique PAS obs.peau : peau ne se code que si la plaie/rougeur/escarre est dictée comme constat). Sinon un objet avec UNIQUEMENT les champs dictés, valeurs FERMÉES : "lit" = "Épidermisé"|"Bourgeonnant"|"Fibrineux"|"Nécrotique" (aspect dominant) · "exsudat" = "Absent"|"Modéré"|"Abondant" · "iso" = "Aucun signe" ("pas de signe infectieux/local") OU {"rougeur_extensive":true,"ecoulement_purulent":true,"dehiscence":true,"fievre_rapportee":true} en ne mettant QUE les signes dictés · "peri_lesionnelle" = "Saine"|"Macérée"|"Eczéma-rougeur" · "pansement" = "Inchangé" UNIQUEMENT si l\'absence de changement est dictée (« pansement inchangé », « même protocole » — « refait » n\'est PAS « Inchangé »), ou "Hydrocellulaire"|"Hydrogel"|"Alginate"|"Hydrofibre"|"Interface"|"Pansement argent"|"Charbon"|"TPN"|"Compression associée"|"Autre" · "surface_cm2" = nombre (sans unité) · "orientation" = "Médecin traitant"|"Consultation plaies"|"Urgences" si un avis est demandé POUR LA PLAIE · "localisation" = "Jambe"|"Pied"|"Talon"|"Sacrum"|"Ischion"|"Trochanter"|"Abdomen"|"Thorax"|"Membre sup"|"Tête-face"|"Autre" si dictée · "lateralite" = "D"|"G"|"Médian"|"NA" UNIQUEMENT si le côté est explicitement dicté (« droite », « gauche ») — ne JAMAIS déduire la latéralité de l\'anatomie : « sacrum » dicté seul → PAS de lateralite. La douleur ne va JAMAIS dans refection (elle va dans obs.douleur).\n'
++'RÈGLE ABSOLUE : zéro invention — ne remplis un champ que si l\'information est dictée ; ne complète jamais un objet par déduction ; en cas de doute, laisse vide.\n'
++'Exemples :\n'
++'Dictée : "Glycémie 1,05 au réveil, insuline faite" → {"texte":"Glycémie à 1,05 g/L au réveil ; insuline administrée.","mot":null,"cst":{"ta":"","fc":"","spo2":"","temp":"","gly":"1,05","poids":""},"obs":null,"icope":null,"postit":null,"refection":null}\n'
++'Dictée : "Confuse ce matin, a chuté dans la nuit, pouls 110 irrégulier" → {"texte":"Patiente confuse ce matin ; chute nocturne rapportée ; pouls à 110, irrégulier.","mot":"CHUTE","cst":{"ta":"","fc":"110","spo2":"","temp":"","gly":"","poids":""},"obs":{"douleur":"","chute":"oui","confusion":"oui","peau":"","surcharge":"","observance":""},"icope":null,"postit":null,"refection":null}\n'
++'Dictée : "Réfection de l\'ulcère jambe droite, lit fibrineux, exsudat abondant, pas de signe infectieux, je passe sur hydrofibre, surface 6 cm²" → {"texte":"Réfection de l\'ulcère de la jambe droite : lit fibrineux, exsudat abondant, pas de signe infectieux ; passage à un pansement hydrofibre ; surface 6 cm².","mot":null,"cst":null,"obs":{"douleur":"","chute":"","confusion":"","peau":"plaie","surcharge":"","observance":""},"icope":null,"postit":null,"refection":{"lit":"Fibrineux","exsudat":"Abondant","iso":"Aucun signe","pansement":"Hydrofibre","surface_cm2":6,"localisation":"Jambe","lateralite":"D"}}\n'
++'Dictée : "Pansement fait, RAS" → {"texte":"Pansement réalisé, rien à signaler.","mot":null,"cst":null,"obs":null,"icope":null,"postit":null,"refection":null} (pansement fait sans description : ni refection, ni obs.peau, ni "Inchangé")\n'
++'Dictée : "Escarre du sacrum, lit bourgeonnant" → {"texte":"Escarre sacrée : lit bourgeonnant.","mot":null,"cst":null,"obs":{"douleur":"","chute":"","confusion":"","peau":"escarre","surcharge":"","observance":""},"icope":null,"postit":null,"refection":{"lit":"Bourgeonnant","localisation":"Sacrum"}} (pas de lateralite : le côté n\'est pas dicté)\n'
++'Dictée : "Il grimace au toucher et protège sa jambe" → {"texte":"Grimace au toucher ; protège sa jambe.","mot":null,"cst":null,"obs":{"douleur":{"algoplus":{"visage":true,"corps":true}},"chute":"","confusion":"","peau":"","surcharge":"","observance":""},"icope":null,"postit":null,"refection":null} (signes ALGOPLUS dictés uniquement — ni "regard", ni "plaintes", ni "comportements", ni peau, ni refection)';
+/* interface abstraite : provider interchangeable (n8n/Claude, API directe, local) */
+const EXTRACTEURS={
+  n8n:{l:"Webhook n8n du cabinet (Claude)",async extraire(txt){
+    if(!ai.webhook)throw new Error("webhook non configuré");
+    const ctl=new AbortController();const tmo=setTimeout(()=>ctl.abort(),30000);
+    let r;try{r=await fetch(ai.webhook,{method:"POST",headers:Object.assign({"Content-Type":"application/json"},ai.token?{"Authorization":"Bearer "+ai.token}:{}),body:JSON.stringify({text:txt,system:DICTEE_SYS}),signal:ctl.signal});}
+    catch(e){throw new Error(e.name==="AbortError"?"délai dépassé (30 s)":e.message)}finally{clearTimeout(tmo)}
+    const raw=await r.text();if(!r.ok)throw new Error("webhook HTTP "+r.status);
+    try{return JSON.parse(raw)}catch(e){throw new Error("réponse non JSON")}}},
+  anthropic:{l:"API Anthropic directe (déconseillé)",async extraire(txt){
+    if(!ai.key)throw new Error("clé API absente");
+    const ctl=new AbortController();const tmo=setTimeout(()=>ctl.abort(),30000);
+    let r;try{r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":ai.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:700,system:DICTEE_SYS,messages:[{role:"user",content:txt}]}),signal:ctl.signal});}
+    catch(e){throw new Error(e.name==="AbortError"?"délai dépassé (30 s)":e.message)}finally{clearTimeout(tmo)}
+    if(!r.ok)throw new Error("API "+r.status);const d=await r.json();
+    return JSON.parse((d.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim())}},
+  local:{l:"Hors-ligne (règles, sans IA)",async extraire(txt){return extraireLocal(txt)}},
+};
+const ExtracteurIA={
+  get provider(){return EXTRACTEURS[settings.iaProvider]?settings.iaProvider:"n8n"},
+  async extraire(txt){return EXTRACTEURS[this.provider].extraire(txt)},
+};
+
+/* ---- Module 6 : export pseudonymisé (P001…) — table code↔patient affichée, jamais exportée ---- */
+/* codeMap {patientId → "Pnnn"} : persisté (lidia.cot.codes) pour des pseudonymes STABLES entre exports,
+   quelles que soient les suppressions/insertions dans la liste. Une seule ligne par dossier (id unique). */
+function buildExport(pats,passList,today,codeMap){
+  today=today||todayISO();codeMap=codeMap||{};
+  let next=Object.values(codeMap).reduce((m,c)=>{const n=parseInt(String(c).slice(1),10);return isNaN(n)?m:Math.max(m,n)},0);
+  const dejaVu=new Set();
+  pats=pats.filter(p=>{const k=p.id||JSON.stringify(p);if(dejaVu.has(k))return false;dejaVu.add(k);return true});
+  pats.forEach(p=>{if(p.id&&!codeMap[p.id]){next++;codeMap[p.id]="P"+String(next).padStart(3,"0")}});
+  const head=["code","annee","sexe","commune","vitSeul","aidant","institution","pathos","nbMed","autonomie","bsi","palliatif","adresse_par","plaie","nb_plaies_actives","socleDate",
+    "nbPassages","nbTransmissions","nbLibre","nbEvenements","nbConstantes","nbObs","nbIcope","nbPhotos",
+    "der_ta","der_fc","der_spo2","der_temp","der_gly","der_poids","der_cst_date",
+    "icope_mobilite","icope_cognition","icope_nutrition","icope_humeur","icope_vision","icope_audition","icope_nbAlerts","icope_date",
+    "douleur_mode","douleur_en","douleur_algoplus_score",
+    "braden_score","braden_date","girerd_score","girerd_date",
+    "postits_releve","postits_alerte","alertes_traitees","refus_propositions"];
+  /* dictionnaire v1.1 : exports plaies (une ligne par plaie) et réfections (une ligne par réfection),
+     identifiant de plaie pseudonymisé Pnnn-k (rang d'ouverture dans le dossier, stable) */
+  const plaiesHead=["code","plaie","date_debut","localisation","lateralite","etiologie","stade_initial","type_intervention","date_operatoire","adresseur","ips_connu","ips_valeur","suivi_specialise","nb_refections","cloture_date","issue","delai_cicatrisation","iso_j30_statut","woundqol_ouverture_score","woundqol_cloture_score"];
+  const refHead=["code","plaie","date","lit","exsudat","iso_aucun","iso_rougeur","iso_ecoulement","iso_dehiscence","iso_fievre","peri_lesionnelle","pansement","surface_cm2","orientation"];
+  const rows=[],events=[],mapping=[],plaiesRows=[],refRows=[];
+  pats.forEach((p,i)=>{
+    const code=p.id&&codeMap[p.id]?codeMap[p.id]:"P"+String(++next).padStart(3,"0");mapping.push({code,nom:p.name});
+    const tr=(p.transmissions||[]);
+    const of=ty=>tr.filter(t=>t.type===ty);
+    const lastC=of("CONSTANTES").slice().sort((a,b)=>a.date<b.date?-1:1).pop();
+    const lastI=of("ICOPE").slice().sort((a,b)=>a.date<b.date?-1:1).pop();
+    /* dernière douleur observée (dictionnaire v1.4) — legacy string migrée à la volée */
+    const lastD=of("OBS").filter(t=>t.obs&&douleurRenseignee(t.obs.douleur)).sort((a,b)=>a.date<b.date?-1:1).pop();
+    const dD=lastD?(typeof lastD.obs.douleur==="object"?lastD.obs.douleur:migrerDouleur(lastD.obs.douleur)):null;
+    const myPass=(passList||[]).filter(x=>x.patientId===p.id);
+    const refus=myPass.reduce((s,x)=>s+((x.propositions||[]).filter(pr=>pr.declined).length),0);
+    const pi=(p.postits||[]);
+    of("EVENEMENT").forEach(t=>{const kPl=t.liee_plaie?(p.plaies||[]).findIndex(x=>x.id===t.liee_plaie):-1;
+      events.push({code,date:String(t.date).slice(0,10),mot:t.mot||"",liee_plaie:kPl>-1?code+"-"+(kPl+1):""})});
+    (p.plaies||[]).forEach((pl,k)=>{
+      const pid=code+"-"+(k+1);
+      plaiesRows.push({code,plaie:pid,date_debut:pl.date_debut||"",localisation:pl.localisation||"",lateralite:pl.lateralite||"",etiologie:pl.etiologie||"",
+        stade_initial:pl.stade_initial||"",type_intervention:pl.type_intervention||"",date_operatoire:pl.date_operatoire||"",adresseur:pl.adresseur||"",
+        ips_connu:pl.ips_connu||"",ips_valeur:pl.ips_valeur??"",suivi_specialise:pl.suivi_specialise||"",nb_refections:(pl.refections||[]).length,
+        cloture_date:pl.cloture?String(pl.cloture.date).slice(0,10):"",issue:pl.cloture?pl.cloture.issue:"",delai_cicatrisation:delaiCicatrisation(pl)??"",
+        iso_j30_statut:isoJ30Statut(pl),
+        woundqol_ouverture_score:pl.woundqol_ouverture?pl.woundqol_ouverture.score:"",woundqol_cloture_score:pl.woundqol_cloture?pl.woundqol_cloture.score:""});
+      (pl.refections||[]).forEach(r=>{const det=r.iso&&r.iso!=="Aucun signe"?r.iso:null;
+        refRows.push({code,plaie:pid,date:String(r.date||"").slice(0,10),lit:r.lit||"",exsudat:r.exsudat||"",
+          iso_aucun:r.iso==="Aucun signe"?1:0,iso_rougeur:det&&det.rougeur_extensive?1:0,iso_ecoulement:det&&det.ecoulement_purulent?1:0,
+          iso_dehiscence:det&&det.dehiscence?1:0,iso_fievre:det&&det.fievre_rapportee?1:0,
+          peri_lesionnelle:r.peri_lesionnelle||"",pansement:r.pansement||"",surface_cm2:r.surface_cm2??"",orientation:r.orientation||""});});
+    });
+    rows.push({code,annee:p.annee||"",sexe:p.sexe||"",commune:p.commune||"",vitSeul:p.vitSeul?1:0,aidant:p.aidant?1:0,institution:p.institution?1:0,
+      pathos:(p.pathos||[]).join("|"),nbMed:p.nbMed??"",autonomie:p.autonomie||"",bsi:p.bsi?1:0,palliatif:p.pal?1:0,adresse_par:p.adresse_par||"",plaie:p.plaie?1:0,nb_plaies_actives:plaiesActives(p).length,socleDate:p.socleDate||"",
+      nbPassages:myPass.length,nbTransmissions:tr.length,nbLibre:of("LIBRE").length,nbEvenements:of("EVENEMENT").length,nbConstantes:of("CONSTANTES").length,nbObs:of("OBS").length,nbIcope:of("ICOPE").length,nbPhotos:of("PHOTO").length,
+      der_ta:lastC?.cst?.ta||"",der_fc:lastC?.cst?.fc||"",der_spo2:lastC?.cst?.spo2||"",der_temp:lastC?.cst?.temp||"",der_gly:lastC?.cst?.gly||"",der_poids:lastC?.cst?.poids||"",der_cst_date:lastC?String(lastC.date).slice(0,10):"",
+      icope_mobilite:lastI?.icope?.mobilite||"",icope_cognition:lastI?.icope?.cognition||"",icope_nutrition:lastI?.icope?.nutrition||"",icope_humeur:lastI?.icope?.humeur||"",icope_vision:lastI?.icope?.vision||"",icope_audition:lastI?.icope?.audition||"",icope_nbAlerts:lastI?(lastI.nbAlerts??""):"",icope_date:lastI?String(lastI.date).slice(0,10):"",
+      douleur_mode:dD?dD.mode:"",douleur_en:dD&&dD.mode==="EN"?(dD.en||""):"",douleur_algoplus_score:dD&&dD.mode==="ALGOPLUS"?(dD.score??""):"",
+      braden_score:p.braden?p.braden.score:"",braden_date:p.braden?p.braden.date:"",girerd_score:p.girerd?p.girerd.score:"",girerd_date:p.girerd?p.girerd.date:"",
+      postits_releve:pi.filter(x=>x.type==="RELEVE").length,postits_alerte:pi.filter(x=>x.type==="ALERTE").length,alertes_traitees:pi.filter(x=>x.type==="ALERTE"&&x.traite).length,
+      refus_propositions:refus});
+  });
+  return {head,rows,events,mapping,codeMap,plaiesHead,plaiesRows,refHead,refRows};
+}
+function toCSV(head,rows){
+  const q=v=>{v=String(v??"");if(/^[=+\-@\t\r]/.test(v))v="'"+v; /* neutralise l'injection de formule tableur */
+    return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  return head.join(";")+"\n"+rows.map(r=>head.map(h=>q(r[h])).join(";")).join("\n");
+}
+
+/* ---- Module 7 : plaies (spec Module Plaies v5.0 — dictionnaire v1.1) ----
+   Anti-redondance (bloquant) : ce module ne capte NI douleur, NI pathologies, NI signes généraux,
+   NI la photo (transmission PHOTO au niveau passage), NI date/auteur (hérités du Passage),
+   NI hospitalisation (mot-clé EVENEMENT), NI la cotation. Listes fermées ou nombres uniquement,
+   null ≠ valeur, aucun pré-cochage. */
+const SURFACE_J=15,BILAN_CHIR_J=30;
+const PLAIE_LOC=["Jambe","Pied","Talon","Sacrum","Ischion","Trochanter","Abdomen","Thorax","Membre sup","Tête-face","Autre"];
+const PLAIE_LAT=["D","G","Médian","NA"];
+const PLAIE_ETIO=["Ulcère veineux","Ulcère artériel","Ulcère mixte","Escarre","Pied diabétique","Plaie chirurgicale","Traumatique","Brûlure","Tumorale","Autre"];
+const PLAIE_STADES=["1","2","3","4","Non stadable"];
+const PLAIE_INTERV=["Orthopédie","Digestif","Vasculaire","Cardio-thoracique","Cutané-parties molles","Gynéco-uro","Autre"];
+const PLAIE_ADR=["CHU","Clinique","HAD","Médecin traitant","Autre"];
+const PLAIE_IPS=["Oui mesuré","Non"];
+const PLAIE_SUIVI=["Non","Consultation plaies","HAD","Autre"];
+const REF_LIT=["Épidermisé","Bourgeonnant","Fibrineux","Nécrotique"];
+const REF_EXSUDAT=["Absent","Modéré","Abondant"];
+const REF_ISO=["rougeur_extensive","ecoulement_purulent","dehiscence","fievre_rapportee"];
+const REF_ISO_LBL={rougeur_extensive:"Rougeur extensive",ecoulement_purulent:"Écoulement purulent",dehiscence:"Déhiscence",fievre_rapportee:"Fièvre rapportée"};
+const REF_PERI=["Saine","Macérée","Eczéma-rougeur"];
+const REF_PANS=["Hydrocellulaire","Hydrogel","Alginate","Hydrofibre","Interface","Pansement argent","Charbon","TPN","Compression associée","Autre"];
+const REF_ORIENT=["Médecin traitant","Consultation plaies","Urgences"];
+const CLOTURE_ISSUES=["Cicatrisée","Transférée (hospitalisation)","Transférée (consultation/HAD)","Amputation","Décès","Perdu de vue","Fin de prise en charge autre"];
+function plaiesActives(p){return ((p&&p.plaies)||[]).filter(x=>!x.cloture)}
+function estUlcere(etio){return etio==="Ulcère veineux"||etio==="Ulcère artériel"||etio==="Ulcère mixte"}
+const isoDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||""));
+/* validation contre listes fermées — tout champ hors schéma est ignoré, jamais enregistré */
+function validerPlaie(o){
+  const err=[],d={};o=o||{};
+  if(!isoDate(o.date_debut))err.push("date de début requise");else d.date_debut=o.date_debut;
+  if(!PLAIE_LOC.includes(o.localisation))err.push("localisation requise (liste fermée)");else d.localisation=o.localisation;
+  if(!PLAIE_LAT.includes(o.lateralite))err.push("latéralité requise (D/G/Médian/NA)");else d.lateralite=o.lateralite;
+  if(!PLAIE_ETIO.includes(o.etiologie))err.push("étiologie requise (liste fermée)");else d.etiologie=o.etiologie;
+  if(!PLAIE_SUIVI.includes(o.suivi_specialise))err.push("suivi spécialisé requis (Non / Consultation plaies / HAD / Autre)");else d.suivi_specialise=o.suivi_specialise;
+  if(o.etiologie==="Escarre"){if(!PLAIE_STADES.includes(String(o.stade_initial||"")))err.push("escarre : stade initial requis");else d.stade_initial=String(o.stade_initial);}
+  if(o.etiologie==="Plaie chirurgicale"){
+    if(!PLAIE_INTERV.includes(o.type_intervention))err.push("plaie chirurgicale : type d'intervention requis");else d.type_intervention=o.type_intervention;
+    if(!isoDate(o.date_operatoire))err.push("plaie chirurgicale : date opératoire requise");else d.date_operatoire=o.date_operatoire;
+    if(!PLAIE_ADR.includes(o.adresseur))err.push("plaie chirurgicale : adresseur requis");else d.adresseur=o.adresseur;}
+  if(estUlcere(o.etiologie)){
+    if(!PLAIE_IPS.includes(o.ips_connu))err.push("ulcère : IPS mesuré ? (Oui mesuré / Non)");else d.ips_connu=o.ips_connu;
+    if(o.ips_connu==="Oui mesuré"&&o.ips_valeur!=null&&o.ips_valeur!==""){
+      const v=parseFloat(String(o.ips_valeur).replace(",",".").trim());
+      if(isFinite(v)&&v>0&&v<3)d.ips_valeur=v;else err.push("IPS : valeur numérique attendue (ex. 0,75)");}}
+  return {ok:!err.length,erreurs:err,data:d};
+}
+function validerRefection(o){
+  const err=[],d={};o=o||{};
+  if(!REF_LIT.includes(o.lit))err.push("lit de la plaie requis (aspect dominant)");else d.lit=o.lit;
+  if(!REF_EXSUDAT.includes(o.exsudat))err.push("exsudat requis");else d.exsudat=o.exsudat;
+  if(o.iso==="Aucun signe")d.iso="Aucun signe";
+  else if(o.iso&&typeof o.iso==="object"){const s={};let any=false;REF_ISO.forEach(k=>{s[k]=!!o.iso[k];if(s[k])any=true});
+    if(any)d.iso=s;else err.push("signes locaux : « Aucun signe » ou au moins un signe coché");}
+  else err.push("signes locaux requis (« Aucun signe » ou détail)");
+  if(o.peri_lesionnelle!=null&&o.peri_lesionnelle!==""){if(REF_PERI.includes(o.peri_lesionnelle))d.peri_lesionnelle=o.peri_lesionnelle;else err.push("peau péri-lésionnelle hors liste");}
+  if(o.pansement!=null&&o.pansement!==""){if(o.pansement==="Inchangé"||REF_PANS.includes(o.pansement))d.pansement=o.pansement;else err.push("pansement hors liste");}
+  if(o.surface_cm2!=null&&o.surface_cm2!==""){const v=parseFloat(String(o.surface_cm2).replace(",",".").trim());
+    if(isFinite(v)&&v>=0&&v<10000)d.surface_cm2=v;else err.push("surface : nombre en cm² attendu");}
+  if(o.orientation!=null&&o.orientation!==""){if(REF_ORIENT.includes(o.orientation))d.orientation=o.orientation;else err.push("orientation hors liste");}
+  return {ok:!err.length,erreurs:err,data:d};
+}
+function validerCloture(o){o=o||{};
+  if(!CLOTURE_ISSUES.includes(o.issue))return {ok:false,erreurs:["issue de clôture requise (liste fermée)"],data:{}};
+  return {ok:true,erreurs:[],data:{issue:o.issue}};
+}
+/* fraîcheur par plaie active : surface attendue par quinzaine ; bandeau « Bilan J30 » chirurgical.
+   Le bandeau J30 s'éteint à la première réfection portant une surface (lecture littérale de la spec). */
+function plaieFraicheur(pl,today){
+  today=today||todayISO();
+  const dJ=iso=>{if(!iso)return null;const j=Math.floor((Date.parse(today)-Date.parse(String(iso).slice(0,10)))/86400000);return isFinite(j)?j:null};
+  const refs=(pl.refections||[]);
+  const lastSurf=refs.filter(r=>r.surface_cm2!=null&&r.date).map(r=>String(r.date).slice(0,10)).sort().pop()||null;
+  const jS=dJ(lastSurf);
+  const surface=pl.cloture?{etat:"na",jours:null,date:null}
+    :(jS==null?{etat:"missing",jours:null,date:null}:{etat:jS>SURFACE_J?"late":"ok",jours:jS,date:lastSurf});
+  const debut=pl.etiologie==="Plaie chirurgicale"?(pl.date_operatoire||pl.date_debut):pl.date_debut;
+  const age=dJ(debut);
+  const bilanJ30=!pl.cloture&&pl.etiologie==="Plaie chirurgicale"&&age!=null&&age>=BILAN_CHIR_J&&!refs.some(r=>r.surface_cm2!=null);
+  return {surface,age,bilanJ30};
+}
+/* délai calculé, jamais saisi : clôture − début (chronique) ou clôture − date opératoire (chirurgicale) */
+function delaiCicatrisation(pl){
+  if(!pl||!pl.cloture||!pl.cloture.date)return null;
+  const debut=pl.etiologie==="Plaie chirurgicale"?(pl.date_operatoire||pl.date_debut):pl.date_debut;
+  if(!debut)return null;
+  const j=Math.floor((Date.parse(String(pl.cloture.date).slice(0,10))-Date.parse(String(debut).slice(0,10)))/86400000);
+  return isFinite(j)?j:null;
+}
+function dernRefection(pl){return ((pl&&pl.refections)||[]).slice().sort((a,b)=>String(a.date)<String(b.date)?-1:1).pop()||null}
+/* ---- PUSH Tool (NPUAP) : score calculé, zéro saisie supplémentaire — surface + exsudat + lit
+   déjà captés par la réfection. Barème surface officiel en 11 classes. Mapping documenté au
+   dictionnaire v1.4 : exsudat 3 niveaux LIDIA → PUSH Absent=0 / Modéré=2 / Abondant=3
+   (« léger »=1 non capté : mapping conservateur) ; lit → tissu Épidermisé=1, Bourgeonnant=2,
+   Fibrineux=3, Nécrotique=4 ; surface 0 cm² (plaie fermée) → sous-score tissu 0. */
+function pushSurfaceClasse(s){
+  s=parseFloat(String(s).replace(",","."));
+  if(!isFinite(s)||s<0)return null;
+  if(s===0)return 0;if(s<0.3)return 1;if(s<0.7)return 2;if(s<=1.0)return 3;if(s<=2.0)return 4;
+  if(s<=3.0)return 5;if(s<=4.0)return 6;if(s<=8.0)return 7;if(s<=12.0)return 8;if(s<=24.0)return 9;return 10;
+}
+function pushScore(surface_cm2,exsudat,lit){
+  if(surface_cm2==null||surface_cm2==="")return null;
+  const sc=pushSurfaceClasse(surface_cm2);
+  const ex={"Absent":0,"Modéré":2,"Abondant":3}[exsudat];
+  let ti={"Épidermisé":1,"Bourgeonnant":2,"Fibrineux":3,"Nécrotique":4}[lit];
+  if(sc==null||ex===undefined||ti===undefined)return null;
+  if(sc===0)ti=0; /* plaie fermée / cicatrisée : tissu 0 (barème PUSH) */
+  return {score:sc+ex+ti,surface:sc,exsudat:ex,tissu:ti};
+}
+/* ---- Statut ISO J0-J30 (plaies chirurgicales) — mapping CDC/HAS documenté et versionné dans
+   docs/iso_cdc_mapping.md : écoulement purulent OU déhiscence = suspicion forte → « Suspicion ISO » ;
+   rougeur extensive OU fièvre rapportée = « Signes mineurs » ; sinon « Aucun signe » si ≥ 1 réfection
+   évaluée dans la fenêtre ; vide = non évaluable (absence ≠ négatif). Calculé, jamais saisi. */
+function isoJ30Statut(pl){
+  if(!pl||pl.etiologie!=="Plaie chirurgicale"||!pl.date_operatoire)return "";
+  const d0=Date.parse(String(pl.date_operatoire).slice(0,10));if(!isFinite(d0))return "";
+  const dans=(pl.refections||[]).filter(r=>{const t=Date.parse(String(r.date||"").slice(0,10));
+    return isFinite(t)&&t>=d0&&(t-d0)/86400000<=30});
+  const evalues=dans.filter(r=>r.iso!=null&&r.iso!=="");
+  if(!evalues.length)return "";
+  const sig=k=>evalues.some(r=>r.iso&&typeof r.iso==="object"&&r.iso[k]===true);
+  if(sig("ecoulement_purulent")||sig("dehiscence"))return "Suspicion ISO";
+  if(sig("rougeur_extensive")||sig("fievre_rapportee"))return "Signes mineurs";
+  return "Aucun signe";
+}
+/* ---- Wound-QoL (ouverture et clôture de plaie) : questionnaire auto-administré, 17 items 0-4.
+   Libellés STRICTEMENT hors code : woundqol_items_fr.json (placeholder + TODO licence) — l'écran
+   refuse de s'activer tant que le fichier contient le placeholder. Score global = moyenne 0-4,
+   sous-scores par sous-échelle. Refus toujours possible, tracé (propositions type "woundqol"). */
+function woundqolActif(d){
+  return !!(d&&d.placeholder!==true&&Array.isArray(d.items)&&d.items.length===17
+    &&d.items.every(x=>x&&typeof x.texte==="string"&&x.texte.trim()&&!/\[LIBELL/.test(x.texte))
+    &&Array.isArray(d.echelle)&&d.echelle.length===5&&d.echelle.every(x=>typeof x==="string"&&x.trim()&&!/\[/.test(x)));
+}
+function woundqolScore(reps,items){
+  if(!Array.isArray(reps)||reps.length!==17)return null;
+  if(!reps.every(v=>Number.isInteger(v)&&v>=0&&v<=4))return null;
+  const r2=x=>Math.round(x*100)/100;
+  const sous={};
+  (items||[]).forEach((it,i)=>{const g=it&&it.sous_echelle;if(!g)return;(sous[g]=sous[g]||[]).push(reps[i])});
+  const out={score:r2(reps.reduce((a,b)=>a+b,0)/17),sous:{}};
+  Object.keys(sous).forEach(g=>out.sous[g]=r2(sous[g].reduce((a,b)=>a+b,0)/sous[g].length));
+  return out;
+}
+function validerWoundqol(o){o=o||{};
+  const v=parseFloat(o.score);
+  if(!isFinite(v)||v<0||v>4)return {ok:false,erreurs:["Wound-QoL : score global 0-4 attendu"],data:{}};
+  const d={score:Math.round(v*100)/100,date:String(o.date||"").slice(0,10)||undefined};
+  if(o.sous&&typeof o.sous==="object"){d.sous={};Object.keys(o.sous).forEach(k=>{const s=parseFloat(o.sous[k]);if(isFinite(s)&&s>=0&&s<=4)d.sous[k]=Math.round(s*100)/100});}
+  return {ok:true,erreurs:[],data:d};
+}
+/* historique PUSH d'une plaie (chronologique) : une entrée par réfection portant surface + lit + exsudat */
+function pushHistorique(pl){
+  return ((pl&&pl.refections)||[]).filter(r=>r.surface_cm2!=null&&r.surface_cm2!==""&&r.lit&&r.exsudat)
+    .map(r=>({date:String(r.date||"").slice(0,10),p:pushScore(r.surface_cm2,r.exsudat,r.lit)}))
+    .filter(x=>x.p).map(x=>({date:x.date,score:x.p.score}))
+    .sort((a,b)=>a.date<b.date?-1:1);
+}
+/* libellé du délai depuis une réfection — un rattrapage antidaté peut rendre le delta négatif */
+function refDelaiLbl(der,dateRef){const j=Math.floor((Date.parse(dateRef)-Date.parse(String(der.date).slice(0,10)))/86400000);
+  return isFinite(j)&&j>=0?"il y a "+j+" j":"réfection du "+String(der.date).slice(0,10)}
+/* cotation pansement validée sans réfection liée alors qu'une plaie était ouverte ce jour-là :
+   compte en incomplétude au tableau de bord — jamais bloquant. Borne basse = ouverture_date
+   (date d'enregistrement de la plaie) : les passages historiques antérieurs à l'enregistrement
+   d'une plaie ancienne (date_debut estimée) ne sont pas des oublis. */
+function refectionsOrphelines(pats,passList){
+  const out=[];
+  (passList||[]).forEach(x=>{
+    if(!(x.actes||[]).some(a=>PLAIE_ACTS.includes(a.id)))return;
+    const p=(pats||[]).find(q=>q.id===x.patientId);if(!p)return;
+    const d=String(x.date).slice(0,10);
+    const ouvertes=(p.plaies||[]).filter(pl=>{const debut=pl.ouverture_date||pl.date_debut;
+      return debut&&debut<=d&&(!pl.cloture||String(pl.cloture.date).slice(0,10)>=d)});
+    if(!ouvertes.length)return;
+    if(ouvertes.some(pl=>(pl.refections||[]).some(r=>r.passageId===x.id)))return;
+    out.push({patientId:x.patientId,passageId:x.id,date:d});
+  });
+  return out;
+}
+/* application pure des actions plaies d'un passage (tout-ou-rien) : date et passageId hérités du
+   Passage — jamais saisis. Retourne le nouveau tableau sans muter l'entrée. */
+function appliquerPlaiesActions(plaies,actions,passageId,date,patientId){
+  const out=JSON.parse(JSON.stringify(plaies||[])),err=[];
+  (actions||[]).forEach(a=>{
+    if(a.mode==="ouverture"){const v=validerPlaie(a.data);if(!v.ok){err.push(...v.erreurs);return}
+      const nu=Object.assign({id:a.id||uid("pl"),patientId,ouverture_date:date,refections:[],cloture:null},v.data);
+      if(a.woundqol){const w=validerWoundqol(a.woundqol);if(w.ok)nu.woundqol_ouverture=Object.assign(w.data,{date:w.data.date||date});}
+      out.push(nu);}
+    else if(a.mode==="refection"){const pl=out.find(x=>x.id===a.plaieId);
+      if(!pl){err.push("réfection : plaie introuvable");return}
+      const v=validerRefection(a.data);if(!v.ok){err.push(...v.erreurs);return}
+      pl.refections=pl.refections||[];pl.refections.push(Object.assign({passageId,date},v.data));}
+    else if(a.mode==="cloture"){const pl=out.find(x=>x.id===a.plaieId);
+      if(!pl){err.push("clôture : plaie introuvable");return}
+      if(pl.cloture){err.push("plaie déjà clôturée");return}
+      const v=validerCloture(a.data);if(!v.ok){err.push(...v.erreurs);return}
+      pl.cloture={date,issue:v.data.issue};
+      if(a.woundqol){const w=validerWoundqol(a.woundqol);if(w.ok)pl.woundqol_cloture=Object.assign(w.data,{date:w.data.date||date});}}
+    else if(a.mode==="reouverture"){const pl=out.find(x=>x.id===a.plaieId);
+      if(!pl){err.push("réouverture : plaie introuvable");return}
+      if(!pl.cloture){err.push("réouverture : plaie non clôturée");return}
+      /* la clôture annulée est tracée — jamais de modification silencieuse */
+      (pl.reouvertures=pl.reouvertures||[]).push({passageId,date,annulee:pl.cloture});
+      pl.cloture=null;}
+    else err.push("action plaie inconnue : "+a.mode);
+  });
+  return {ok:!err.length,erreurs:err,plaies:out};
+}
+function plaieLabel(pl){return (pl.localisation||"?")+(pl.lateralite&&pl.lateralite!=="NA"?" "+pl.lateralite:"")+" · "+(pl.etiologie||"?")}
+/* texte de transmission du passage, prêt à recopier au cahier de liaison ou à partager —
+   une seule saisie : LIDIA est la source, la deuxième copie devient un copier-coller */
+function transmissionTexte(p,pass,trs,plActions,plaies){
+  const L=[];
+  const d=String(pass.date||"").slice(0,10),h=String(pass.date||"").slice(11,16);
+  L.push((p&&p.name?p.name+" — ":"")+d+(h?" "+h:"")+" · IDE "+(pass.auteur||"??"));
+  if((pass.actes||[]).length)L.push("Soins : "+pass.actes.map(a=>a.l?String(a.l).split("(")[0].trim():a.id).join(" + "));
+  (trs||[]).forEach(t=>{
+    if(t.type==="CONSTANTES"&&t.cst){const c=t.cst,parts=[];
+      if(c.ta)parts.push("TA "+c.ta);if(c.fc)parts.push("FC "+c.fc);if(c.spo2)parts.push("SpO2 "+c.spo2+" %");
+      if(c.temp)parts.push("T° "+c.temp);if(c.gly)parts.push("Glycémie "+c.gly);if(c.poids)parts.push("Poids "+c.poids+" kg");
+      if(parts.length)L.push("Constantes : "+parts.join(" · "));
+      if((t.texte||"").trim())L.push(t.texte.trim());}
+    else if(t.type==="OBS"&&t.obs){const o=t.obs,parts=[];
+      if(douleurRenseignee(o.douleur)){const dl=typeof o.douleur==="object"?o.douleur:migrerDouleur(o.douleur);
+        parts.push(dl.mode==="ALGOPLUS"?"douleur ALGOPLUS "+dl.score+"/5"+(dl.presente?" (présente)":""):(dl.en?"douleur EVA "+dl.en:"douleur signalée"));}
+      if(o.chute==="oui")parts.push("chute");
+      if(o.confusion==="oui")parts.push("confusion");
+      if(o.peau)parts.push("peau : "+o.peau);
+      if(o.surcharge==="oui")parts.push("signes de surcharge");
+      if(o.observance)parts.push("observance "+o.observance);
+      if(parts.length)L.push("Observations : "+parts.join(" · "));
+      if((t.texte||"").trim())L.push(t.texte.trim());}
+    else if(t.type==="EVENEMENT")L.push("ÉVÉNEMENT : "+(t.mot||"—")+((t.texte||"").trim()?" — "+t.texte.trim():""));
+    else if(t.type==="ICOPE")L.push("ICOPE : "+(t.nbAlerts?t.nbAlerts+" alerte(s) — "+ICOPE_DOMS.filter(k=>t.icope&&t.icope[k]==="alerte").join(", "):"6 domaines ok"));
+    else if(t.type==="PHOTO")L.push(t.texte||"Photo de plaie réalisée");
+    else if(t.type==="LIBRE"&&(t.texte||"").trim())L.push(t.texte.trim());
+  });
+  (plActions||[]).forEach(a=>{
+    const pl=(plaies||[]).find(x=>x.id===(a.plaieId||a.id));
+    const lbl=pl?plaieLabel(pl):"plaie";
+    if(a.mode==="ouverture")L.push("Plaie ouverte au suivi : "+lbl);
+    else if(a.mode==="refection")L.push("Réfection "+lbl+" : "+(refResume(a.data)||"faite"));
+    else if(a.mode==="cloture")L.push("Plaie "+lbl+" clôturée : "+((a.data&&a.data.issue)||""));
+    else if(a.mode==="reouverture")L.push("Plaie "+lbl+" rouverte (clôture annulée)");
+  });
+  return L.filter(Boolean).join("\n");
+}
+
 /* ================= MOTEUR — un passage ================= */
 function computePassage(p,dayInfo){
   const ctx=day.ctx,km=parseFloat(day.km)||0,out={lines:[],majs:[],alerts:[],total:0,lost:0};
@@ -519,14 +1450,15 @@ function computeDay(){
 /* ================= RENDU ================= */
 function render(){
   if(cur>=day.passages.length)cur=Math.max(0,day.passages.length-1);
+  day.passages.forEach(q=>q.acts.forEach((a,i)=>a.__i=i));
   const D=computeDay(),p=day.passages[cur],o=D.res[cur];
   $("#date").value=day.date;$("#km").value=day.km;
   document.querySelectorAll("#ctx .chip").forEach(b=>b.setAttribute("aria-pressed",!!day.ctx[b.dataset.ctx]));
-  $("#ptabs").innerHTML=day.passages.map((q,i)=>`<button class="ptab" aria-selected="${i===cur}" data-p="${i}"><span>${q.label||"Passage "+(i+1)}</span><b>${q.heure||"--:--"} · ${eur(D.res[i].total)}</b></button>`).join("")+`<button class="ptab add" data-p="new">+ Passage</button>`;
+  $("#ptabs").innerHTML=day.passages.map((q,i)=>`<button class="ptab" aria-selected="${i===cur}" data-p="${i}"><span>${esc(q.label)||"Passage "+(i+1)}</span><b>${esc(q.heure)||"--:--"} · ${eur(D.res[i].total)}</b></button>`).join("")+`<button class="ptab add" data-p="new">+ Passage</button>`;
   $("#pheure").value=p?.heure||"";$("#plabel").value=p?.label||"";$("#tname").textContent=p?.label||"Passage";$("#stamp").textContent=`${day.date} ${p?.heure||""}`;
   const L=$("#lines");L.innerHTML="";
   if(!p||!p.acts.length)L.innerHTML=`<div class="empty">Aucun acte dans ce passage.</div>`;
-  else o.lines.forEach(ln=>{const idx=p.acts.indexOf(ln.a);L.insertAdjacentHTML("beforeend",`<div class="line"><div class="lbl"><span class="code">${ln.code}</span> ${ln.a.l}${ln.a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${[ln.why,ln.full!=null&&ln.taux<100&&"valeur pleine "+eur(ln.full)].filter(Boolean).join(" · ")}</small></div><span class="taux t${ln.taux}">${ln.taux} %</span><div style="display:flex;align-items:center"><span class="amt ${ln.amt===0?'zero':''}">${eur(ln.amt)}</span><button class="x" data-rm="${idx}" aria-label="Retirer">×</button></div></div>`);});
+  else o.lines.forEach(ln=>{const idx=ln.a.__i??p.acts.indexOf(ln.a);L.insertAdjacentHTML("beforeend",`<div class="line"><div class="lbl"><span class="code">${ln.code}</span> ${ln.a.l}${ln.a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${[ln.why,ln.full!=null&&ln.taux<100&&"valeur pleine "+eur(ln.full)].filter(Boolean).join(" · ")}</small></div><span class="taux t${ln.taux}">${ln.taux} %</span><div style="display:flex;align-items:center"><span class="amt ${ln.amt===0?'zero':''}">${eur(ln.amt)}</span><button class="x" data-rm="${idx}" aria-label="Retirer">×</button></div></div>`);});
   $("#majs").innerHTML=o?o.majs.map(m=>`<div class="maj"><span><b>${m.code}</b> · ${m.l}</span><span>+ ${eur(m.amt)}</span></div>`).join(""):"";
   $("#total").textContent=eur(o?o.total:0);
   $("#alerts").innerHTML=o?o.alerts.map(al).join(""):"";
@@ -538,14 +1470,9 @@ function render(){
 }
 const al=a=>`<div class="alert ${a.t}" style="flex-wrap:wrap"><span class="ic">${a.t==="gain"?"+":a.t==="stop"?"✕":"!"}</span><span style="flex:1">${a.m}</span>${a.add?`<button class="btn sm" data-add="${a.add}">Ajouter</button>`:""}${a.plan!=null?`<span style="display:flex;gap:6px;width:100%;margin-top:6px"><button class="btn sm" data-plan="jour" data-pi="${a.plan}">Ce soir (AMI 4,1)</button><button class="btn sm sec" data-plan="lendemain" data-pi="${a.plan}">Demain (AMI 5)</button><button class="btn sm sec" data-plan="multi" data-pi="${a.plan}">Plusieurs jours</button></span>`:""}${a.unplan!=null?`<button class="btn sm sec" data-unplan="${a.unplan}">Modifier</button>`:""}</div>`;
 function addAct(id,pi=cur){const a=byId(id);if(!a)return;day.passages[pi].acts.push(JSON.parse(JSON.stringify(a)));render();}
-function search(q){q=norm(q.trim());const R=$("#results");if(!q){R.innerHTML="";return}
-  const mCode=q.match(/(ami|amx|di|bs[abc]|tls|tld)?\s*([\d]+[,.]?\d*)/);
-  const codeK=mCode&&mCode[1]?mCode[1].toUpperCase():null,codeC=mCode?parseFloat(mCode[2].replace(",",".")):null;
-  const w=q.split(/\s+/);
-  const hits=CATALOG.map(a=>{const h=norm(a.l+" "+a.kw+" "+a.k+a.c);let s=0;w.forEach(x=>{if(h.includes(x))s+=x.length>2?2:1});
-    if(codeC!=null&&Math.abs(a.c-codeC)<0.001&&(!codeK||a.k===codeK||(codeK==="AMI"&&a.k==="AMI")))s+=6;
-    if(norm(a.k+" "+a.c).startsWith(q))s+=5;return{a,s}}).filter(x=>x.s>0).sort((x,y)=>y.s-x.s).slice(0,10);
-  R.innerHTML=hits.map(({a})=>`<button class="act" data-id="${a.id}"><span><b>${a.k} ${a.c}</b> ${a.l}${a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${eur(LV(a.k)*a.c)}</small></span><span class="plus">+</span></button>`).join("")||`<div class="muted">Aucun acte trouvé.</div>`;}
+function search(q){const R=$("#results");if(!String(q||"").trim()){R.innerHTML="";return}
+  const hits=catalogHits(q);
+  R.innerHTML=hits.map(a=>`<button class="act" data-id="${a.id}"><span><b>${a.k} ${a.c}</b> ${a.l}${a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${eur(LV(a.k)*a.c)}</small></span><span class="plus">+</span></button>`).join("")||`<div class="muted">Aucun acte trouvé.</div>`;}
 function renderRef(){$("#refTable").innerHTML=Object.keys(DEFAULT_REF).map(k=>`<tr><td>${REF_LABEL[k]}</td><td><input type="number" step="0.01" data-ref="${k}" value="${ref[k]}"> €</td></tr>`).join("");
   $("#catalog").innerHTML=CATALOG.map(a=>`<div class="act" style="margin-bottom:6px"><span><b>${a.k} ${a.c}</b> ${a.l}${a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${[a.tags?.diab&&"art. 5 bis",a.tags?.derog&&"dérogatoire BSI (art. 12)",a.tags?.cancer&&"cancéreux (art. 4)",a.tags?.lourd&&"MCI",a.tags?.bsi&&"forfait",a.tags?.once&&"1×/jour",a.src].filter(Boolean).map(t=>`<span class="tag">${t}</span>`).join(" ")}</small></span></div>`).join("");}
 
@@ -589,9 +1516,32 @@ const tmin=t=>{const [h,m]=(t||"00:00").split(":").map(Number);return h*60+m};co
 const ACT_MIN={bsc:45,bsb:35,bsa:25,perf14:30,perf9:50,k_perf15:30,k_perf10:50,pans4:25,ulc:30,pico:30,bilan_plaie:40,pans1:15,pans1c:15,stomie:15,trach:20,fils:10,fils2:15,prelev:8,insu:5,dextro:5,inj:7,inj_iv:10,inj_pac:15,medic:10,vacc:8,post_hosp:30,dep_hosp:25,sng:15,enteral:20,sondeF:15,sondeH:15,lavement:20,k_ret:15,kt_entretien:15,perf41:10,perf5:15,accomp1:30,accomp2:25};
 const actsMinutes=ids=>Math.max(8,(ids||[]).reduce((s,id)=>s+(ACT_MIN[id]??8),0));
 let formActs=[];
-function migratePatients(){let ch=false;patients.forEach(p=>{
+function migratePatients(){let ch=false;const dossiersVus=new Set();patients.forEach(p=>{
   if(!p.actIds){const pr=PROFILES.find(x=>x.id===p.soin);p.actIds=pr?.acts?.slice()||[];ch=true;}
   if(!p.dur){p.dur=actsMinutes(p.actIds);ch=true;}
+  /* migration v5 : socle recherche + transmissions + post-its (spec v5.0) */
+  if(!p.id){p.id=uid("pat");ch=true;}
+  /* commune : saisie explicite dans le socle uniquement — jamais dérivée de l'adresse (risque de fuite dans l'export) */
+  if(p.annee===undefined){p.annee=null;p.sexe="";p.commune="";p.vitSeul=false;p.aidant=false;p.institution=false;p.pathos=[];p.nbMed=null;p.autonomie="";p.adresse_par="";ch=true;}
+  if(p.bsi===undefined){p.bsi=(p.actIds||[]).some(id=>["bsa","bsb","bsc","bsi_init","bsi_ren"].includes(id));ch=true;}
+  if(p.plaie===undefined){p.plaie=(p.actIds||[]).some(id=>PLAIE_ACTS.includes(id));ch=true;}
+  if(p.socleDate===undefined){p.socleDate=null;ch=true;}
+  if(!p.transmissions){p.transmissions=[];ch=true;}
+  if(!p.postits){p.postits=[];ch=true;}
+  /* migration v5.2 : module plaies (spec Module Plaies, dictionnaire v1.1) */
+  if(!p.plaies){p.plaies=[];ch=true;}
+  /* v5.2.1 : ouverture_date = borne basse des réfections orphelines (dictionnaire v1.2) — backfill :
+     première réfection connue, sinon aujourd'hui (jamais date_debut, qui peut être une ancienneté estimée) */
+  p.plaies.forEach(pl=>{if(!pl.ouverture_date){pl.ouverture_date=String(((pl.refections||[])[0]||{}).date||"").slice(0,10)||todayISO();ch=true;}});
+  /* v5.2.1 : seules les lignes-dossiers portent les plaies — purge des instantanés copiés par « Passage soir » */
+  if(dossiersVus.has(p.id)){if((p.plaies||[]).length){p.plaies=[];ch=true;}}else dossiersVus.add(p.id);
+  /* migration v5.4 (dictionnaire v1.4) : douleur double mode — les anciennes valeurs EVA/"oui"
+     deviennent mode EN (rupture de comparabilité documentée au dictionnaire) */
+  if(p.mode_douleur===undefined){p.mode_douleur="EN";ch=true;}
+  if(p.algoplus_prop===undefined){p.algoplus_prop=null;ch=true;}
+  if(p.braden===undefined){p.braden=null;ch=true;}
+  if(p.girerd===undefined){p.girerd=null;ch=true;}
+  (p.transmissions||[]).forEach(t=>{if(t.type==="OBS"&&t.obs&&typeof t.obs.douleur==="string"&&t.obs.douleur){t.obs.douleur=migrerDouleur(t.obs.douleur);ch=true;}});
 });if(ch)savePatients();}
 function actLabel(id){const a=byId(id);return a?`${a.k} ${a.c} · ${a.l.split("(")[0].trim().slice(0,28)}`:id;}
 function renderFormActs(){$("#pActs").innerHTML=formActs.map((id,i)=>`<button type="button" class="chip" aria-pressed="true" data-fa="${i}">${actLabel(id)} ✕</button>`).join("")||'<span class="muted">Aucun soin — ajoutez avec +</span>';}
@@ -607,7 +1557,7 @@ function renderPatients(){
 }
 function ptRow(p,i){return `<div class="pt ${p.active?"":"off"}"><div class="pt-body" data-pe="${i}" style="flex:1;cursor:pointer"><b>${esc(p.name)}</b> · ${(p.actIds||[]).map(id=>byId(id)?byId(id).k+" "+byId(id).c:"").join(" + ")||"—"}<small>${p.w1}–${p.w2} · ${p.dur} min · ${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"].filter((d,k)=>p.days.includes(k)).join(" ")||"aucun jour"}${p.to?" · jusqu'au "+esc(p.to):""}${p.geo?"":" · <span style='color:var(--red)'>adresse non localisée</span>"}</small></div><div class="acts" data-row="${i}"><button class="btn sm sec" data-more="${i}">⋯</button><span class="more" hidden><button class="btn sm sec" data-pd="${i}">Passage soir</button><button class="btn sm ${p.active?"sec":""}" data-pt="${i}">${p.active?"Arrêt":"Reprise"}</button><button class="btn sm sec" data-px="${i}">Suppr.</button></span></div></div>`;
 }
-function fillForm(p){$("#pName").value=p?.name||"";$("#pAddr").value=p?.addr||"";formActs=p?.actIds?.slice()||[];renderFormActs();$("#pPal").setAttribute("aria-pressed",!!p?.pal);$("#pK").setAttribute("aria-pressed",!!p?.k);$("#pNuit").setAttribute("aria-pressed",!!p?.nuit);$("#pDur").value=p?.dur||20;$("#pW1").value=p?.w1||"07:00";$("#pW2").value=p?.w2||"12:00";$("#pPrio").value=p?.prio||2;$("#pFrom").value=p?.from||new Date().toISOString().slice(0,10);$("#pTo").value=p?.to||"";$("#pNote").value=p?.note||"";document.querySelectorAll("#pDays .chip").forEach(b=>b.setAttribute("aria-pressed",p?p.days.includes(+b.dataset.d):true));$("#pFormTitle").textContent=p?"Modifier "+p.name:"Ajouter un patient / un passage";$("#pCancel").hidden=!p;}
+function fillForm(p){$("#pName").value=p?.name||"";$("#pAddr").value=p?.addr||"";formActs=p?.actIds?.slice()||[];renderFormActs();$("#pPal").setAttribute("aria-pressed",!!p?.pal);$("#pK").setAttribute("aria-pressed",!!p?.k);$("#pNuit").setAttribute("aria-pressed",!!p?.nuit);$("#pDur").value=p?.dur||20;$("#pW1").value=p?.w1||"07:00";$("#pW2").value=p?.w2||"12:00";$("#pPrio").value=p?.prio||2;$("#pFrom").value=p?.from||new Date().toISOString().slice(0,10);$("#pTo").value=p?.to||"";$("#pNote").value=p?.note||"";document.querySelectorAll("#pDays .chip").forEach(b=>b.setAttribute("aria-pressed",p?p.days.includes(+b.dataset.d):true));$("#pFormTitle").textContent=p?"Modifier "+p.name:"Ajouter un patient / un passage";$("#pCancel").hidden=!p;renderSocleForm(p);renderPPostits(p);}
 async function useGPS(){
   if(!navigator.geolocation){$("#pGeoStatus").textContent="Géolocalisation non disponible sur ce navigateur.";return}
   $("#pGeoStatus").textContent="Recherche de la position… (autorisez l'accès si demandé)";
@@ -623,6 +1573,10 @@ async function savePatient(){
   if(!formActs.length){$("#pStatus").textContent="Ajoutez au moins un soin (+).";return}
   const p={name,addr,actIds:formActs.slice(),pal:$("#pPal").getAttribute("aria-pressed")==="true",k:$("#pK").getAttribute("aria-pressed")==="true",nuit:$("#pNuit").getAttribute("aria-pressed")==="true",dur:+$("#pDur").value||20,w1:$("#pW1").value,w2:$("#pW2").value,prio:+$("#pPrio").value,days:[...document.querySelectorAll("#pDays .chip[aria-pressed=true]")].map(b=>+b.dataset.d),from:$("#pFrom").value,to:$("#pTo").value,note:$("#pNote").value.trim(),active:true,geo:null};
   const prev=editIdx!=null?patients[editIdx]:null;
+  /* v5 : conserver dossier, transmissions, post-its et plaies lors d'une modification */
+  if(prev)["id","socleDate","transmissions","postits","plaies"].forEach(k=>{if(prev[k]!==undefined)p[k]=prev[k]});
+  Object.assign(p,finaliserSocle(readSocleFields("pSoc"),todayISO()));
+  if(!p.id)p.id=uid("pat");if(p.socleDate===undefined)p.socleDate=null;if(!p.transmissions)p.transmissions=[];if(!p.postits)p.postits=[];if(!p.plaies)p.plaies=[];
   if(gpsGeo&&$("#pAddr").dataset.gps==="1"){p.geo=gpsGeo;}
   else if(prev&&prev.addr===addr)p.geo=prev.geo;else{$("#pStatus").textContent="Localisation de l'adresse…";try{p.geo=await geocode(addr);}catch(e){p.geo=null;}}
   gpsGeo=null;delete $("#pAddr").dataset.gps;
@@ -709,16 +1663,18 @@ async function planRoute(){
     stats[date][key]={ca:tot+ik,km:best.km,min:dur};
     html+=`<div class="ticket" style="margin-top:14px">
       <div class="th"><h2>${slot.lbl}</h2><small>départ ${fmt(start)} · retour ${fmt(best.end)}</small></div>
-      ${route.map((r,i)=>`<div class="stop${isDone(date,key,r.c)?" doneS":""}"><div class="eta">${fmt(r.st)}<small>${r.d.toFixed(1)} km · ${Math.round(r.tr)}′</small></div>
+      ${route.map((r,i)=>{const dos5=dossier(r.c),fr5=freshness(dos5,date),pis5=(dos5.postits||[]).filter(x=>!x.archive);return `<div class="stop${isDone(date,key,r.c)?" doneS":""}"><div class="eta">${fmt(r.st)}<small>${r.d.toFixed(1)} km · ${Math.round(r.tr)}′</small></div>
         <div class="who"><span class="pname" data-openp="${key}:${i}">${esc(r.c.name)}</span> ${r.c.prio===1?'<span class="imp">IMPÉRATIF</span>':''}
           <span class="soin">${(r.c.actIds||[]).map(id=>byId(id)?byId(id).k+" "+byId(id).c:"").join(" + ")} · <button class="durbtn" data-dur="${key}:${i}">${r.c.dur}′ ▾</button>${r.majCodes?" · "+r.majCodes:""}${r.c.note?" · "+esc(r.c.note):""}</span>
+          <span class="soin">${pastillesHtml(fr5)}${settings.rattrapage!==false&&nbRetards(fr5)>0?'<span class="tag" style="color:var(--amber)">🔄 rattrapage</span>':''}${pis5.some(x=>x.type==="RELEVE"&&x.auteur!==(settings.auteur||"??")&&!(x.luPar||[]).includes(settings.auteur||"??"))?' <span class="tag" style="color:var(--teal)">📌 relève</span>':''}${pis5.some(x=>x.type==="ALERTE"&&!x.traite)?' <span class="tag" style="color:var(--red)">⚠ alerte</span>':''}</span>
           <span class="soin" style="font-size:12px;color:var(--ink2)">📍 ${esc((r.c.addr||"").split(",").slice(0,2).join(","))}</span>
+          ${pis5.filter(x=>x.type==="PERSO").map(x=>`<span class="soin" style="font-size:11.5px;color:var(--ink2)">📝 ${esc(x.texte)}</span>`).join("")}
           <span class="durstep" id="ds-${key}-${i}" hidden>${[10,15,20,30,45,60].map(m=>`<button class="chip" data-dset="${key}:${i}:${m}">${m}′</button>`).join("")}<button class="chip" data-dadj="${key}:${i}:-5">−5</button><button class="chip" data-dadj="${key}:${i}:5">+5</button></span>
           ${r.feeNote?`<span class="flag wait">↺ ${r.feeNote}</span>`:""}
           ${r.late>0?`<span class="flag late">⚠ ${Math.round(r.late)}′ après la fin du créneau (${r.c.w2})</span>`:r.wait>5?`<span class="flag wait">⏳ ${Math.round(r.wait)}′ d'attente (ouvre à ${r.c.w1})</span>`:""}
           ${r.c.geo?"":'<span class="flag late">adresse non localisée</span>'}
         </div>
-        <div class="right"><b>${eur(r.fee||0)}</b><div style="display:flex;gap:4px;justify-content:flex-end"><button class="btn sm ${isDone(date,key,r.c)?"":"sec"}" data-done="${key}:${i}">${isDone(date,key,r.c)?"↺":"✓"}</button><button class="btn sm sec" data-cote="${key}:${i}">€</button></div></div></div>`).join("")}
+        <div class="right"><b>${eur(r.fee||0)}</b><div style="display:flex;gap:4px;justify-content:flex-end"><button class="btn sm ${isDone(date,key,r.c)?"":"sec"}" data-done="${key}:${i}">${isDone(date,key,r.c)?"↺":"✓"}</button><button class="btn sm sec" data-cote="${key}:${i}">€</button></div></div></div>`}).join("")}
       ${(()=>{const sum=c=>route.reduce((a,r)=>a+(r.majs||[]).filter(m=>m.code===c).reduce((x,m)=>x+m.amt,0),0);
         const nF=route.filter(r=>(r.majs||[]).some(m=>m.code==="F")).length,nN=route.filter(r=>(r.majs||[]).some(m=>m.code==="N")).length;
         return (sum("F")>0?`<div class="maj"><span><b>F</b> · Majoration dimanche / férié — ${nF} passage(s)</span><span>+ ${eur(sum("F"))}</span></div>`:"")
@@ -745,9 +1701,9 @@ async function planRoute(){
     <div><b>${gMin?((gCA-gKm*0.45)/(gMin/60)).toFixed(0):0} €/h</b><small>rendement réel, route comprise</small></div>
     <div><b>${fmt(gMin)}</b><small>de tournée au total</small></div>
   </div><div id="hist7"></div></div>`;
-  renderHist(date);setTimeout(renderMap,60);
+  renderReleves();renderHist(date);setTimeout(renderMap,60);
   $("#tRoute").onclick=e=>{const b=e.target.closest("[data-cote]");if(b){const[k,i]=b.dataset.cote.split(":");coterStopIn(k,+i);return}
-    const op=e.target.closest("[data-openp]");if(op){const[k,i]=op.dataset.openp.split(":");const r=(lastRoutes[k]||[])[+i];const idx=patients.indexOf(r?.c);if(idx>=0){editIdx=idx;fillForm(patients[idx]);showTab("pat");setTimeout(()=>$("#pName").scrollIntoView({block:"start"}),60);}return}
+    const op=e.target.closest("[data-openp]");if(op){const[k,i]=op.dataset.openp.split(":");const r=(lastRoutes[k]||[])[+i];const idx=patients.indexOf(r?.c);if(idx>=0)openPassage(idx);return}
     const du=e.target.closest("[data-dur]");if(du){const[k,i]=du.dataset.dur.split(":");const el=document.getElementById("ds-"+k+"-"+i);if(el)el.hidden=!el.hidden;return}
     const dset=e.target.closest("[data-dset]");if(dset){const[k,i,m]=dset.dataset.dset.split(":");const r=(lastRoutes[k]||[])[+i];if(r){r.c.dur=+m;savePatients();toast(r.c.name+" : "+m+" min (enregistré)");planRoute();}return}
     const dadj=e.target.closest("[data-dadj]");if(dadj){const[k,i,m]=dadj.dataset.dadj.split(":");const r=(lastRoutes[k]||[])[+i];if(r){r.c.dur=Math.max(5,(+r.c.dur||20)+ +m);savePatients();toast(r.c.name+" : "+r.c.dur+" min (enregistré)");planRoute();}return}
@@ -889,6 +1845,728 @@ function renderRenta(){
   <p class="muted">Rentable = il te rapporte au moins 80 % de ce que te rapporte le même soin chez un patient de Villeneuve intégré à ta tournée. Entre 50 et 80 % : acceptable si d'autres patients sont près de chez lui. En dessous : chaque passage te coûte du temps que tu vendrais mieux ailleurs.</p>`;
 }
 
+/* ================= V5 — UI ================= */
+function catalogHits(q){q=norm(String(q||"").trim());if(!q)return[];
+  const mCode=q.match(/(ami|amx|di|bs[abc]|tls|tld)?\s*([\d]+[,.]?\d*)/);
+  const codeK=mCode&&mCode[1]?mCode[1].toUpperCase():null,codeC=mCode?parseFloat(mCode[2].replace(",",".")):null;
+  const w=q.split(/\s+/);
+  return CATALOG.map(a=>{const h=norm(a.l+" "+a.kw+" "+a.k+a.c);let s=0;w.forEach(x=>{if(h.includes(x))s+=x.length>2?2:1});
+    if(codeC!=null&&Math.abs(a.c-codeC)<0.001&&(!codeK||a.k===codeK||(codeK==="AMI"&&a.k==="AMI")))s+=6;
+    if(norm(a.k+" "+a.c).startsWith(q))s+=5;return{a,s}}).filter(x=>x.s>0).sort((x,y)=>y.s-x.s).slice(0,10).map(x=>x.a);}
+const FRESH_LBL={socle:"Socle",constantes:"Constantes",photo:"Photo de plaie",icope:"ICOPE"};
+function pastillesHtml(f){
+  const col={ok:"var(--green)",late:"var(--amber)",missing:"var(--red)",na:"var(--line)"};
+  return '<span class="pastilles">'+[["S","socle"],["C","constantes"],["P","photo"],["I","icope"]].map(([l,k])=>{const s=f[k];
+    return `<span class="pastille${s.etat==="na"?" na":""}" style="background:${col[s.etat]}" title="${FRESH_LBL[k]} : ${s.etat}${s.jours!=null?" ("+s.jours+" j)":""}">${l}</span>`}).join("")+'</span>';}
+function freshBandeauxHtml(f){
+  const M={socle:["Socle : jamais validé — à compléter ce passage",j=>"Socle : validé il y a "+j+" j — à revalider ce passage"],
+    constantes:["Constantes : jamais mesurées — à faire ce passage",j=>"Constantes : dernière mesure il y a "+j+" j — à faire ce passage"],
+    photo:["Photo de plaie : jamais faite — à faire ce passage",j=>"Photo de plaie : dernière il y a "+j+" j — à refaire ce passage"],
+    icope:["ICOPE : jamais fait — à proposer ce passage",j=>"ICOPE : dernier dépistage il y a "+j+" j — à refaire ce passage"]};
+  return Object.keys(M).map(k=>{const s=f[k];if(s.etat!=="late"&&s.etat!=="missing")return "";
+    return `<div class="bandeau ${s.etat}"><span>${s.etat==="missing"?M[k][0]:M[k][1](s.jours)}</span></div>`}).join("");}
+function freshTexts(f){const out=[];Object.keys(FRESH_LBL).forEach(k=>{const s=f[k];
+  if(s.etat==="late")out.push(FRESH_LBL[k]+" : "+s.jours+" j");else if(s.etat==="missing")out.push(FRESH_LBL[k]+" : jamais fait");});return out;}
+
+/* ---- écran de passage : état ---- */
+let epIdx=null,epDraft=null,epGeo=null,epDate=null,epPanelOpen={postit:false,socle:false},epPostitDraft=null,epRec=null,lastTransShare=null;
+/* bandeau « transmission prête » après validation : à recopier au cahier en un coup d'œil, ou à partager */
+function renderTransShare(){const el=$("#tTransShare");if(!el)return;
+  el.innerHTML=lastTransShare?`<div class="card" style="border-left:5px solid var(--teal)">
+    <h2 style="display:flex;justify-content:space-between;align-items:center;gap:8px">📋 Transmission prête — ${esc(lastTransShare.nom)} <button class="x" data-tsclose="1" aria-label="Fermer">×</button></h2>
+    <p class="muted" style="margin:0 0 6px">Une seule saisie : recopiez-la au cahier de liaison d'un coup d'œil, ou envoyez-la telle quelle.</p>
+    <pre style="white-space:pre-wrap;font:inherit;font-size:13.5px;background:rgba(0,0,0,.04);border-radius:8px;padding:10px;margin:0 0 8px">${esc(lastTransShare.texte)}</pre>
+    <div class="row"><button class="btn sm" data-tscopy="1">📋 Copier</button>${navigator.share?`<button class="btn sm sec" data-tsshare="1">📤 Partager</button>`:""}</div></div>`:"";}
+/* modules rétractables (repliés par défaut, préférence mémorisée) */
+let epFoldState=Object.assign({cot:true,trans:true},settings.fold||{});
+function epFoldSave(){settings.fold={cot:!!epFoldState.cot,trans:!!epFoldState.trans};saveSettings();}
+function saveDraft(){if(epIdx==null||!epDraft)return;const p=patients[epIdx];if(!p)return;
+  epDraft.panelOpen=epPanelOpen;epDraft.postitDraft=epPostitDraft;drafts[p.id]=epDraft;
+  try{localStorage.setItem("lidia.cot.drafts",JSON.stringify(drafts))}catch(e){}}
+/* dossier(p) : ligne patient porteuse des données v5 (transmissions/post-its/socle). Les lignes
+   dupliquées « Passage soir » partagent l'id : la première ligne avec cet id est le dossier unique. */
+function dossier(p){if(!p||!p.id)return p;return patients.find(x=>x.id===p.id)||p}
+function draftContenu(d){if(!d)return false;const t=d.trans||{};
+  return (d.acts||[]).length>0||!!(t.evt||t.cst||t.obs||t.icope||t.photo)||!!((t.libre||"").trim())||!!((d.dictee||"").trim())||!!d.socle||(d.plaies||[]).length>0}
+function epMicStop(){epRecWanted=false;if(epRec){try{epRec.stop()}catch(e){}epRec=null;}const b=$("#epMic");if(b)b.textContent="🎤 Dicter";}
+function openPassage(i){
+  const p=patients[i];if(!p)return;epMicStop();epIdx=i;
+  epDate=($("#tDate")?.value)||todayISO();
+  const d=drafts[p.id];
+  if(d&&d.date===epDate){epDraft=d;epPanelOpen=d.panelOpen||{postit:false,socle:false};epPostitDraft=d.postitDraft||null;}
+  else{
+    if(d&&draftContenu(d)&&confirm("Brouillon non validé du "+d.date+" pour "+p.name+" : le reprendre pour aujourd'hui ("+epDate+") ?")){
+      d.date=epDate;epDraft=d;epPanelOpen=d.panelOpen||{postit:false,socle:false};epPostitDraft=d.postitDraft||null;
+    }else{
+    if(d&&draftContenu(d))drafts["archive_"+p.id+"_"+d.date]=d; /* jamais de destruction silencieuse d'une saisie */
+    const billed=new Set();passages5.filter(x=>x.patientId===p.id&&String(x.date).slice(0,10)===epDate).forEach(x=>(x.actes||[]).forEach(a=>{const c=byId(a.id);if(c&&c.tags&&(c.tags.bsi||c.tags.once))billed.add(a.id)}));
+    const acts=(p.actIds||[]).map(id=>byId(id)).filter(Boolean).filter(a=>!billed.has(a.id)).map(a=>JSON.parse(JSON.stringify(a)));
+    epDraft={date:epDate,heure:nowHM(),acts,trans:{libre:"",evt:null,cst:null,obs:null,icope:null,photo:null},props:[],socle:null,socleData:null,dictee:"",plaies:[],plaieOpen:null};
+    epPanelOpen={postit:false,socle:false};epPostitDraft=null;
+    }
+  }
+  epDraft.plaies=epDraft.plaies||[]; /* brouillons antérieurs à v5.2 */
+  epGeo=null;
+  if(settings.geoloc&&navigator.geolocation)navigator.geolocation.getCurrentPosition(pos=>{epGeo={lat:pos.coords.latitude,lon:pos.coords.longitude}},()=>{},{timeout:8000,enableHighAccuracy:true});
+  saveDraft();showTab("passage");
+}
+function epCompute(){
+  const p=patients[epIdx],saved=day;
+  epDraft.acts.forEach((a,i)=>a.__i=i);
+  const prior=passages5.filter(x=>x.patientId===p.id&&String(x.date).slice(0,10)===epDate).sort((a,b)=>a.date<b.date?-1:1)
+    .map(x=>({label:"",heure:String(x.date).slice(11,16),acts:(x.actes||[]).map(a=>{const c=byId(a.id);return c?JSON.parse(JSON.stringify(c)):null}).filter(Boolean)}));
+  try{
+    day={date:epDate,km:p.geo&&cabinet?+distKm(cabinet,p.geo).toFixed(1):0,ctx:{domicile:true,ferie:$("#tFerie")?.getAttribute("aria-pressed")==="true",palliatif:!!p.pal,cancer:!!p.k},note:"",passages:[...prior,{label:p.name,heure:epDraft.heure,nuit:!!p.nuit,acts:epDraft.acts}]};
+    const D=computeDay();return {D,res:D.res[D.res.length-1]};
+  }finally{day=saved}
+}
+function epAddAct(id){const a=byId(id);if(!a||!epDraft)return;epDraft.acts.push(JSON.parse(JSON.stringify(a)));saveDraft();renderPassage();toast("Acte ajouté");}
+const epAl=a=>`<div class="alert ${a.t}"><span class="ic">${a.t==="gain"?"+":a.t==="stop"?"✕":"!"}</span><span style="flex:1">${a.m}</span>${a.add?`<button class="btn sm" data-epadd="${a.add}">Ajouter</button>`:""}</div>`;
+function renderEpTicket(){
+  if(epIdx==null||!epDraft)return;
+  const o=epCompute(),res=o.res,acts=epDraft.acts;
+  $("#epLines").innerHTML=acts.length?res.lines.map(ln=>{const idx=ln.a.__i??acts.indexOf(ln.a);
+    return `<div class="line"><div class="lbl"><span class="code">${ln.code}</span> ${ln.a.l}${ln.a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${[ln.why,ln.full!=null&&ln.taux<100&&"valeur pleine "+eur(ln.full)].filter(Boolean).join(" · ")}</small></div><span class="taux t${ln.taux}">${ln.taux} %</span><div style="display:flex;align-items:center"><span class="amt ${ln.amt===0?'zero':''}">${eur(ln.amt)}</span><button class="x" data-eprm="${idx}" aria-label="Retirer">×</button></div></div>`}).join("")
+   :`<div class="empty">Aucun acte — recherche ou raccourcis ci-dessus.</div>`;
+  $("#epMajs").innerHTML=res.majs.map(m=>`<div class="maj"><span><b>${m.code}</b> · ${m.l}</span><span>+ ${eur(m.amt)}</span></div>`).join("");
+  $("#epTotal").textContent=eur(res.total);
+  $("#epAlerts").innerHTML=[...res.alerts.map(a=>a.plan!=null||a.unplan!=null?{t:"warn",m:a.m+" — gérer le retrait dans l'onglet Journée (Plus → Cotation manuelle)"}:a),...o.D.alerts].map(epAl).join("");
+  const cs=$("#epCotSum");if(cs)cs.textContent=acts.length?acts.length+" acte"+(acts.length>1?"s":"")+" · "+eur(res.total):"aucun acte";
+}
+function epTransResume(){
+  if(!epDraft)return "";
+  const t=epDraft.trans,parts=[];
+  if(t.cst&&CST_KEYS.some(k=>(t.cst[k]||"").trim()))parts.push("constantes");
+  if(t.evt&&(t.evt.mot||(t.evt.texte||"").trim()))parts.push("événement");
+  if(t.obs&&OBS_KEYS.some(k=>k==="douleur"?douleurRenseignee(t.obs[k]):(t.obs[k]||"").trim()))parts.push("observations");
+  if(t.icope)parts.push("ICOPE");
+  if(t.photo)parts.push("photo");
+  if((t.libre||"").trim())parts.push("texte");
+  else if((epDraft.dictee||"").trim())parts.push("dictée");
+  return parts.length?parts.join(" · "):"vide";
+}
+/* ---- panneaux de transmission ---- */
+/* confusion : libellé SQiD exact (Single Question in Delirium) — dictionnaire v1.4 */
+const OBS_LBL={douleur:"Douleur",chute:"Chute",confusion:"Plus confus que d'habitude ?",peau:"Peau",surcharge:"Surcharge",observance:"Observance"};
+const OBS_TITLE={confusion:"Single Question in Delirium (SQiD)"};
+/* composant douleur à deux modes (dictionnaire v1.4) : EN 1 tap / ALGOPLUS 5 items O-N, score live */
+function douleurPanelHtml(dv,p){
+  if(typeof dv==="string"&&dv)dv=migrerDouleur(dv);
+  const mode=(dv&&dv.mode)||dossier(p).mode_douleur||"EN";
+  let body;
+  if(mode==="EN"){
+    body=`<div class="chips">`+DOULEUR_EN.map(v=>`<button type="button" class="chip" data-dlen="${v}" aria-pressed="${!!(dv&&dv.en===v)}">${v==="0"?"0 — pas de douleur":v}</button>`).join("")+`</div>`
+      +(dv&&dv.presente&&!dv.en?`<p class="muted" style="margin:4px 0 0">Douleur signalée sans EVA (dictée) — précisez la tranche si possible.</p>`:"");
+  }else{
+    const alg=(dv&&dv.mode==="ALGOPLUS"&&dv.alg)||{};
+    const s=algoplusScore(alg);
+    body=ALGOPLUS_ITEMS.map(k=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:3px 0"><span style="font-size:13px;flex:1">${ALGOPLUS_LBL[k]}</span><span class="chips" style="margin:0;flex:none"><button type="button" class="chip" data-dlalg="${k}" data-dlv="1" aria-pressed="${alg[k]===true}">Oui</button><button type="button" class="chip" data-dlalg="${k}" data-dlv="0" aria-pressed="${alg[k]===false}">Non</button></span></div>`).join("")
+      +`<p class="muted" style="margin:4px 0 0">Score ALGOPLUS : <b>${s.score}/5</b>${s.complet?"":" — "+s.repondu+"/5 items répondus"} · douleur ${s.presente?"présente":"non retenue"} (seuil ≥ 2)</p>`;
+  }
+  return `<div><label class="f" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:0">${OBS_LBL.douleur}
+    <span class="chips" style="margin:0"><button type="button" class="chip" data-dlmode="EN" aria-pressed="${mode==="EN"}" title="Auto-évaluation (échelle numérique, tranches)">EN</button><button type="button" class="chip" data-dlmode="ALGOPLUS" aria-pressed="${mode==="ALGOPLUS"}" title="Hétéro-évaluation du patient non communicant (5 items)">ALGOPLUS</button></span></label>${body}</div>`;
+}
+const CST_LBL={ta:"TA",fc:"FC",spo2:"SpO₂",temp:"T°",gly:"Glycémie",poids:"Poids"};
+const ICOPE_LBL={mobilite:"Mobilité",cognition:"Cognition",nutrition:"Nutrition",humeur:"Humeur",vision:"Vision",audition:"Audition"};
+function renderEpPanels(){
+  const t=epDraft.trans,p=patients[epIdx],H=[];
+  const plActives=plaiesActives(dossier(p));
+  if(t.evt)H.push(`<div class="panel"><h3>⚡ Événement <button class="x" data-close="evt">×</button></h3><div class="chips">${MOTS_EVT.map(m=>`<button type="button" class="chip" data-evtmot="${m}" aria-pressed="${t.evt.mot===m}">${m}</button>`).join("")}</div><input type="text" data-evttexte="1" placeholder="Précision (facultatif)…" value="${esc(t.evt.texte||"")}" style="margin-top:6px">`
+    +(t.evt.mot==="HOSPIT"&&plActives.length?`<label class="f" style="margin-top:6px">Hospitalisation liée à une plaie ? (facultatif, 1 tap)</label><div class="chips">${plActives.map(pl=>`<button type="button" class="chip" data-evtplaie="${esc(pl.id)}" aria-pressed="${t.evt.liee_plaie===pl.id}">🩹 ${esc(plaieLabel(pl))}</button>`).join("")}</div>`:"")
+    +`</div>`);
+  if(t.cst){const taP=String(t.cst.ta||"").split("/"); /* TA en deux cases (systole/diastole) — stockée inchangée « 13/8 » */
+    H.push(`<div class="panel"><h3>🩺 Constantes — vides si non mesurées <button class="x" data-close="cst">×</button></h3><div class="row">${CST_KEYS.map(k=>k==="ta"
+      ?`<div style="min-width:140px"><label class="f">TA — systole / diastole</label><div style="display:flex;gap:4px;align-items:center"><input type="text" inputmode="decimal" data-cstta="sys" value="${esc((taP[0]||"").trim())}" placeholder="13" style="max-width:58px" aria-label="Systole"><b>/</b><input type="text" inputmode="decimal" data-cstta="dia" value="${esc((taP[1]||"").trim())}" placeholder="8" style="max-width:58px" aria-label="Diastole"></div></div>`
+      :`<div style="min-width:86px"><label class="f">${CST_LBL[k]}</label><input type="text" inputmode="decimal" data-cst="${k}" value="${esc(t.cst[k]||"")}"></div>`).join("")}</div></div>`);}
+  if(t.obs)H.push(`<div class="panel"><h3>👁 Observations <button class="x" data-close="obs">×</button></h3>${douleurPanelHtml(t.obs.douleur,p)}<div class="row" style="margin-top:6px">${OBS_KEYS.filter(k=>k!=="douleur").map(k=>`<div style="min-width:100px"><label class="f"${OBS_TITLE[k]?` title="${esc(OBS_TITLE[k])}"`:""}>${OBS_LBL[k]}</label><select data-obs="${k}">${OBS_OPTS[k].map(o=>`<option value="${o}"${(t.obs[k]||"")===o?" selected":""}>${o||"—"}</option>`).join("")}</select></div>`).join("")}</div></div>`);
+  if(t.icope)H.push(`<div class="panel"><h3>🧠 ICOPE — les 6 domaines requis <button class="x" data-close="icope">×</button></h3>${ICOPE_DOMS.map(k=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0"><span style="font-size:13px">${ICOPE_LBL[k]}</span><span class="chips" style="margin:0"><button type="button" class="chip" data-icope="${k}" data-val="ok" aria-pressed="${t.icope[k]==="ok"}">ok</button><button type="button" class="chip" data-icope="${k}" data-val="alerte" aria-pressed="${t.icope[k]==="alerte"}">alerte</button></span></div>`).join("")}</div>`);
+  if(t.photo)H.push(`<div class="panel"><h3>📷 Photo faite <button class="x" data-close="photo">×</button></h3><p class="muted" style="margin:0 0 6px">La photo reste sur le téléphone — l'app trace seulement qu'elle a été faite.</p><label class="f">Surface (cm², facultatif)</label><input type="text" inputmode="decimal" data-photosurf="1" value="${esc(t.photo.surface||"")}" style="max-width:120px"></div>`);
+  if(epPanelOpen.postit){const d=epPostitDraft||{type:"RELEVE",texte:""};
+    H.push(`<div class="panel"><h3>📌 Post-it <button class="x" data-close="postit">×</button></h3><div class="chips">${POSTIT_TYPES.map(ty=>`<button type="button" class="chip" data-pitype="${ty}" aria-pressed="${d.type===ty}">${ty==="RELEVE"?"📌 Relève":ty==="ALERTE"?"⚠ Alerte":"📝 Perso"}</button>`).join("")}</div><textarea data-pitexte="1" style="min-height:56px;margin-top:6px" placeholder="L'info à retenir, en 5 secondes…">${esc(d.texte||"")}</textarea><div class="row" style="margin-top:6px"><button type="button" class="btn sm" data-pisave="1">Épingler</button></div><p class="muted" style="margin:6px 0 0">RELEVE : pour la collègue (bandeau tournée) · ALERTE : reste en tête jusqu'à « Traité » · PERSO : jamais exporté ni transmis.</p></div>`);}
+  if(epPanelOpen.socle)H.push(`<div class="panel"><h3>🗂 Revalidation du socle <button class="x" data-close="socle">×</button></h3>${socleFieldsHtml(epDraft.socleData||p,"epSoc")}<div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-socinch="1">✓ Inchangé</button><button type="button" class="btn sm sec" data-socedit="1">Enregistrer les modifications</button></div>${epDraft.socle?`<p class="muted">Socle ${epDraft.socle==="inchange"?"marqué inchangé":"modifié"} — daté à la validation du passage.</p>`:""}</div>`);
+  $("#epPanels").innerHTML=H.join("");
+  [["epBtnEvt",!!t.evt],["epBtnObs",!!t.obs],["epBtnCst",!!t.cst],["epBtnIcope",!!t.icope],["epBtnPhoto",!!t.photo],["epBtnPostit",epPanelOpen.postit]].forEach(([id,on])=>{const b=document.getElementById(id);if(b)b.classList.toggle("on",on)});
+}
+function epPanelInput(e){if(!epDraft)return;const t=epDraft.trans,el=e.target;
+  if(el.dataset.cstta){t.cst=t.cst||{};const box=el.closest(".panel")||document;
+    const sys=((box.querySelector('[data-cstta="sys"]')||{}).value||"").trim(),dia=((box.querySelector('[data-cstta="dia"]')||{}).value||"").trim();
+    t.cst.ta=sys&&dia?sys+"/"+dia:(sys||(dia?"/"+dia:"")); /* format stocké/exporté inchangé : « 13/8 » */}
+  else if(el.dataset.cst){t.cst=t.cst||{};t.cst[el.dataset.cst]=el.value;}
+  else if(el.dataset.obs){t.obs=t.obs||{};t.obs[el.dataset.obs]=el.value;}
+  else if(el.dataset.evttexte){t.evt=t.evt||{mot:null,texte:""};t.evt.texte=el.value;}
+  else if(el.dataset.photosurf){t.photo=t.photo||{};t.photo.surface=el.value;}
+  else if(el.dataset.pitexte){epPostitDraft=epPostitDraft||{type:"RELEVE"};epPostitDraft.texte=el.value;}
+  else if((el.id||"").indexOf("epSoc")===0){epDraft.socleData=readSocleFields("epSoc");}
+  saveDraft();}
+function epPanelClick(e){if(!epDraft)return;const t=epDraft.trans;
+  /* douleur double mode : bascule mémorisée par patient, EN 1 tap, ALGOPLUS O/N par item */
+  const dlm=e.target.closest("[data-dlmode]");
+  if(dlm){t.obs=t.obs||{douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""};
+    const mode=dlm.dataset.dlmode;
+    const cur0=(typeof t.obs.douleur==="object"&&t.obs.douleur)||null;
+    if(!cur0||cur0.mode!==mode)t.obs.douleur={mode}; /* changer de mode remet la saisie douleur à zéro */
+    const P=dossier(patients[epIdx]);
+    if(P&&(P.mode_douleur||"EN")!==mode){P.mode_douleur=mode;savePatients();} /* mémorisé par patient, défaut des passages suivants */
+    saveDraft();renderPassage();return}
+  const dle=e.target.closest("[data-dlen]");
+  if(dle){const d0=(typeof t.obs.douleur==="object"&&t.obs.douleur&&t.obs.douleur.mode==="EN")?t.obs.douleur:{mode:"EN"};
+    d0.en=d0.en===dle.dataset.dlen?"":dle.dataset.dlen;
+    if(d0.en)d0.presente=d0.en!=="0";else delete d0.presente;
+    t.obs.douleur=(d0.en||d0.presente!=null)?d0:"";saveDraft();renderPassage();return}
+  const dla=e.target.closest("[data-dlalg]");
+  if(dla){const d0=(typeof t.obs.douleur==="object"&&t.obs.douleur&&t.obs.douleur.mode==="ALGOPLUS")?t.obs.douleur:{mode:"ALGOPLUS"};
+    d0.alg=d0.alg||{};const k=dla.dataset.dlalg,v=dla.dataset.dlv==="1";
+    if(d0.alg[k]===v)delete d0.alg[k];else d0.alg[k]=v; /* re-tap = désélection, null ≠ Non */
+    t.obs.douleur=d0;saveDraft();renderPassage();return}
+  const tg=e.target.closest("[data-tgl]");
+  if(tg){e.stopPropagation();tg.setAttribute("aria-pressed",tg.getAttribute("aria-pressed")!=="true");
+    epDraft.socleData=readSocleFields("epSoc");saveDraft();return}
+  const cl=e.target.closest("[data-close]");if(cl){const k=cl.dataset.close;
+    const PROP={photo:"photo",icope:"icope",cst:"constantes"};
+    if(k==="postit"){epPanelOpen.postit=false;epPostitDraft=null}
+    else if(k==="socle"){epPanelOpen.socle=false;if(!epDraft.socle)epDraft.props=(epDraft.props||[]).filter(x=>!(x.type==="socle"&&!x.declined));}
+    else{t[k]=null;if(PROP[k])epDraft.props=(epDraft.props||[]).filter(x=>!(x.type===PROP[k]&&!x.declined));}
+    saveDraft();renderPassage();return}
+  const em=e.target.closest("[data-evtmot]");if(em){t.evt=t.evt||{texte:""};t.evt.mot=t.evt.mot===em.dataset.evtmot?null:em.dataset.evtmot;if(t.evt.mot!=="HOSPIT")t.evt.liee_plaie=null;saveDraft();renderPassage();return}
+  const ep2=e.target.closest("[data-evtplaie]");if(ep2){t.evt=t.evt||{mot:null,texte:""};t.evt.liee_plaie=t.evt.liee_plaie===ep2.dataset.evtplaie?null:ep2.dataset.evtplaie;saveDraft();renderPassage();return}
+  const ic=e.target.closest("[data-icope]");if(ic){t.icope=t.icope||{};t.icope[ic.dataset.icope]=ic.dataset.val;saveDraft();renderPassage();return}
+  const pt=e.target.closest("[data-pitype]");if(pt){epPostitDraft=epPostitDraft||{texte:""};epPostitDraft.type=pt.dataset.pitype;saveDraft();renderPassage();return}
+  if(e.target.closest("[data-pisave]")){epSavePostit();return}
+  if(e.target.closest("[data-socinch]")){epDraft.socle="inchange";epDraft.socleData=null;saveDraft();renderPassage();toast("Socle marqué inchangé");return}
+  if(e.target.closest("[data-socedit]")){epDraft.socle="edite";epDraft.socleData=readSocleFields("epSoc");saveDraft();renderPassage();toast("Socle modifié — appliqué à la validation");return}
+}
+function epSavePostit(){const p=epIdx!=null?dossier(patients[epIdx]):null;if(!p)return;const d=epPostitDraft||{};
+  const txt=(($("#epPanels").querySelector("[data-pitexte]")||{}).value||d.texte||"").trim();
+  if(!txt){toast("Texte du post-it requis");return}
+  const pi=makePostit(d.type||"RELEVE",txt,settings.auteur||"??");if(!pi)return;
+  p.postits=p.postits||[];p.postits.push(pi);savePatients();
+  epPostitDraft=null;epPanelOpen.postit=false;saveDraft();renderPassage();renderReleves();toast("Post-it "+pi.type+" épinglé");}
+/* ---- module 3 : bandeaux 1-tap, jamais de popup bloquante ---- */
+function renderEpTriggers(){const p=patients[epIdx];
+  const {props}=computeTriggers(p,epDraft.acts.map(a=>a.id),null,epDate);
+  /* proposition unique EN → ALGOPLUS si cognition en alerte au dernier ICOPE (refus tracé) */
+  const algH=proposerAlgoplus(dossier(p))?`<div class="trigband"><span style="flex:1"><b>Douleur</b> · Cognition en alerte au dernier ICOPE — évaluer la douleur en ALGOPLUS (hétéro-évaluation) ?</span><button class="btn sm" data-algacc="1">Passer en ALGOPLUS</button><button class="btn sm sec" data-algdec="1">Rester en EN</button></div>`:"";
+  $("#epTriggers").innerHTML=algH+props.map(pr=>{
+    const dec=(epDraft.props||[]).find(x=>x.type===pr.type);
+    if(dec)return `<div class="trigband done"><span>${dec.declined?"✕":"✓"} ${esc(pr.lbl)} — ${dec.declined?"pas ce passage (tracé)":"pris en compte"}</span></div>`;
+    return `<div class="trigband"><span style="flex:1"><b>${esc(pr.lbl)}</b> · ${esc(pr.msg)}</span><button class="btn sm" data-tracc="${pr.type}">${pr.type==="photo"?"📷 Photo faite":pr.type==="icope"?"Faire maintenant":pr.type==="constantes"?"Prendre":"Revalider"}</button><button class="btn sm sec" data-trdec="${pr.type}">${pr.type==="icope"?"Prochain passage":"Pas ce passage"}</button></div>`;
+  }).join("");}
+function epTriggerClick(e){if(!epDraft)return;const t=epDraft.trans;
+  const aa=e.target.closest("[data-algacc]"),ad=e.target.closest("[data-algdec]");
+  if(aa||ad){const D=dossier(patients[epIdx]);if(!D)return;
+    D.algoplus_prop={icope_date:dernierIcopeDate(D),declined:!!ad,date:epDate};
+    if(aa)D.mode_douleur="ALGOPLUS";
+    savePatients();renderPassage();toast(aa?"Douleur en ALGOPLUS pour ce patient":"Proposition refusée — tracée, pas de nouvelle proposition avant le prochain ICOPE");return}
+  const a=e.target.closest("[data-tracc]");if(a){const ty=a.dataset.tracc;epDraft.props.push({type:ty,declined:false});
+    epFoldState.trans=false;epFoldSave(); /* la proposition acceptée ouvre le module transmission */
+    if(ty==="photo")t.photo=t.photo||{surface:""};
+    if(ty==="icope")t.icope=t.icope||{};
+    if(ty==="constantes")t.cst=t.cst||{ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""};
+    if(ty==="socle")epPanelOpen.socle=true;
+    saveDraft();renderPassage();return}
+  const d=e.target.closest("[data-trdec]");if(d){epDraft.props.push({type:d.dataset.trdec,declined:true});saveDraft();renderPassage();return}}
+/* ---- module 7 : plaies — bandeaux et panneaux (ouverture ≤ 60 s, réfection ≤ 5 taps, clôture ≤ 3 taps).
+   Déclenché par la cotation du pansement, jamais par un écran dédié ; date/auteur hérités du passage. ---- */
+function refResume(r){if(!r)return "";
+  const iso=r.iso==="Aucun signe"?"Aucun signe":REF_ISO.filter(k=>r.iso&&typeof r.iso==="object"&&r.iso[k]).map(k=>REF_ISO_LBL[k]).join(", ");
+  return [r.lit,r.exsudat,iso,r.pansement?"pans. "+r.pansement:"",r.surface_cm2!=null?String(r.surface_cm2).replace(".",",")+" cm²":""].filter(Boolean).join(" · ")}
+function plChips(list,cur,key){return `<div class="chips">${list.map(v=>`<button type="button" class="chip" data-plk="${esc(key)}" data-plval="${esc(v)}" aria-pressed="${cur===v}">${esc(v)}</button>`).join("")}</div>`}
+function plaiePanelHtml(a,p){
+  const d=a.data||{};
+  if(a.mode==="ouverture")return `<div class="panel"><h3>🩹 Ouverture de plaie <button class="x" data-plclose="1">×</button></h3>
+    <p class="muted" style="margin:0 0 6px">Une seule fois par plaie. Douleur, pathologies et signes généraux se saisissent dans la transmission — la photo vit dans Healico.</p>
+    <label class="f">Début de la plaie (estimé si ancienne — jamais pré-rempli)</label>
+    <div class="row" style="align-items:center"><div style="max-width:160px"><input type="date" data-plf="date_debut" value="${esc(d.date_debut||"")}"></div>
+      <button type="button" class="chip" data-plk="date_debut" data-plval="${esc(epDate)}" aria-pressed="${d.date_debut===epDate}">Découverte ce jour</button></div>
+    <label class="f">Localisation</label>${plChips(PLAIE_LOC,d.localisation,"localisation")}
+    <label class="f">Latéralité</label>${plChips(PLAIE_LAT,d.lateralite,"lateralite")}
+    <label class="f">Étiologie</label>${plChips(PLAIE_ETIO,d.etiologie,"etiologie")}
+    ${d.etiologie==="Escarre"?`<label class="f">Stade initial</label>${plChips(PLAIE_STADES,d.stade_initial,"stade_initial")}`:""}
+    ${d.etiologie==="Plaie chirurgicale"?`<label class="f">Intervention</label>${plChips(PLAIE_INTERV,d.type_intervention,"type_intervention")}
+      <div class="row"><div style="max-width:160px"><label class="f">Date opératoire</label><input type="date" data-plf="date_operatoire" value="${esc(d.date_operatoire||"")}"></div></div>
+      <label class="f">Adressé par</label>${plChips(PLAIE_ADR,d.adresseur,"adresseur")}`:""}
+    ${estUlcere(d.etiologie)?`<label class="f">IPS (index de pression systolique)</label>${plChips(PLAIE_IPS,d.ips_connu,"ips_connu")}
+      ${d.ips_connu==="Oui mesuré"?`<div class="row"><div style="max-width:120px"><label class="f">Valeur IPS</label><input type="text" inputmode="decimal" data-plf="ips_valeur" value="${esc(d.ips_valeur??"")}" placeholder="0,75"></div></div>`:""}`:""}
+    <label class="f">Suivi spécialisé existant</label>${plChips(PLAIE_SUIVI,d.suivi_specialise,"suivi_specialise")}
+    <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-plok="1">OK</button><button type="button" class="btn sm sec" data-plcancel="1">Annuler</button></div></div>`;
+  if(a.mode==="refection"){
+    const pl=(p.plaies||[]).find(x=>x.id===a.plaieId)||{};const der=dernRefection(pl);const fr=plaieFraicheur(pl,epDate);
+    const surfDue=fr.bilanJ30||fr.surface.etat!=="ok";
+    return `<div class="panel"><h3>🩹 Réfection — ${esc(plaieLabel(pl))} <button class="x" data-plclose="1">×</button></h3>
+    ${der?`<p class="muted" style="margin:0 0 6px">Référence — ${esc(refDelaiLbl(der,epDate))} : ${esc(refResume(der))}</p>`:""}
+    ${surfDue?`<p class="muted" style="margin:0 0 6px">📐 ${fr.bilanJ30?"Bilan J30 chirurgical : surface attendue":"Surface attendue ce passage (recopie Healico, 1×/quinzaine)"}</p>`:""}
+    <label class="f">Lit de la plaie (aspect dominant)</label>${plChips(REF_LIT,d.lit,"lit")}
+    <label class="f">Exsudat</label>${plChips(REF_EXSUDAT,d.exsudat,"exsudat")}
+    <label class="f">Signes locaux</label><div class="chips"><button type="button" class="chip" data-plk="iso_none" data-plval="1" aria-pressed="${d.iso==="Aucun signe"}">Aucun signe</button>${REF_ISO.map(k=>`<button type="button" class="chip" data-plk="iso_sign" data-plval="${k}" aria-pressed="${!!(d.iso&&d.iso!=="Aucun signe"&&d.iso[k])}">${REF_ISO_LBL[k]}</button>`).join("")}</div>
+    <details${d.peri_lesionnelle||d.pansement||(d.surface_cm2!=null&&d.surface_cm2!=="")||d.orientation||surfDue?" open":""}><summary style="font-size:13px;cursor:pointer">Détails (facultatifs) — péri-lésionnelle, pansement, surface, orientation</summary>
+      <label class="f">Peau péri-lésionnelle</label>${plChips(REF_PERI,d.peri_lesionnelle,"peri_lesionnelle")}
+      <label class="f">Pansement (si changement)</label>${plChips(["Inchangé",...REF_PANS],d.pansement,"pansement")}
+      <div class="row"><div style="max-width:150px"><label class="f">Surface (cm², recopie Healico)</label><input type="text" inputmode="decimal" data-plf="surface_cm2" value="${esc(d.surface_cm2??"")}"></div></div>
+      <label class="f">Avis demandé ce jour</label>${plChips(REF_ORIENT,d.orientation,"orientation")}
+    </details>
+    ${(()=>{ /* PUSH calculé en direct dès qu'une surface est disponible, avec variation vs dernier score */
+      const push=pushScore(d.surface_cm2,d.exsudat,d.lit),hist=pushHistorique(pl),prev=hist.length?hist[hist.length-1]:null;
+      if(!push&&!hist.length)return "";
+      const delta=push&&prev?push.score-prev.score:null;
+      return `<div style="background:var(--paper);border-radius:10px;padding:8px 10px;margin-top:8px;font-size:13px">📉 <b>Score PUSH</b> (calculé — surface + exsudat + lit)`
+        +(push?` : <b>${push.score}/17</b>${delta!=null?` · ${delta<0?"↓ "+delta+" (amélioration)":delta>0?"↑ +"+delta+" (aggravation)":"= stable"} vs ${esc(prev.date)}`:""}`
+          :`<span class="muted"> — renseignez lit, exsudat et surface pour le calculer.</span>`)
+        +(hist.length?`<small style="display:block;color:var(--ink2);margin-top:2px">Historique : ${hist.map(h=>esc(h.date)+" → "+h.score).join(" · ")}</small>`:"")+`</div>`;})()}
+    <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-plok="1">OK</button><button type="button" class="btn sm sec" data-plcancel="1">Annuler</button></div></div>`;}
+  const pl=(p.plaies||[]).find(x=>x.id===a.plaieId)||{};const fr=plaieFraicheur(pl,epDate);
+  return `<div class="panel"><h3>🩹 Clôture — ${esc(plaieLabel(pl))} <button class="x" data-plclose="1">×</button></h3>
+    <label class="f">Issue</label>${plChips(CLOTURE_ISSUES,d.issue,"issue")}
+    <p class="muted">Datée au ${esc(epDate)} · délai depuis l'ouverture : ${fr.age??"?"} j (calculé, jamais saisi).</p>
+    <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-plok="1">OK</button><button type="button" class="btn sm sec" data-plcancel="1">Annuler</button></div></div>`;
+}
+function renderEpPlaies(){
+  const box=$("#epPlaies");if(!box)return;
+  if(epIdx==null||!epDraft){box.innerHTML="";return}
+  const p=dossier(patients[epIdx]),acts=(epDraft.plaies||[]);
+  const hasPans=epDraft.acts.some(a=>PLAIE_ACTS.includes(a.id));
+  const actifs=plaiesActives(p),H=[];
+  actifs.forEach(pl=>{
+    const fr=plaieFraicheur(pl,epDate);
+    const iRef=acts.findIndex(a=>a.mode==="refection"&&a.plaieId===pl.id);
+    const iClo=acts.findIndex(a=>a.mode==="cloture"&&a.plaieId===pl.id);
+    const der=dernRefection(pl);
+    const badges=[fr.bilanJ30?' <span class="verif">Bilan J30</span>':"",!fr.bilanJ30&&fr.surface.etat!=="ok"&&hasPans?' <span class="verif">surface à recopier</span>':""].join("");
+    let right; /* ✓ seulement si l'action tiendra la validation — sinon ⚠ à compléter */
+    if(iClo>-1){const okC=validerCloture(acts[iClo].data).ok;
+      right=`<span style="font-size:13px">${okC?"✓":"⚠"} clôture : ${esc(acts[iClo].data.issue||"à compléter")}</span><button class="btn sm sec" data-pled="${iClo}">✎</button><button class="btn sm sec" data-plrm="${iClo}">×</button>`;}
+    else if(iRef>-1){const okR=validerRefection(acts[iRef].data).ok;
+      right=`<span style="font-size:13px">${okR?"✓":"⚠"} réfection : ${esc((okR?refResume(acts[iRef].data):"")||"à compléter")}</span><button class="btn sm sec" data-pled="${iRef}">✎</button><button class="btn sm sec" data-plrm="${iRef}">×</button>`;}
+    else right=`${hasPans?`<button class="btn sm" data-plref="${esc(pl.id)}">Réfection</button>`:""}<button class="btn sm sec" data-plclo="${esc(pl.id)}">Clôturer</button>`;
+    H.push(`<div class="trigband"><span style="flex:1">🩹 <b>${esc(plaieLabel(pl))}</b> · J${fr.age??"?"}${badges}${der?`<small style="display:block;color:var(--ink2)">${esc(refDelaiLbl(der,epDate))} : ${esc(refResume(der))}</small>`:""}</span>${right}</div>`);
+  });
+  /* plaies clôturées depuis ≤ 7 j : réouverture possible (clôture annulée tracée à la validation) */
+  ((p.plaies)||[]).filter(pl=>pl.cloture&&(()=>{const j=Math.floor((Date.parse(epDate)-Date.parse(String(pl.cloture.date).slice(0,10)))/86400000);return isFinite(j)&&j>=0&&j<=7})()).forEach(pl=>{
+    const iRo=acts.findIndex(a=>a.mode==="reouverture"&&a.plaieId===pl.id);
+    H.push(`<div class="trigband done"><span style="flex:1">🩹 ${esc(plaieLabel(pl))} — clôturée le ${esc(String(pl.cloture.date).slice(0,10))} (${esc(pl.cloture.issue)})</span>${iRo>-1?`<span style="font-size:13px">✓ réouverture à la validation</span><button class="btn sm sec" data-plrm="${iRo}">×</button>`:`<button class="btn sm sec" data-plro="${esc(pl.id)}">Rouvrir</button>`}</div>`);
+  });
+  const ouvs=acts.map((a,i)=>({a,i})).filter(x=>x.a.mode==="ouverture");
+  const decl=(epDraft.props||[]).some(x=>x.type==="plaie"&&x.declined);
+  ouvs.forEach(({a,i})=>{const okO=validerPlaie(a.data).ok;
+    H.push(`<div class="trigband"><span style="flex:1">🩹 ${okO?"✓":"⚠"} <b>Nouvelle plaie</b> : ${esc([a.data.localisation,a.data.etiologie].filter(Boolean).join(" · ")||"à compléter")}</span><button class="btn sm sec" data-pled="${i}">✎</button><button class="btn sm sec" data-plrm="${i}">×</button></div>`);});
+  if(hasPans&&!actifs.length&&!ouvs.length){
+    if(decl)H.push(`<div class="trigband done"><span>✕ Suivi de plaie — pas ce passage (tracé)</span></div>`);
+    else H.push(`<div class="trigband"><span style="flex:1"><b>Suivi de plaie</b> · Pansement coté : ouvrir le dossier de cette plaie ?</span><button class="btn sm" data-plouv="1">Ouvrir la plaie</button><button class="btn sm sec" data-pldec="1">Pas ce passage</button></div>`);}
+  else if(hasPans)H.push(`<div style="text-align:right;margin:4px 0"><button class="btn sm sec" data-plouv="1">+ Autre plaie</button></div>`);
+  /* Wound-QoL : proposé dès qu'une ouverture ou une clôture est prête dans ce passage (refus tracé) */
+  acts.forEach((a,i)=>{
+    if(a.mode!=="ouverture"&&a.mode!=="cloture")return;
+    const ok=a.mode==="ouverture"?validerPlaie(a.data).ok:validerCloture(a.data).ok;
+    if(!ok)return;
+    const pl=a.mode==="cloture"?(p.plaies||[]).find(x=>x.id===a.plaieId):null;
+    const lbl=a.mode==="ouverture"?[a.data.localisation,a.data.etiologie].filter(Boolean).join(" · ")||"nouvelle plaie":(pl?plaieLabel(pl):"plaie");
+    if(a.woundqol)H.push(`<div class="trigband done"><span>✓ Wound-QoL (${a.mode==="ouverture"?"ouverture":"clôture"} · ${esc(lbl)}) — score ${esc(String(a.woundqol.score).replace(".",","))}/4, enregistré à la validation</span></div>`);
+    else if(!a.woundqol_refus)H.push(`<div class="trigband"><span style="flex:1">🗣 <b>Wound-QoL</b> (qualité de vie, ${a.mode==="ouverture"?"ouverture":"clôture"} · ${esc(lbl)}) — tendre la tablette au patient ?</span><button class="btn sm" data-wqlgo="${i}">Faire</button><button class="btn sm sec" data-wqldec="${i}">Pas ce passage</button></div>`);
+    else H.push(`<div class="trigband done"><span>✕ Wound-QoL (${a.mode==="ouverture"?"ouverture":"clôture"}) — pas ce passage (tracé)</span></div>`);
+  });
+  if(epDraft.plaieOpen!=null&&acts[epDraft.plaieOpen])H.push(plaiePanelHtml(acts[epDraft.plaieOpen],p));
+  box.innerHTML=H.join("");
+}
+/* ---- Wound-QoL : écran auto-administré, item par item, gros boutons (mode « tendre la tablette »).
+   Les libellés viennent exclusivement de woundqol_items_fr.json — refus de s'activer sur placeholder. */
+let wqlData,wqlCtx=null;
+async function chargerWoundqol(){
+  if(wqlData!==undefined)return wqlData;
+  try{const r=await fetch("woundqol_items_fr.json",{cache:"no-store"});wqlData=r.ok?await r.json():null}catch(e){wqlData=null}
+  return wqlData;
+}
+async function lancerWoundqol(i){
+  const d=await chargerWoundqol();
+  if(!woundqolActif(d)){toast("Wound-QoL indisponible : libellés officiels non installés (woundqol_items_fr.json contient le placeholder — licence à vérifier)");return}
+  wqlCtx={i,reps:Array(17).fill(null),pos:0};
+  $("#wqlDlg").hidden=false;renderWql();
+}
+function renderWql(){
+  const d=wqlData,c=wqlCtx;if(!c)return;
+  const it=d.items[c.pos];
+  $("#wqlCard").innerHTML=`<h2 style="margin:0 0 2px">Wound-QoL — ${c.pos+1}/17</h2>
+    <p class="muted" style="margin:0 0 8px">${esc(d.rappel_periode||"")} · réponse du patient</p>
+    <p style="font-size:17px;line-height:1.4;margin:0">${esc(it.texte)}</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">${d.echelle.map((l,v)=>`<button class="btn${c.reps[c.pos]===v?"":" sec"}" style="font-size:16px;padding:14px" data-wqlv="${v}">${esc(l)}</button>`).join("")}</div>
+    <div class="row" style="margin-top:12px">${c.pos>0?'<button class="btn sec sm" data-wqlprev="1">← Précédent</button>':""}<button class="btn sec sm" data-wqlstop="1">Annuler</button></div>`;
+}
+function wqlClick(e){
+  if(!wqlCtx)return;const c=wqlCtx;
+  const v=e.target.closest("[data-wqlv]");
+  if(v){c.reps[c.pos]=+v.dataset.wqlv;
+    if(c.pos<16){c.pos++;renderWql();return}
+    const sc=woundqolScore(c.reps,wqlData.items);
+    if(!sc){toast("Réponses incomplètes");return}
+    const a=((epDraft&&epDraft.plaies)||[])[c.i];
+    if(a){a.woundqol={score:sc.score,sous:sc.sous,date:epDate};saveDraft();}
+    $("#wqlDlg").hidden=true;wqlCtx=null;renderEpPlaies();
+    toast("Wound-QoL : score "+String(sc.score).replace(".",",")+"/4 — enregistré à la validation du passage");return}
+  if(e.target.closest("[data-wqlprev]")){if(c.pos>0){c.pos--;renderWql();}return}
+  if(e.target.closest("[data-wqlstop]")){$("#wqlDlg").hidden=true;wqlCtx=null;return}
+}
+function epPlaiesClick(e){
+  if(!epDraft)return;epDraft.plaies=epDraft.plaies||[];
+  const acts=epDraft.plaies;
+  /* neuve : Annuler supprime l'action ; ré-édition (✎) : instantané pris, Annuler y revient */
+  const open=(i,neuve)=>{epDraft.plaieOpen=i;epDraft.plaieBak=neuve?null:JSON.stringify(acts[i].data);saveDraft();renderEpPlaies();};
+  let b;
+  if(b=e.target.closest("[data-plouv]")){acts.push({mode:"ouverture",id:uid("pl"),data:{}});open(acts.length-1,true);return}
+  if(e.target.closest("[data-pldec]")){epDraft.props=epDraft.props||[];epDraft.props.push({type:"plaie",declined:true});saveDraft();renderEpPlaies();return}
+  if(b=e.target.closest("[data-plref]")){acts.push({mode:"refection",plaieId:b.dataset.plref,data:{}});open(acts.length-1,true);return}
+  if(b=e.target.closest("[data-plclo]")){acts.push({mode:"cloture",plaieId:b.dataset.plclo,data:{}});open(acts.length-1,true);return}
+  if(b=e.target.closest("[data-plro]")){acts.push({mode:"reouverture",plaieId:b.dataset.plro,data:{}});saveDraft();renderEpPlaies();toast("Réouverture préparée — la clôture sera annulée (et tracée) à la validation");return}
+  if(b=e.target.closest("[data-wqlgo]")){lancerWoundqol(+b.dataset.wqlgo);return}
+  if(b=e.target.closest("[data-wqldec]")){const a=acts[+b.dataset.wqldec];
+    if(a&&!a.woundqol_refus){a.woundqol_refus=true;epDraft.props=epDraft.props||[];epDraft.props.push({type:"woundqol",declined:true});saveDraft();renderEpPlaies();}return}
+  if(b=e.target.closest("[data-pled]")){open(+b.dataset.pled,false);return}
+  if(b=e.target.closest("[data-plrm]")){if(!confirm("Retirer cette saisie plaie du passage ? (rien n'est encore enregistré)"))return;
+    acts.splice(+b.dataset.plrm,1);epDraft.plaieOpen=null;epDraft.plaieBak=null;saveDraft();renderEpPlaies();return}
+  if(e.target.closest("[data-plcancel]")){
+    if(epDraft.plaieOpen!=null){
+      if(epDraft.plaieBak)acts[epDraft.plaieOpen].data=JSON.parse(epDraft.plaieBak); /* ré-édition : retour à l'état confirmé */
+      else acts.splice(epDraft.plaieOpen,1);} /* création : abandon */
+    epDraft.plaieOpen=null;epDraft.plaieBak=null;saveDraft();renderEpPlaies();return}
+  if(e.target.closest("[data-plclose]")){epDraft.plaieOpen=null;epDraft.plaieBak=null;saveDraft();renderEpPlaies();return}
+  if(e.target.closest("[data-plok]")){
+    const a=acts[epDraft.plaieOpen];if(!a)return;
+    const v=a.mode==="ouverture"?validerPlaie(a.data):a.mode==="refection"?validerRefection(a.data):validerCloture(a.data);
+    if(!v.ok){toast(v.erreurs[0]);return}
+    epDraft.plaieOpen=null;epDraft.plaieBak=null;saveDraft();renderEpPlaies();
+    toast(a.mode==="ouverture"?"Plaie prête — enregistrée à la validation du passage":a.mode==="refection"?"Réfection prête":"Clôture prête");return}
+  const c=e.target.closest("[data-plk]");
+  if(c){const a=acts[epDraft.plaieOpen];if(!a)return;const d=a.data,k=c.dataset.plk,val=c.dataset.plval;
+    if(k==="iso_none")d.iso=d.iso==="Aucun signe"?null:"Aucun signe";
+    else if(k==="iso_sign"){if(!d.iso||d.iso==="Aucun signe")d.iso={};d.iso[val]=!d.iso[val];if(!REF_ISO.some(s=>d.iso[s]))d.iso=null;}
+    else{const old=d[k];d[k]=old===val?null:val; /* re-tap = désélection : null ≠ valeur, aucun pré-cochage */
+      /* purge des champs conditionnels seulement sur vrai changement A→B — une désélection
+         accidentelle puis resélection ne détruit pas stade/intervention/IPS déjà saisis */
+      if(k==="etiologie"&&old&&d[k]&&old!==d[k]){delete d.stade_initial;delete d.type_intervention;delete d.date_operatoire;delete d.adresseur;delete d.ips_connu;delete d.ips_valeur;}}
+    saveDraft();renderEpPlaies();return}
+}
+function epPlaiesInput(e){if(!epDraft)return;const el=e.target;if(!el.dataset.plf)return;
+  const a=(epDraft.plaies||[])[epDraft.plaieOpen];if(!a)return;a.data[el.dataset.plf]=el.value;saveDraft();}
+/* ---- dictée IA (module 5) ----
+   Le navigateur coupe la reconnaissance après quelques secondes de silence : on relance
+   automatiquement tant que Stop n'est pas pressé, et Stop déclenche l'analyse.
+   Anti-répétition (Android) : l'état {base, fin, lastSeg} est la seule source de vérité —
+   l'interim ne s'absorbe jamais dans la base, les finals passent par dicteeAccum() (dédupliqué),
+   et le repli en fin de session ne garde que base + finals. */
+let epRecWanted=false,epRecEtat=null;
+function epMicToggle(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast("Dictée vocale non disponible sur ce navigateur — saisissez au clavier");return}
+  if(epRecWanted||epRec){
+    epMicStop();$("#epIaStatus").textContent="";
+    if((($("#epDictee")||{}).value||"").trim())epAnalyser();
+    return;
+  }
+  epRecWanted=true;epRecEtat={base:($("#epDictee").value||"").trim(),fin:"",lastSeg:""};
+  const afficher=inter=>{const ta=$("#epDictee");
+    ta.value=[epRecEtat.base,epRecEtat.fin,String(inter||"").trim()].filter(Boolean).join(" ");
+    if(epDraft){epDraft.dictee=ta.value;saveDraft();}};
+  const lancer=()=>{
+    epRec=new SR();epRec.lang="fr-FR";epRec.continuous=true;epRec.interimResults=true;
+    epRec.onresult=ev=>{let inter="";
+      for(let i=ev.resultIndex;i<ev.results.length;i++){const r=ev.results[i];
+        if(r.isFinal)epRecEtat=dicteeAccum(epRecEtat,r[0].transcript);
+        else inter+=(r[0].transcript||"")+" ";}
+      afficher(inter);
+      $("#epIaStatus").textContent="🎙 En écoute — appuyez sur Stop quand vous avez fini.";};
+    epRec.onend=()=>{if(epRecWanted){
+      /* repli des finals seulement — l'interim disparaît ; lastSeg conservé pour dédupliquer
+         le replay du même segment par Android après la relance */
+      epRecEtat={base:[epRecEtat.base,epRecEtat.fin].filter(Boolean).join(" "),fin:"",lastSeg:epRecEtat.lastSeg};
+      try{lancer()}catch(e){epMicStop()}}else{epRec=null;}};
+    epRec.onerror=e=>{if(e&&(e.error==="not-allowed"||e.error==="service-not-allowed")){epMicStop();toast("Micro refusé — autorisez le micro pour ce site dans le navigateur")}};
+    epRec.start();
+  };
+  $("#epMic").textContent="⏹ Stop + Analyser";
+  $("#epIaStatus").textContent="🎙 En écoute — dictez, puis appuyez sur Stop.";
+  try{lancer()}catch(e){epMicStop();toast("Micro indisponible — la saisie clavier reste possible");}
+}
+function objNonVides(o){const r={};Object.keys(o||{}).forEach(k=>{if(o[k])r[k]=o[k]});return r}
+function epApplyExtraction(d){const t=epDraft.trans;
+  if(d.mot){t.evt=t.evt||{mot:null,texte:""};t.evt.mot=d.mot;if(d.texte)t.evt.texte=d.texte;}
+  if(d.cst)t.cst=Object.assign({ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""},t.cst||{},objNonVides(d.cst));
+  if(d.obs){const o=objNonVides(d.obs);
+    /* douleur extraite : tranche/"oui" → mode EN, {"algoplus":{...}} → mode ALGOPLUS (pré-remplissage,
+       les items non dictés restent sans réponse — l'IDEL complète, le moteur calcule le score) */
+    if(o.douleur)o.douleur=typeof o.douleur==="object"?{mode:"ALGOPLUS",alg:Object.assign({},o.douleur.algoplus)}:migrerDouleur(o.douleur);
+    t.obs=Object.assign({douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""},t.obs||{},o);}
+  if(d.icope)t.icope=Object.assign({},t.icope||{},objNonVides(d.icope));
+  if(d.texte&&!d.mot&&!d.postit&&!((t.libre||"").trim()))t.libre=d.texte;
+  if(d.postit){epPostitDraft={type:d.postit.type,texte:d.postit.texte};epPanelOpen.postit=true;}
+  /* réfection dictée : pré-remplit le panneau de la plaie ciblée — l'IDEL vérifie puis OK,
+     jamais d'enregistrement sans validation. Ambiguïté (0 ou plusieurs plaies) : rien n'est appliqué. */
+  let refCiblee=false;
+  if(d.refection){
+    const cible=ciblerPlaie(plaiesActives(dossier(patients[epIdx])),d.refection);
+    if(cible){
+      epDraft.plaies=epDraft.plaies||[];
+      let i=epDraft.plaies.findIndex(a=>a.mode==="refection"&&a.plaieId===cible.id);
+      if(i<0){epDraft.plaies.push({mode:"refection",plaieId:cible.id,data:{}});i=epDraft.plaies.length-1;}
+      const tgt=epDraft.plaies[i].data;
+      ["lit","exsudat","iso","peri_lesionnelle","pansement","surface_cm2","orientation"].forEach(k=>{
+        if(d.refection[k]!=null&&d.refection[k]!=="")tgt[k]=d.refection[k]});
+      epDraft.plaieOpen=i;epDraft.plaieBak=null;refCiblee=true;
+    }
+  }
+  if(d.mot||d.cst||d.obs||d.icope||d.texte||d.postit){epFoldState.trans=false;epFoldSave();} /* l'analyse ouvre le module pour vérifier */
+  saveDraft();return {refCiblee};}
+async function epAnalyser(){
+  if(!epDraft)return;
+  const txt=$("#epDictee").value.trim();if(!txt){toast("Rien à analyser");return}
+  const draftRef=epDraft,idxRef=epIdx; /* garde anti-course : le brouillon peut changer pendant le await */
+  epDraft.dictee=txt;$("#epIaStatus").textContent="Analyse en cours…";$("#epAnalyse").disabled=true;$("#epValider").disabled=true;
+  let data;
+  const pAno=patients[epIdx];
+  const txtEnvoye=ExtracteurIA.provider==="local"?txt:anonymiserDictee(txt,pAno&&pAno.name);
+  try{
+    const raw=await ExtracteurIA.extraire(txtEnvoye);
+    const v=validerExtraction(raw);data=v.data;
+    $("#epIaStatus").textContent=(v.ok?"Extraction OK":"Extraction partielle — champs hors schéma rejetés : "+v.erreurs.join(" · "))+" ("+EXTRACTEURS[ExtracteurIA.provider].l+"). Rien n'est enregistré : vérifiez puis validez.";
+  }catch(e){
+    const v=validerExtraction(extraireLocal(txt));data=v.data;
+    $("#epIaStatus").textContent="IA indisponible ("+e.message+") — analyse hors-ligne appliquée. La saisie manuelle reste complète.";
+  }
+  $("#epAnalyse").disabled=false;$("#epValider").disabled=false;
+  if(epDraft!==draftRef||epIdx!==idxRef){$("#epIaStatus").textContent="Analyse ignorée : le passage a changé pendant l'extraction.";return}
+  const infoX=epApplyExtraction(data);renderPassage();
+  if(data.refection&&!infoX.refCiblee)$("#epIaStatus").textContent+=" — 🩹 Réfection dictée non rattachée : "+(plaiesActives(dossier(patients[epIdx])).length?"plusieurs plaies possibles, ouvrez la bonne via son bandeau Réfection (les champs restent à saisir).":"aucune plaie enregistrée — ouvrez d'abord la plaie depuis le bandeau.");
+}
+/* ---- rendu écran de passage ---- */
+function renderPassage(){
+  const p=patients[epIdx];if(!p||!epDraft){showTab("tour");return}
+  const f=freshness(dossier(p),epDate);
+  $("#epHead").innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+    <div><h2 style="margin:0 0 2px">${esc(p.name)} ${pastillesHtml(f)}</h2>
+    <span class="muted">${epDate} · auteur ${esc(settings.auteur||"??")}${settings.geoloc?" · 📍 géoloc":""} · brouillon auto-sauvé</span></div>
+    <button class="btn sec sm" data-epfiche="1">✎ Fiche</button></div>${freshBandeauxHtml(f)}`;
+  $("#epHeure").value=epDraft.heure||"";
+  if($("#epDictee").value!==(epDraft.dictee||""))$("#epDictee").value=epDraft.dictee||"";
+  if($("#epLibre").value!==(epDraft.trans.libre||""))$("#epLibre").value=epDraft.trans.libre||"";
+  $("#epCardCot").classList.toggle("closed",!!epFoldState.cot);
+  $("#epCardTrans").classList.toggle("closed",!!epFoldState.trans);
+  const ts=$("#epTransSum");if(ts)ts.textContent=epTransResume();
+  renderEpTicket();renderEpPanels();renderEpTriggers();renderEpPlaies();renderEpPostits();
+}
+function renderEpPostits(){const p=epIdx!=null?dossier(patients[epIdx]):null;if(!p)return;
+  const vis=(p.postits||[]).filter(x=>!x.archive&&(x.type==="RELEVE"||(x.type==="ALERTE")||x.type==="PERSO"));
+  const strong=vis.filter(x=>x.type==="RELEVE"||(x.type==="ALERTE"&&!x.traite));
+  const perso=vis.filter(x=>x.type==="PERSO");
+  $("#epPostitsList").innerHTML=(strong.length||perso.length)?`<div class="card" style="padding:10px">${strong.map(pi=>postitHtml(p,pi)).join("")}${perso.map(pi=>`<div class="postit" data-pip="${esc(p.id)}" data-pii="${esc(pi.id)}"><span style="font-size:12px;color:var(--ink2)">📝 ${esc(pi.texte)}</span><button class="btn sm sec" data-pidel="1">Suppr.</button></div>`).join("")}</div>`:"";
+}
+/* ---- validation atomique du passage (module 1) ---- */
+function validerPassage(){
+  const p=epIdx!=null?dossier(patients[epIdx]):null;if(!p||!epDraft)return;
+  const iso=epDate+"T"+(epDraft.heure||nowHM())+":00";
+  const rec=buildPassageRecord(p,epDraft,iso,settings.auteur||"??");
+  if(rec.error){toast(rec.error);return}
+  const actionsPl=(epDraft.plaies||[]);
+  if(actionsPl.length){ /* pré-validation pure avant toute écriture (le passageId définitif est appliqué plus bas) */
+    const test=appliquerPlaiesActions(p.plaies||[],actionsPl,"__test__",epDate,p.id);
+    if(!test.ok){toast("Plaies : "+test.erreurs[0]);return}
+  }
+  if(!rec.pass.actes.length&&!rec.transmissions.length&&!rec.socle&&!actionsPl.length){toast("Passage vide : ajoutez un acte ou une transmission");return}
+  if(rec.pass.actes.length&&!rec.transmissions.length&&!actionsPl.length&&!confirm("Valider sans transmission ? (tracé « transmission : aucune »)"))return;
+  if(settings.geoloc&&epGeo)rec.pass.geoloc={lat:epGeo.lat,lng:epGeo.lon};
+  const bakP=JSON.stringify(patients),bakS=JSON.stringify(passages5),bakD=JSON.stringify(drafts);
+  try{
+    rec.transmissions.forEach(t=>p.transmissions.push(t));
+    if(rec.setPlaie)p.plaie=true;
+    if(actionsPl.length){
+      const vp=appliquerPlaiesActions(p.plaies||[],actionsPl,rec.pass.id,epDate,p.id);
+      p.plaies=vp.plaies;
+      /* le flag patient.plaie suit les plaies enregistrées ; il n'est écrasé que si le dossier en a */
+      p.plaie=plaiesActives(p).length>0?true:(p.plaies.length?false:p.plaie);
+    }
+    if(rec.socle){if(rec.socle==="edite"&&epDraft.socleData)Object.assign(p,finaliserSocle(epDraft.socleData,epDate));p.socleDate=epDate;}
+    /* le mode douleur utilisé est mémorisé par patient (défaut des passages suivants) */
+    const trD=rec.transmissions.find(x=>x.type==="OBS"&&x.obs&&typeof x.obs.douleur==="object"&&x.obs.douleur);
+    if(trD)p.mode_douleur=trD.obs.douleur.mode;
+    passages5.push(rec.pass);delete drafts[p.id];
+    /* la clé la plus volumineuse d'abord ; en cas d'échec, le catch restaure AUSSI le stockage (tout-ou-rien) */
+    localStorage.setItem("lidia.cot.patients",JSON.stringify(patients));
+    localStorage.setItem("lidia.cot.passages",JSON.stringify(passages5));
+    localStorage.setItem("lidia.cot.drafts",JSON.stringify(drafts));
+  }catch(e){
+    try{localStorage.setItem("lidia.cot.patients",bakP)}catch(e2){}
+    try{localStorage.setItem("lidia.cot.passages",bakS)}catch(e2){}
+    try{localStorage.setItem("lidia.cot.drafts",bakD)}catch(e2){}
+    patients=JSON.parse(bakP);passages5=JSON.parse(bakS);drafts=JSON.parse(bakD);
+    migratePatients();renderPatients();toast("Stockage plein — passage NON enregistré");return}
+  lastTransShare={nom:p.name,texte:transmissionTexte(p,rec.pass,rec.transmissions,actionsPl,p.plaies||[])};
+  epMicStop();epDraft=null;epIdx=null;epGeo=null;
+  toast("Passage validé — "+rec.transmissions.length+" transmission(s)"+(actionsPl.length?" · plaies à jour":""));
+  showTab("tour");if(Object.keys(lastRoutes).length)planRoute();renderReleves();renderTransShare();
+  const ts=$("#tTransShare");if(ts)ts.scrollIntoView({block:"start"});
+}
+/* ---- post-its : rendu & actions partagés (module 4) ---- */
+function postitHtml(p,pi){
+  const me=settings.auteur||"??",btns=[];
+  if(pi.type==="RELEVE"&&pi.auteur!==me&&!(pi.luPar||[]).includes(me))btns.push(`<button class="btn sm" data-pilu="1">Lu ✓</button>`);
+  if(pi.type==="ALERTE"&&!pi.traite)btns.push(`<button class="btn sm" data-pitraite="1">Traité</button>`);
+  if(pi.type==="PERSO")btns.push(`<button class="btn sm sec" data-pidel="1">Suppr.</button>`);
+  else btns.push(`<button class="btn sm sec" data-piarch="1">Archiver</button>`);
+  const age=(Date.now()-Date.parse(pi.date))/3600000;
+  return `<div class="postit ${pi.type}" data-pip="${esc(p.id)}" data-pii="${esc(pi.id)}"><span style="flex:1">${pi.type==="RELEVE"?"📌":pi.type==="ALERTE"?"⚠":"📝"} <b>${esc(p.name)}</b> — ${esc(pi.texte)}${pi.type==="ALERTE"&&!pi.traite&&age>48?' <span class="badge">&gt; 48 h</span>':""}${pi.type==="ALERTE"&&pi.traite?" · traité"+(pi.traiteComment?" ("+esc(pi.traiteComment)+")":""):""}<small>${esc(pi.auteur)} · ${esc(String(pi.date).slice(0,16).replace("T"," "))}${pi.type==="RELEVE"&&(pi.luPar||[]).length?" · lu par "+esc(pi.luPar.join(", ")):""}</small></span>${btns.join("")}</div>`;
+}
+function postitListClick(e){
+  const box=e.target.closest("[data-pip]");if(!box)return;
+  const p=patients.find(x=>x.id===box.dataset.pip);if(!p)return;
+  const pi=(p.postits||[]).find(x=>x.id===box.dataset.pii);if(!pi)return;
+  const me=settings.auteur||"??";
+  if(e.target.closest("[data-pilu]")){pi.luPar=pi.luPar||[];if(!pi.luPar.includes(me))pi.luPar.push(me);savePatients();refreshPostitViews();toast("Marqué lu");return}
+  if(e.target.closest("[data-pitraite]")){const c=prompt("Comment ? (appel, MSSanté, mot laissé…)")||"";pi.traite=true;pi.traiteComment=c.trim();savePatients();refreshPostitViews();toast("Alerte traitée");return}
+  if(e.target.closest("[data-piarch]")){pi.archive=true;savePatients();refreshPostitViews();toast("Archivé — traçabilité conservée");return}
+  if(e.target.closest("[data-pidel]")){if(pi.type!=="PERSO")return;if(!confirm("Supprimer ce mémo perso ?"))return;p.postits=p.postits.filter(x=>x.id!==pi.id);savePatients();refreshPostitViews();return}
+}
+function refreshPostitViews(){renderReleves();
+  if(epIdx!=null&&!$("#tab-passage").hidden)renderEpPostits();
+  if(!$("#tab-dash").hidden)renderDash();
+  if(editIdx!=null&&!$("#tab-pat").hidden)renderPPostits(patients[editIdx]);}
+function renderReleves(){
+  const R=relevesAVoir(patients,settings.auteur||"??");
+  const b=$("#navTourBadge");if(b){b.hidden=!R.length;b.textContent=R.length;}
+  const el=$("#tReleves");if(!el)return;
+  el.innerHTML=R.length?`<div class="card" style="border-left:5px solid var(--teal)"><h2>📌 Relève — à lire avant la tournée (${R.length})</h2>${R.map(x=>postitHtml(x.p,x.pi)).join("")}</div>`:"";
+}
+function renderPPostits(p){const el=$("#pPostits");if(!el)return;
+  const D=p&&p.id?dossier(p):p;
+  const list=D&&D.postits?D.postits.filter(x=>!x.archive):[];
+  /* création 📌 depuis la fiche patient (module 4) — patient enregistré uniquement */
+  const form=D&&D.id?`<div class="panel"><h3>📌 Nouveau post-it</h3><div class="chips">${POSTIT_TYPES.map(ty=>`<button type="button" class="chip" data-pftype="${ty}" aria-pressed="${ty==="RELEVE"}">${ty==="RELEVE"?"📌 Relève":ty==="ALERTE"?"⚠ Alerte":"📝 Perso"}</button>`).join("")}</div><div class="row" style="margin-top:6px"><input type="text" data-pftexte="1" placeholder="L'info à retenir, en 5 secondes…" style="flex:2"><button type="button" class="btn sm" data-pfsave="1">Épingler</button></div></div>`:"";
+  el.innerHTML=(list.length?list.map(pi=>postitHtml(D,pi)).join(""):"")+form;}
+/* ---- socle : champs partagés fiche/panneau ---- */
+function socleFieldsHtml(p,pre){
+  const sel=(id,list,val,lbl)=>`<div><label class="f">${lbl}</label><select id="${pre}${id}">${["",...list].map(o=>`<option value="${esc(o)}"${o===val?" selected":""}>${o||"—"}</option>`).join("")}</select></div>`;
+  return `<div class="row" style="margin-top:6px">
+    <div><label class="f">Année de naissance</label><input type="number" id="${pre}Annee" min="1900" max="2030" value="${p.annee||""}"></div>
+    ${sel("Sexe",["F","H"],p.sexe||"","Sexe")}
+    <div><label class="f">Commune</label><input type="text" id="${pre}Commune" value="${esc(p.commune||"")}"></div></div>
+  <div class="chips" style="margin-top:6px">
+    <button type="button" class="chip" id="${pre}VitSeul" data-tgl="1" aria-pressed="${!!p.vitSeul}">Vit seul</button>
+    <button type="button" class="chip" id="${pre}Aidant" data-tgl="1" aria-pressed="${!!p.aidant}">Aidant présent</button>
+    <button type="button" class="chip" id="${pre}Institution" data-tgl="1" aria-pressed="${!!p.institution}">Institution</button>
+    <button type="button" class="chip" id="${pre}Plaie" data-tgl="1" aria-pressed="${!!p.plaie}">Plaie active</button>
+    <button type="button" class="chip" id="${pre}Bsi" data-tgl="1" aria-pressed="${!!p.bsi}">BSI</button></div>
+  <label class="f">Pathologies (liste fermée)</label>
+  <div class="chips" id="${pre}Pathos">${PATHOS_LIST.map(x=>`<button type="button" class="chip" data-tgl="1" data-patho="${esc(x)}" aria-pressed="${(p.pathos||[]).includes(x)}">${x}</button>`).join("")}</div>
+  <div class="row" style="margin-top:6px">
+    <div><label class="f">Nb médicaments</label><input type="number" id="${pre}NbMed" min="0" value="${p.nbMed??""}"></div>
+    ${sel("Autonomie",AUTONOMIE_LIST,p.autonomie||"","Autonomie")}
+    ${sel("AdressePar",ADRESSE_PAR_LIST,p.adresse_par||"","Adressé par")}</div>${bradenFieldsHtml(p,pre)}${girerdFieldsHtml(p,pre)}`;
+}
+/* questionnaire de Girerd conditionnel (nbMed ≥ 5) — laisser vide vaut « Plus tard », re-proposé
+   à chaque revalidation du socle (rythme annuel de fait) */
+function girerdFieldsHtml(p,pre){
+  if(!girerdEligible(p))return "";
+  const reps=(p.girerd&&p.girerd.reponses)||[];
+  const done=p.girerd&&p.girerd.score!=null;
+  const s=done?girerdScore(p.girerd.reponses):null;
+  return `<details style="margin-top:8px"${done?"":" open"}><summary style="font-size:13px;font-weight:600;cursor:pointer">💊 Test de Girerd (observance)${done?" — "+p.girerd.score+"/6 le "+esc(p.girerd.date):" — à faire"}</summary>
+    <p class="muted" style="margin:6px 0 0">Proposé car ≥ ${GIRERD_SEUIL_MED} médicaments. Réponses du patient. 0 = bonne observance · 1-2 = minime problème · ≥ 3 = mauvaise. Laisser vide = « Plus tard » (compté en qualité renforcée, jamais bloquant).</p>
+    ${GIRERD_ITEMS.map((q,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0"><span style="font-size:13px;flex:1">${i+1}. ${esc(q)}</span><select id="${pre}Girerd_${i}" style="width:84px;flex:none"><option value="">—</option><option value="1"${reps[i]===true?" selected":""}>Oui</option><option value="0"${reps[i]===false?" selected":""}>Non</option></select></div>`).join("")}
+    ${done&&s?`<p class="muted" style="margin:6px 0 0">Dernier score : <b>${p.girerd.score}/6</b> (${s.lecture}) le ${esc(p.girerd.date)}.</p>`:""}</details>`;
+}
+/* grille Braden conditionnelle (BSI ou Dépendant) — laisser vide vaut « Plus tard » (incomplétude
+   souhaitable au tableau de bord, jamais bloquant), re-proposée à chaque revalidation du socle */
+function bradenFieldsHtml(p,pre){
+  if(!bradenEligible(p))return "";
+  const b=p.braden||{};
+  const done=p.braden&&p.braden.score!=null;
+  return `<details style="margin-top:8px"${done?"":" open"}><summary style="font-size:13px;font-weight:600;cursor:pointer">🛏 Échelle de Braden (risque d'escarre)${done?" — "+p.braden.score+"/23"+(p.braden.risque!=="aucun"?", risque "+p.braden.risque:""):" — à faire"}</summary>
+    <p class="muted" style="margin:6px 0 0">Proposée car BSI ou dépendance. Score 6-23 : risque si ≤ 18, élevé si ≤ 12. Laisser vide = « Plus tard » (compté en qualité renforcée, jamais bloquant).</p>
+    <div class="row" style="margin-top:6px">${BRADEN_ECHELLES.map(e=>`<div style="min-width:170px"><label class="f">${e.lbl}</label><select id="${pre}Braden_${e.k}"><option value="">—</option>${e.opts.map((o,i)=>`<option value="${i+1}"${String(b[e.k])===String(i+1)?" selected":""}>${i+1} — ${esc(o)}</option>`).join("")}</select></div>`).join("")}</div>
+    ${done?`<p class="muted" style="margin:6px 0 0">Dernier score : <b>${p.braden.score}/23</b> (${p.braden.risque==="aucun"?"pas de risque":"risque "+p.braden.risque}) le ${esc(p.braden.date)}.</p>`:""}</details>`;
+}
+function readSocleFields(pre){
+  const g=id=>document.getElementById(pre+id);
+  const chip=id=>g(id)?g(id).getAttribute("aria-pressed")==="true":false;
+  const pathos=[...document.querySelectorAll("#"+pre+"Pathos [data-patho]")].filter(b=>b.getAttribute("aria-pressed")==="true").map(b=>b.dataset.patho);
+  const out={annee:g("Annee")&&g("Annee").value?+g("Annee").value:null,sexe:g("Sexe")?g("Sexe").value:"",commune:g("Commune")?g("Commune").value.trim():"",
+    vitSeul:chip("VitSeul"),aidant:chip("Aidant"),institution:chip("Institution"),plaie:chip("Plaie"),bsi:chip("Bsi"),
+    pathos,nbMed:g("NbMed")&&g("NbMed").value!==""?+g("NbMed").value:null,autonomie:g("Autonomie")?g("Autonomie").value:"",adresse_par:g("AdressePar")?g("AdressePar").value:""};
+  /* Braden / Girerd : capture brute (éventuellement partielle) — finalisées/scorées par finaliserSocle() */
+  const br={};let brN=0;
+  BRADEN_ECHELLES.forEach(e=>{const el=g("Braden_"+e.k);if(el&&el.value){br[e.k]=+el.value;brN++}});
+  if(brN)out.braden=br;
+  const gi=[];let giN=0;
+  GIRERD_ITEMS.forEach((q,i)=>{const el=g("Girerd_"+i);gi.push(el&&el.value!==""&&el.value!=null?el.value==="1":null);if(gi[i]!=null)giN++});
+  if(giN)out.girerd={reponses:gi};
+  return out;
+}
+/* au commit du socle : les instruments saisis complets sont scorés et datés par le moteur ;
+   une grille partielle vaut « Plus tard » (rien n'écrase la précédente) */
+function finaliserSocle(data,date){
+  const d=Object.assign({},data||{});
+  if(d.braden){const s=bradenScore(d.braden);
+    if(s)d.braden=Object.assign({},d.braden,{score:s.score,risque:s.risque,date:date||todayISO()});
+    else delete d.braden;}
+  if(d.girerd){const s=girerdScore(d.girerd.reponses);
+    if(s)d.girerd={reponses:d.girerd.reponses.slice(),score:s.score,date:date||todayISO()};
+    else delete d.girerd;}
+  return d;
+}
+function renderSocleForm(p){const el=$("#pSocleFields");if(!el)return;
+  el.innerHTML=socleFieldsHtml(p||{pathos:[]},"pSoc");
+  const inf=$("#pSocleInfo");if(inf)inf.textContent=p&&p.socleDate?"Socle validé le "+p.socleDate:"Socle jamais validé";}
+/* ---- tableau de bord (module 2) ---- */
+function renderDash(){
+  const today=todayISO(),seen5=new Set();
+  const act=patients.filter(p=>{if(!p.active)return false;if(p.id){if(seen5.has(p.id))return false;seen5.add(p.id);}return true});
+  const fs=act.map(p=>({p,f:freshness(dossier(p),today)}));
+  const ok=fs.filter(x=>nbRetards(x.f)===0).length;
+  const tr7=patients.reduce((s,p)=>s+(p.transmissions||[]).filter(t=>(Date.parse(today)-Date.parse(String(t.date).slice(0,10)))<7*86400000).length,0);
+  $("#dashKpi").innerHTML=`<div class="kpi">
+    <div><b>${act.length?Math.round(ok/act.length*100):100} %</b><small>patients à jour (${ok}/${act.length} actifs)</small></div>
+    <div><b>${passages5.filter(x=>String(x.date).slice(0,10)===today).length}</b><small>passages validés aujourd'hui</small></div>
+    <div><b>${tr7}</b><small>transmissions sur 7 jours</small></div>
+    <div><b>${alertesOuvertes(patients).length}</b><small>alertes non traitées</small></div></div>
+  ${(()=>{ /* ligne secondaire « qualité renforcée » : souhaitable, n'abaisse jamais le % principal */
+    const qr=completudeSouhaitable(patients,today);
+    const nb=ty=>qr.filter(x=>x.type===ty).length,wql=nb("woundqol_ouverture")+nb("woundqol_cloture");
+    const parts=[nb("braden")?nb("braden")+" Braden":"",nb("girerd")?nb("girerd")+" Girerd":"",wql?wql+" Wound-QoL":""].filter(Boolean);
+    return `<p class="muted" style="margin:8px 0 0">Qualité renforcée (souhaitable — n'abaisse pas le % ci-dessus) : ${parts.length?parts.join(" · ")+" à compléter":"à jour ✓"}</p>`;})()}`;
+  const lateL=fs.filter(x=>nbRetards(x.f)>0).sort((a,b)=>nbRetards(b.f)-nbRetards(a.f));
+  $("#dashLate").innerHTML=lateL.map(x=>`<div class="pt"><div style="flex:1"><b>${esc(x.p.name)}</b> ${pastillesHtml(x.f)}<small>${freshTexts(x.f).join(" · ")}</small></div><button class="btn sm sec" data-dashp="${patients.indexOf(x.p)}">Passage</button></div>`).join("")||`<p class="muted">Tous les patients actifs sont à jour ✓</p>`;
+  const late48=alertesEnRetard(patients).map(x=>x.pi.id);
+  const alr=alertesOuvertes(patients);
+  $("#dashAlertes").innerHTML=alr.length?alr.map(x=>postitHtml(x.p,x.pi)).join("")+(late48.length?`<p class="muted">⏰ ${late48.length} alerte(s) en attente depuis plus de 48 h.</p>`:""):`<p class="muted">Aucune alerte en attente.</p>`;
+  /* module 7 : suivi des plaies — fraîcheur par plaie active + réfections orphelines (incomplétude, jamais bloquant) */
+  const pls=[];act.forEach(p=>{(dossier(p).plaies||[]).forEach(pl=>pls.push({p:dossier(p),pl}))});
+  const actifsW=pls.filter(x=>!x.pl.cloture).map(x=>({p:x.p,pl:x.pl,fr:plaieFraicheur(x.pl,today)}));
+  const wLate=actifsW.filter(x=>x.fr.surface.etat!=="ok"||x.fr.bilanJ30);
+  const orph=refectionsOrphelines(patients,passages5);
+  $("#dashPlaies").innerHTML=(actifsW.length||orph.length)?
+    `<div class="kpi"><div><b>${actifsW.length}</b><small>plaie(s) active(s)</small></div>
+      <div><b>${wLate.length}</b><small>surface à mettre à jour (15 j)</small></div>
+      <div><b>${actifsW.filter(x=>x.fr.bilanJ30).length}</b><small>bilan J30 chirurgical attendu</small></div>
+      <div><b>${orph.length}</b><small>pansement(s) cotés sans réfection</small></div></div>`
+    +wLate.map(x=>`<div class="pt"><div style="flex:1"><b>${esc(x.p.name)}</b> — ${esc(plaieLabel(x.pl))} · J${x.fr.age??"?"}<small>${[x.fr.bilanJ30?"Bilan J30 attendu":"",x.fr.surface.etat==="missing"?"surface jamais recopiée":x.fr.surface.etat==="late"?"dernière surface : "+x.fr.surface.jours+" j":""].filter(Boolean).join(" · ")}</small></div><button class="btn sm sec" data-dashp="${patients.indexOf(x.p)}">Passage</button></div>`).join("")
+    :`<p class="muted">Aucune plaie en suivi.</p>`;
+  const evts=[];patients.forEach(p=>(p.transmissions||[]).forEach(t=>{if(t.type==="EVENEMENT"&&(Date.parse(today)-Date.parse(String(t.date).slice(0,10)))<=30*86400000)evts.push({p,t})}));
+  evts.sort((a,b)=>a.t.date<b.t.date?1:-1);
+  $("#dashEvts").innerHTML=evts.map(x=>`<div class="day"><span><b>${esc(x.t.mot||"—")}</b> · ${esc(x.p.name)}${x.t.texte?" — "+esc(x.t.texte):""}</span><b>${esc(String(x.t.date).slice(0,10))}</b></div>`).join("")||`<p class="muted">Aucun événement sur 30 jours.</p>`;
+  const refC={photo:0,icope:0,constantes:0,socle:0,plaie:0};
+  passages5.forEach(x=>(x.propositions||[]).forEach(pr=>{if(pr.declined&&refC[pr.type]!=null)refC[pr.type]++}));
+  const totR=Object.values(refC).reduce((a,b)=>a+b,0);
+  $("#dashRefus").innerHTML=totR?Object.entries(refC).filter(([,n])=>n).map(([k,n])=>`<div class="day"><span>${FRESH_LBL[k]||(k==="plaie"?"Ouverture de plaie":k)}</span><b>${n} refus</b></div>`).join(""):`<p class="muted">Aucun refus tracé.</p>`;
+}
+/* ---- conformité & export (module 6) ---- */
+function downloadCSV(name,txt){const b=new Blob(["﻿"+txt],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);}
+function renderConf(){
+  $("#confMode").textContent=DATA_MODE==="test"?"TEST — patients fictifs uniquement (hébergement non HDS)":"PRODUCTION";
+  const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;
+  try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
+  $("#expMap").innerHTML=E.mapping.map(m=>`<div class="day"><span>${m.code}</span><b>${esc(m.nom)}</b></div>`).join("")||`<p class="muted">Aucun patient.</p>`;
+}
+function renderReglages(){
+  $("#setAuteur").value=settings.auteur||"";
+  $("#setGeo").setAttribute("aria-pressed",!!settings.geoloc);$("#setRattr").setAttribute("aria-pressed",settings.rattrapage!==false);
+  $("#setProv").innerHTML=Object.entries(EXTRACTEURS).map(([k,v])=>`<option value="${k}"${(settings.iaProvider||"n8n")===k?" selected":""}>${v.l}</option>`).join("");
+  $("#setStatus").textContent="Mode données : "+DATA_MODE.toUpperCase()+" · les transmissions restent sur cet appareil.";
+}
+
 document.addEventListener("DOMContentLoaded",()=>{
   $("#date").addEventListener("input",e=>{day.date=e.target.value;render()});$("#km").addEventListener("input",e=>{day.km=e.target.value;render()});
   document.querySelectorAll("#ctx .chip").forEach(b=>b.onclick=()=>{day.ctx[b.dataset.ctx]=!day.ctx[b.dataset.ctx];render()});
@@ -955,7 +2633,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(body&&!b){const i=+body.dataset.pe;editIdx=i;fillForm(patients[i]);$("#pName").scrollIntoView({block:"start"});toast("Modification de "+patients[i].name);return}
     if(!b)return;const i=+(b.dataset.pe??b.dataset.pd??b.dataset.pt??b.dataset.px);
     if(b.dataset.pe!=null){editIdx=i;fillForm(patients[i]);$("#pName").scrollIntoView({block:"start"});}
-    else if(b.dataset.pd!=null){const c=JSON.parse(JSON.stringify(patients[i]));c.w1="17:00";c.w2="20:00";patients.splice(i+1,0,c);savePatients();renderPatients();editIdx=i+1;fillForm(c);$("#pName").scrollIntoView({block:"start"});toast("Passage du soir créé — adaptez les soins du soir puis Enregistrer");}
+    else if(b.dataset.pd!=null){const c=JSON.parse(JSON.stringify(patients[i]));c.w1="17:00";c.w2="20:00";c.transmissions=[];c.postits=[];c.plaies=[];patients.splice(i+1,0,c);savePatients();renderPatients();editIdx=i+1;fillForm(c);$("#pName").scrollIntoView({block:"start"});toast("Passage du soir créé — adaptez les soins du soir puis Enregistrer");}
     else if(b.dataset.pt!=null){patients[i].active=!patients[i].active;if(!patients[i].active)patients[i].to=patients[i].to||new Date().toISOString().slice(0,10);savePatients();renderPatients();}
     else if(b.dataset.px!=null){if(confirm("Supprimer "+patients[i].name+" ?")){patients.splice(i,1);savePatients();renderPatients();}}});
   $("#tGo").onclick=planRoute;$("#tMaps").onclick=openMaps;
@@ -976,12 +2654,87 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#tFerie").onclick=()=>{const b=$("#tFerie");b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true");planRoute();};
   document.querySelectorAll("#tab-plus [data-go]").forEach(b=>b.onclick=()=>showTab(b.dataset.go));
   $("#mapM").onclick=()=>{mapSlot="matin";renderMap();};$("#mapS").onclick=()=>{mapSlot="soir";renderMap();};
+  /* ---- v5 : bandeau test, initiales, écran de passage, post-its, export, réglages ---- */
+  if(DATA_MODE==="test"){$("#testband").hidden=false;$("#epDicteeBand").hidden=false;$("#testband").onclick=()=>showTab("conf");}
+  if(!settings.auteur)$("#initDlg").hidden=false;
+  $("#initOk").onclick=()=>{const v=$("#initInp").value.trim().toUpperCase();if(!v){toast("Initiales requises");return}settings.auteur=v;saveSettings();$("#initDlg").hidden=true;renderReleves();toast("Bonjour "+v)};
+  document.addEventListener("click",e=>{const b=e.target.closest("[data-tgl]");if(b)b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true")});
+  $("#epHeure").addEventListener("input",e=>{if(epDraft){epDraft.heure=e.target.value;saveDraft();renderEpTicket();}});
+  $("#epQ").addEventListener("input",e=>{const hits=catalogHits(e.target.value);
+    $("#epResults").innerHTML=hits.map(a=>`<button class="act" data-id="${a.id}"><span><b>${a.k} ${a.c}</b> ${a.l}${a.tags?.verif?'<span class="verif">à vérifier</span>':''}<small>${eur(LV(a.k)*a.c)}</small></span><span class="plus">+</span></button>`).join("")||(e.target.value.trim()?`<div class="muted">Aucun acte trouvé.</div>`:"");});
+  $("#epResults").addEventListener("click",e=>{const b=e.target.closest("[data-id]");if(b){epAddAct(b.dataset.id);$("#epQ").value="";$("#epResults").innerHTML="";}});
+  $("#epQuick").addEventListener("click",e=>{const b=e.target.closest("[data-q]");if(b)epAddAct(b.dataset.q);});
+  $("#epLines").addEventListener("click",e=>{const b=e.target.closest("[data-eprm]");if(b&&epDraft){epDraft.acts.splice(+b.dataset.eprm,1);saveDraft();renderPassage();}});
+  $("#epAlerts").addEventListener("click",e=>{const b=e.target.closest("[data-epadd]");if(b)epAddAct(b.dataset.epadd);});
+  $("#epLibre").addEventListener("input",e=>{if(epDraft){epDraft.trans.libre=e.target.value;saveDraft();}});
+  $("#epDictee").addEventListener("input",e=>{if(epDraft){epDraft.dictee=e.target.value;saveDraft();}
+    /* correction manuelle pendant l'écoute : le texte tapé devient la nouvelle base (sinon le prochain résultat l'écraserait) */
+    if(epRecWanted&&epRecEtat)epRecEtat={base:e.target.value.trim(),fin:"",lastSeg:epRecEtat.lastSeg};});
+  $("#epMic").onclick=epMicToggle;$("#epAnalyse").onclick=epAnalyser;
+  $("#epDicteeLibre").onclick=()=>{if(!epDraft)return;const v=$("#epDictee").value.trim();if(!v){toast("Dictée vide");return}
+    epDraft.trans.libre=((epDraft.trans.libre||"").trim()?epDraft.trans.libre.trim()+"\n":"")+v;saveDraft();renderPassage();toast("Dictée enregistrée en transmission libre")};
+  $("#epBtnEvt").onclick=()=>{const t=epDraft.trans;t.evt=t.evt?null:{mot:null,texte:""};saveDraft();renderPassage()};
+  $("#epBtnObs").onclick=()=>{const t=epDraft.trans;t.obs=t.obs?null:{douleur:"",chute:"",confusion:"",peau:"",surcharge:"",observance:""};saveDraft();renderPassage()};
+  $("#epBtnCst").onclick=()=>{const t=epDraft.trans;t.cst=t.cst?null:{ta:"",fc:"",spo2:"",temp:"",gly:"",poids:""};saveDraft();renderPassage()};
+  $("#epBtnIcope").onclick=()=>{const t=epDraft.trans;t.icope=t.icope?null:{};saveDraft();renderPassage()};
+  $("#epBtnPhoto").onclick=()=>{const t=epDraft.trans;t.photo=t.photo?null:{surface:""};saveDraft();renderPassage();if(t.photo)toast("Photo tracée — la photo reste sur le téléphone")};
+  $("#epBtnPostit").onclick=()=>{epPanelOpen.postit=!epPanelOpen.postit;saveDraft();renderPassage()};
+  $("#epPanels").addEventListener("input",epPanelInput);
+  $("#epPanels").addEventListener("click",epPanelClick);
+  $("#epTriggers").addEventListener("click",epTriggerClick);
+  $("#epPlaies").addEventListener("click",epPlaiesClick);
+  $("#epPlaies").addEventListener("input",epPlaiesInput);
+  $("#wqlDlg").addEventListener("click",wqlClick);
+  $("#dashPlaies").addEventListener("click",e=>{const b=e.target.closest("[data-dashp]");if(b)openPassage(+b.dataset.dashp)});
+  $("#epHead").addEventListener("click",e=>{if(e.target.closest("[data-epfiche]")&&epIdx!=null){editIdx=epIdx;fillForm(patients[epIdx]);showTab("pat");setTimeout(()=>$("#pName").scrollIntoView({block:"start"}),60);}});
+  $("#epValider").onclick=validerPassage;
+  $("#epRetour").onclick=()=>{epMicStop();showTab("tour")};
+  $("#epFoldCot").onclick=()=>{epFoldState.cot=!epFoldState.cot;epFoldSave();renderPassage()};
+  $("#epFoldTrans").onclick=()=>{epFoldState.trans=!epFoldState.trans;epFoldSave();renderPassage()};
+  $("#epPostitsList").addEventListener("click",postitListClick);
+  $("#tTransShare").addEventListener("click",e=>{
+    if(e.target.closest("[data-tsclose]")){lastTransShare=null;renderTransShare();return}
+    if(!lastTransShare)return;
+    if(e.target.closest("[data-tscopy]")){navigator.clipboard?.writeText(lastTransShare.texte).then(()=>toast("Transmission copiée")).catch(()=>toast("Copie impossible — sélectionnez le texte"));return}
+    if(e.target.closest("[data-tsshare]")&&navigator.share){navigator.share({text:lastTransShare.texte}).catch(()=>{});return}
+  });
+  $("#tReleves").addEventListener("click",postitListClick);
+  $("#pPostits").addEventListener("click",postitListClick);
+  $("#pPostits").addEventListener("click",e=>{
+    const ty=e.target.closest("[data-pftype]");
+    if(ty){document.querySelectorAll("#pPostits [data-pftype]").forEach(b=>b.setAttribute("aria-pressed",b===ty));return}
+    if(e.target.closest("[data-pfsave]")){
+      if(editIdx==null){toast("Enregistrez d'abord le patient");return}
+      const p=dossier(patients[editIdx]);
+      const type=[...document.querySelectorAll("#pPostits [data-pftype]")].find(b=>b.getAttribute("aria-pressed")==="true")?.dataset.pftype||"RELEVE";
+      const inp=document.querySelector("#pPostits [data-pftexte]");const txt=(inp&&inp.value||"").trim();
+      if(!txt){toast("Texte du post-it requis");return}
+      const pi=makePostit(type,txt,settings.auteur||"??");p.postits=p.postits||[];p.postits.push(pi);
+      savePatients();renderPPostits(patients[editIdx]);renderReleves();toast("Post-it "+type+" épinglé");}
+  });
+  $("#dashAlertes").addEventListener("click",postitListClick);
+  $("#dashLate").addEventListener("click",e=>{const b=e.target.closest("[data-dashp]");if(b)openPassage(+b.dataset.dashp)});
+  $("#pSocleVal").onclick=()=>{if(editIdx==null){toast("Enregistrez d'abord le patient (le socle sera repris)");return}
+    const p=patients[editIdx];Object.assign(p,finaliserSocle(readSocleFields("pSoc"),todayISO()));p.socleDate=todayISO();savePatients();renderSocleForm(p);toast("Socle validé aujourd'hui")};
+  $("#expPat").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
+    downloadCSV("lidia_patients_"+todayISO()+".csv",toCSV(E.head,E.rows));$("#expStatus").textContent=E.rows.length+" patient(s) exporté(s), pseudonymisés (codes stables P001…)."};
+  $("#expEvt").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
+    downloadCSV("lidia_evenements_"+todayISO()+".csv",toCSV(["code","date","mot","liee_plaie"],E.events));$("#expStatus").textContent=E.events.length+" événement(s) exporté(s) (code, date, mot, plaie liée — sans texte libre)."};
+  $("#expPlaies").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
+    downloadCSV("lidia_plaies_"+todayISO()+".csv",toCSV(E.plaiesHead,E.plaiesRows));$("#expStatus").textContent=E.plaiesRows.length+" plaie(s) exportée(s) (identifiants P001-1…, délai de cicatrisation calculé)."};
+  $("#expRef").onclick=()=>{const E=buildExport(patients,passages5,null,exportCodes);exportCodes=E.codeMap;try{localStorage.setItem("lidia.cot.codes",JSON.stringify(exportCodes))}catch(e){}
+    downloadCSV("lidia_refections_"+todayISO()+".csv",toCSV(E.refHead,E.refRows));$("#expStatus").textContent=E.refRows.length+" réfection(s) exportée(s) (lit, exsudat, signes ISO, pansement, surface)."};
+  ["setGeo","setRattr"].forEach(id=>$("#"+id).onclick=()=>{const b=$("#"+id);b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true")});
+  $("#setSave").onclick=()=>{const a=$("#setAuteur").value.trim().toUpperCase();if(!a){toast("Initiales requises");return}
+    settings.auteur=a;settings.geoloc=$("#setGeo").getAttribute("aria-pressed")==="true";settings.rattrapage=$("#setRattr").getAttribute("aria-pressed")==="true";settings.iaProvider=$("#setProv").value;saveSettings();renderReleves();toast("Réglages enregistrés")};
+  renderReleves();
   render();
 });
 function showTab(t){document.querySelectorAll("main > section").forEach(s=>s.hidden=(s.id!=="tab-"+t));
-  const navFor=t==="tour"?"tour":t==="pat"?"pat":"plus";
+  const navFor=(t==="tour"||t==="passage")?"tour":t==="pat"?"pat":t==="dash"?"dash":"plus";
   document.querySelectorAll("nav [data-tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===navFor));
-  window.scrollTo({top:0});if(t==="tour")initMapArea();}
+  window.scrollTo({top:0});if(t==="tour")initMapArea();
+  if(t==="passage")renderPassage();if(t==="dash")renderDash();if(t==="conf")renderConf();if(t==="reglages")renderReglages();}
 async function initMapArea(){if(!cabinet){try{cabinet=await geocode(CAB_ADDR);savePatients();}catch(e){}}setTimeout(renderMap,60);if(patients.some(p=>p.active)&&!Object.keys(lastRoutes).length)planRoute();}
 </script>
 </body>
