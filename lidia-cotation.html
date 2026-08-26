@@ -114,7 +114,7 @@ ol{padding-left:18px;font-size:14px}
 </head>
 <body>
 <header>
-  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.2.0</small></h1>
+  <h1>LIDIA <span>Cotation</span> <small style="font-size:11px;color:#B9C6D0;font-weight:400">v5.2.1</small></h1>
   <p>Cotation, transmission, recueil : un seul flux par passage</p>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-tab="tour">Aujourd'hui <span class="badge" id="navTourBadge" hidden>0</span></button>
@@ -583,7 +583,7 @@ const ICOPE_DOMS=["mobilite","cognition","nutrition","humeur","vision","audition
 const TRANS_TYPES=["LIBRE","EVENEMENT","CONSTANTES","OBS","ICOPE","PHOTO"];
 const POSTIT_TYPES=["RELEVE","ALERTE","PERSO"];
 /* actes qui signent une plaie active (bascule patient.plaie) */
-const PLAIE_ACTS=["pans1","pans4","ulc","pico","pico2","pans_diab","topique","topique_diab","bilan_plaie"];
+const PLAIE_ACTS=["pans1","pans1c","pans4","ulc","pico","pico2","pans_diab","topique","topique_diab","bilan_plaie","pans_mam","pans_var"];
 let settings={auteur:"",geoloc:false,rattrapage:true,iaProvider:"n8n",...loadJSON("lidia.cot.settings",{})};
 let passages5=loadJSON("lidia.cot.passages",[]);
 let drafts=loadJSON("lidia.cot.drafts",{});
